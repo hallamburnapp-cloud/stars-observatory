@@ -1,0 +1,4 @@
+data/raw/
+data/out/
+__pycache__/
+.tmp_*

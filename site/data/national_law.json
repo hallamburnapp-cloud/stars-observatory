@@ -1,0 +1,749 @@
+{
+  "generated": "2026-07-11",
+  "source": "UNOOSA National Space Law database",
+  "source_url": "https://www.unoosa.org/oosa/en/ourwork/spacelaw/nationalspacelaw/index.html",
+  "states": {
+    "US": {
+      "state": "United States",
+      "law": "yes",
+      "instrument": "National Aeronautics and Space Act (1958) + Commercial Space Launch Act (1984, as amended) with FCC/NOAA licensing regulations",
+      "year": 1958,
+      "source_url": "https://www.unoosa.org/oosa/en/ourwork/spacelaw/nationalspacelaw/united-states/index.html"
+    },
+    "CIS": {
+      "state": "Russian Federation",
+      "law": "yes",
+      "instrument": "Law of the Russian Federation on Space Activity, Federal Law No. 5663-1",
+      "year": 1993,
+      "source_url": "https://www.unoosa.org/oosa/en/ourwork/spacelaw/nationalspacelaw/russian_federation/index.html"
+    },
+    "PRC": {
+      "state": "China",
+      "law": "yes",
+      "instrument": "Measures for the Administration of the Registration of Objects Launched into Outer Space (2001); no comprehensive licensing act, registration/administrative regime only",
+      "year": 2001,
+      "source_url": "https://www.unoosa.org/res/oosadoc/data/documents/2025/aac_105c_22025crp/aac_105c_22025crp_6_0_html/AC105_C2_2025_CRP06E.pdf"
+    },
+    "UK": {
+      "state": "United Kingdom",
+      "law": "yes",
+      "instrument": "Outer Space Act 1986 (superseded in part by Space Industry Act 2018)",
+      "year": 1986,
+      "source_url": "https://www.unoosa.org/oosa/en/ourwork/spacelaw/nationalspacelaw/united-kingdom/index.html"
+    },
+    "JPN": {
+      "state": "Japan",
+      "law": "yes",
+      "instrument": "Act on Launching of Spacecraft, etc. and Control of Spacecraft (Space Activities Act, Act No. 76 of 2016), implementing the Basic Space Act 2008",
+      "year": 2016,
+      "source_url": "https://www.japaneselawtranslation.go.jp/en/laws/view/4329/en"
+    },
+    "TBD": {
+      "state": "To Be Determined/Unattributed",
+      "law": "unknown",
+      "instrument": null,
+      "year": null,
+      "source_url": "https://www.unoosa.org/oosa/en/ourwork/spacelaw/nationalspacelaw/index.html"
+    },
+    "FR": {
+      "state": "France",
+      "law": "yes",
+      "instrument": "French Space Operations Act No. 2008-518",
+      "year": 2008,
+      "source_url": "https://www.unoosa.org/oosa/en/ourwork/spacelaw/nationalspacelaw/france/loi-2008-518/index.html"
+    },
+    "IND": {
+      "state": "India",
+      "law": "no",
+      "instrument": "No comprehensive space act in force; Indian Space Policy 2023 and IN-SPACe are non-statutory; Space Activities Bill 2017 lapsed in 2019, new draft bill in progress as of 2025",
+      "year": null,
+      "source_url": "https://practiceguides.chambers.com/practice-guides/comparison/1223/13639/21691-21692-21693-21694-21695-21696-21697"
+    },
+    "ITSO": {
+      "state": "Intelsat (ITSO)",
+      "law": "consortium",
+      "instrument": "Commercial successor Intelsat S.A. is incorporated in Luxembourg; historic ITSO is an intergovernmental treaty organisation with no single supervising national law",
+      "year": null,
+      "source_url": "https://www.itso.int/"
+    },
+    "ESA": {
+      "state": "European Space Agency",
+      "law": "consortium",
+      "instrument": "Intergovernmental organisation established by the ESA Convention (1975); no single national supervising law",
+      "year": null,
+      "source_url": "https://www.esa.int/About_Us/Law_at_ESA"
+    },
+    "IT": {
+      "state": "Italy",
+      "law": "yes",
+      "instrument": "Law No. 23/1983 (Ratsiel/liability implementation) and Law No. 7/2018 reorganising ASI and space governance coordination",
+      "year": 1983,
+      "source_url": "https://www.unoosa.org/res/oosadoc/data/documents/2025/aac_105c_22025crp/aac_105c_22025crp_6_0_html/AC105_C2_2025_CRP06E.pdf"
+    },
+    "GER": {
+      "state": "Germany",
+      "law": "yes",
+      "instrument": "Satellite Data Security Act (SatDSiG) 2007; note: Germany lacks a comprehensive launch-licensing space act — a draft German Space Act was still in development as of 2025, this entry reflects the narrower data-security law UNOOSA lists as principal instrument",
+      "year": 2007,
+      "source_url": "https://www.unoosa.org/res/oosadoc/data/documents/2025/aac_105c_22025crp/aac_105c_22025crp_6_0_html/AC105_C2_2025_CRP06E.pdf"
+    },
+    "GLOB": {
+      "state": "Globalstar",
+      "law": "consortium",
+      "instrument": "US-incorporated (Delaware) commercial operator, licensed by the FCC",
+      "year": null,
+      "source_url": "https://www.globalstar.com/en-us/about/who"
+    },
+    "CA": {
+      "state": "Canada",
+      "law": "yes",
+      "instrument": "Canadian Space Agency Act (1990), plus Remote Sensing Space Systems Act (2005) and Radiocommunication Act licensing regime",
+      "year": 1990,
+      "source_url": "https://www.unoosa.org/oosa/en/ourwork/spacelaw/nationalspacelaw/canada/index.html"
+    },
+    "SES": {
+      "state": "SES (Luxembourg)",
+      "law": "consortium",
+      "instrument": "SES S.A., HQ Betzdorf, Luxembourg; supervised under Luxembourg's Law of 15 December 2020 on Space Activities (also FCC-regulated for US operations)",
+      "year": 2020,
+      "source_url": "https://www.ses.com/about-us/our-presence/our-headquarters"
+    },
+    "SKOR": {
+      "state": "South Korea",
+      "law": "yes",
+      "instrument": "Space Development Promotion Act (Act No. 7538, 2005) and Space Damage Compensation Act (2007)",
+      "year": 2005,
+      "source_url": "https://elaw.klri.re.kr/eng_mobile/viewer.do?hseq=70040&type=new&key="
+    },
+    "EUTE": {
+      "state": "Eutelsat",
+      "law": "consortium",
+      "instrument": "Eutelsat Communications S.A., HQ Issy-les-Moulineaux, France; regulated by ARCEP under French Space Operations Act",
+      "year": null,
+      "source_url": "https://www.eutelsat.com/site-information"
+    },
+    "SPN": {
+      "state": "Spain",
+      "law": "no",
+      "instrument": "Royal Decree 278/1995 establishes a satellite registry only; no comprehensive space-activities licensing law in force as of 2026",
+      "year": null,
+      "source_url": "https://www.unoosa.org/res/oosadoc/data/documents/2025/aac_105c_22025crp/aac_105c_22025crp_6_0_html/AC105_C2_2025_CRP06E.pdf"
+    },
+    "ORB": {
+      "state": "Orbcomm",
+      "law": "consortium",
+      "instrument": "US-incorporated commercial operator, FCC-licensed since 1994",
+      "year": null,
+      "source_url": "https://www.fcc.gov/"
+    },
+    "AUS": {
+      "state": "Australia",
+      "law": "yes",
+      "instrument": "Space (Launches and Returns) Act 2018",
+      "year": 2018,
+      "source_url": "https://www.unoosa.org/oosa/en/ourwork/spacelaw/nationalspacelaw/australia/index.html"
+    },
+    "TURK": {
+      "state": "Turkey",
+      "law": "no",
+      "instrument": "Presidential Decree No. 658 establishing the Turkish Space Agency (2018); no comprehensive space-activities licensing law enacted as of 2026",
+      "year": 2018,
+      "source_url": "https://www.unoosa.org/res/oosadoc/data/documents/2025/aac_105c_22025crp/aac_105c_22025crp_6_0_html/AC105_C2_2025_CRP06E.pdf"
+    },
+    "ARGN": {
+      "state": "Argentina",
+      "law": "yes",
+      "instrument": "National Decree No. 995/91 creating CONAE (Comisión Nacional de Actividades Espaciales), ratified by Law No. 24061",
+      "year": 1991,
+      "source_url": "https://www.unoosa.org/res/oosadoc/data/documents/2025/aac_105c_22025crp/aac_105c_22025crp_6_0_html/AC105_C2_2025_CRP06E.pdf"
+    },
+    "ROC": {
+      "state": "Taiwan (Republic of China)",
+      "law": "yes",
+      "instrument": "Space Development Act",
+      "year": 2021,
+      "source_url": "https://law.moj.gov.tw/ENG/LawClass/LawAll.aspx?pcode=H0160078"
+    },
+    "O3B": {
+      "state": "O3b Networks",
+      "law": "consortium",
+      "instrument": "Wholly owned subsidiary of SES, HQ Betzdorf, Luxembourg",
+      "year": null,
+      "source_url": "https://www.ses.com/about-us/our-presence/our-headquarters"
+    },
+    "FIN": {
+      "state": "Finland",
+      "law": "yes",
+      "instrument": "Act on Space Activities (63/2018)",
+      "year": 2018,
+      "source_url": "https://www.unoosa.org/oosa/en/ourwork/spacelaw/nationalspacelaw/finland/index.html"
+    },
+    "NOR": {
+      "state": "Norway",
+      "law": "yes",
+      "instrument": "Act No. 38 on Launching Objects from Norwegian Territory etc. into Outer Space",
+      "year": 1969,
+      "source_url": "https://www.unoosa.org/oosa/en/ourwork/spacelaw/nationalspacelaw/norway/index.html"
+    },
+    "ISRA": {
+      "state": "Israel",
+      "law": "no",
+      "instrument": "No domestic space legislation enacted; regulation relies on general law; drafting reported as of 2021",
+      "year": null,
+      "source_url": "https://www.unoosa.org/documents/pdf/copuos/lsc/2021/statements/item_6a_Israel_ver.1_1_June_PM.pdf"
+    },
+    "BRAZ": {
+      "state": "Brazil",
+      "law": "yes",
+      "instrument": "Law No. 8.854/1994 (AEB creation) plus Administrative Edict/Resolution 51/2001 on commercial launch licensing regime",
+      "year": 1994,
+      "source_url": "https://www.unoosa.org/res/oosadoc/data/documents/2025/aac_105c_22025crp/aac_105c_22025crp_6_0_html/AC105_C2_2025_CRP06E.pdf"
+    },
+    "UAE": {
+      "state": "United Arab Emirates",
+      "law": "yes",
+      "instrument": "Federal Law No. 12 of 2019 on the Regulation of the Space Sector, superseded by Federal Decree-Law No. 46 of 2023",
+      "year": 2019,
+      "source_url": "https://uaelegislation.gov.ae/en/legislations/2129/download"
+    },
+    "INDO": {
+      "state": "Indonesia",
+      "law": "yes",
+      "instrument": "Law No. 21 of 2013 on Space Activities",
+      "year": 2013,
+      "source_url": "https://www.unoosa.org/oosa/en/ourwork/spacelaw/nationalspacelaw/indonesia/index.html"
+    },
+    "IM": {
+      "state": "Inmarsat",
+      "law": "consortium",
+      "instrument": "HQ London, UK; regulated under UK Wireless Telegraphy regulations / Ofcom",
+      "year": null,
+      "source_url": "https://www.legislation.gov.uk/uksi/2016/1074/made/data.html"
+    },
+    "SING": {
+      "state": "Singapore",
+      "law": "no",
+      "instrument": "No overarching space legislation; only non-binding guidelines (2024); National Space Agency planned for April 2026",
+      "year": null,
+      "source_url": "https://www.orionw.com/news-insights/singapores-space-law-regulatory-framework"
+    },
+    "AB": {
+      "state": "Arab Satellite Comm. Org. (Arabsat)",
+      "law": "consortium",
+      "instrument": "Intergovernmental Arab organisation; HQ Riyadh, Saudi Arabia; no single supervising national law",
+      "year": null,
+      "source_url": "https://www.arabsat.com/"
+    },
+    "GREC": {
+      "state": "Greece",
+      "law": "yes",
+      "instrument": "Law 4508/2017 on Authorisation of Space Activities and Establishment of a Greek Space Organisation, amended by Law 4712/2020",
+      "year": 2017,
+      "source_url": "https://www.unoosa.org/documents/pdf/spacelaw/sd/Greece_update_20210119.pdf"
+    },
+    "SAUD": {
+      "state": "Saudi Arabia",
+      "law": "yes",
+      "instrument": "Space Law, implemented by the Communications, Space & Technology Commission (CST)",
+      "year": 2022,
+      "source_url": "https://istitlaa.ncc.gov.sa/en/transportation/citc/ssl/Documents/Space%20Law.pdf"
+    },
+    "SWED": {
+      "state": "Sweden",
+      "law": "yes",
+      "instrument": "Act on Space Activities (1982:963)",
+      "year": 1982,
+      "source_url": "https://www.unoosa.org/oosa/en/ourwork/spacelaw/nationalspacelaw/sweden/act_1982_963/index.html"
+    },
+    "EGYP": {
+      "state": "Egypt",
+      "law": "no",
+      "instrument": "Law No. 3 of 2018 establishes the Egyptian Space Agency (agency-creation statute); no comprehensive licensing/authorisation regime for private space activities",
+      "year": 2018,
+      "source_url": "https://www.unoosa.org/documents/pdf/psa/activities/2019/UNJordanWorkshop/Presentations/1.10_OS-UN-J-25-3-2019-f.pdf"
+    },
+    "POL": {
+      "state": "Poland",
+      "law": "no",
+      "instrument": "Act of 26 September 2014 creating the Polish Space Agency (POLSA); no comprehensive space-activities licensing act enacted",
+      "year": 2014,
+      "source_url": "https://www.unoosa.org/res/oosadoc/data/documents/2025/aac_105c_22025crp/aac_105c_22025crp_6_0_html/AC105_C2_2025_CRP06E.pdf"
+    },
+    "EUME": {
+      "state": "EUMETSAT",
+      "law": "consortium",
+      "instrument": "European intergovernmental meteorological satellite organisation, HQ Darmstadt, Germany; no single supervising state",
+      "year": null,
+      "source_url": "https://www.eumetsat.int/"
+    },
+    "THAI": {
+      "state": "Thailand",
+      "law": "no",
+      "instrument": "Draft National Space Act pending Council of State review as of 2024; not yet enacted",
+      "year": null,
+      "source_url": "https://www.unoosa.org/documents/pdf/copuos/lsc/2024/Statements/4_Thailand.pdf"
+    },
+    "MALA": {
+      "state": "Malaysia",
+      "law": "yes",
+      "instrument": "Malaysian Space Board Act 2022 (Act 834)",
+      "year": 2022,
+      "source_url": "https://cms.spacesecurityportal.org/uploads/MLY_Act_834_01e6c326f3.pdf"
+    },
+    "LUXE": {
+      "state": "Luxembourg",
+      "law": "yes",
+      "instrument": "Law of 15 December 2020 on Space Activities",
+      "year": 2020,
+      "source_url": "https://www.unoosa.org/oosa/en/ourwork/spacelaw/nationalspacelaw/luxembourg/index.html"
+    },
+    "PAKI": {
+      "state": "Pakistan",
+      "law": "yes",
+      "instrument": "Pakistan Space Activities Rules 2024 (under National Command Authority Act 2010), establishing the Pakistan Space Activities Regulatory Board (PSARB)",
+      "year": 2024,
+      "source_url": "https://psarb.gov.pk/"
+    },
+    "IRAN": {
+      "state": "Iran",
+      "law": "no",
+      "instrument": "No comprehensive space act; only Iranian Space Agency statute governing the agency itself",
+      "year": null,
+      "source_url": "https://csps.aerospace.org/sites/default/files/2021-08/Iran%20Space%20Agency%20statute%20unofficial%20translation.pdf"
+    },
+    "MEX": {
+      "state": "Mexico",
+      "law": "no",
+      "instrument": "Ley que Crea la Agencia Espacial Mexicana (2010) establishes the Mexican Space Agency; no comprehensive private-activity licensing law identified",
+      "year": 2010,
+      "source_url": "https://derechoaeroespacial.org/cont/documentos/newsletter/12_legilacion2.pdf"
+    },
+    "BEL": {
+      "state": "Belgium",
+      "law": "yes",
+      "instrument": "Law on the Activities of Launching, Flight Operations or Guidance of Space Objects",
+      "year": 2005,
+      "source_url": "https://www.unoosa.org/oosa/en/ourwork/spacelaw/nationalspacelaw/belgium/index.html"
+    },
+    "DEN": {
+      "state": "Denmark",
+      "law": "yes",
+      "instrument": "Danish Outer Space Act (Act No. 409)",
+      "year": 2016,
+      "source_url": "https://www.unoosa.org/oosa/en/ourwork/spacelaw/nationalspacelaw/denmark/index.html"
+    },
+    "NATO": {
+      "state": "NATO",
+      "law": "consortium",
+      "instrument": "Intergovernmental military alliance; no single supervising national space law",
+      "year": null,
+      "source_url": "https://www.nato.int/"
+    },
+    "AC": {
+      "state": "Asia Satellite Telecommunications (AsiaSat)",
+      "law": "consortium",
+      "instrument": "Hong Kong-incorporated, licensed under Hong Kong's Outer Space Ordinance",
+      "year": null,
+      "source_url": "https://www.ofca.gov.hk/filemanager/ofca/common/Industry/telecom/outer_space/OSL_AsiaSat4.pdf"
+    },
+    "ABS": {
+      "state": "ABS (Asia Broadcast Satellite)",
+      "law": "consortium",
+      "instrument": "Bermuda-incorporated (ABS Global Ltd.), HQ Hamilton, Bermuda (UK Overseas Territory)",
+      "year": null,
+      "source_url": "https://www.absglobal.com/"
+    },
+    "ALG": {
+      "state": "Algeria",
+      "law": "yes",
+      "instrument": "Law N\u00b019-06 on Space Activities",
+      "year": 2019,
+      "source_url": "https://www.unoosa.org/res/oosadoc/data/documents/2025/aac_105c_22025crp/aac_105c_22025crp_6_0_html/AC105_C2_2025_CRP06E.pdf"
+    },
+    "SWTZ": {
+      "state": "Switzerland",
+      "law": "no",
+      "instrument": "Draft Federal Act on Space Operations submitted to Parliament 25 Feb 2026; not yet enacted",
+      "year": null,
+      "source_url": "https://www.swiss-space-law.admin.ch/en"
+    },
+    "NETH": {
+      "state": "Netherlands",
+      "law": "yes",
+      "instrument": "Rules Concerning Space Activities and the Establishment of a Registry of Space Objects (Space Activities Act)",
+      "year": 2007,
+      "source_url": "https://www.unoosa.org/oosa/en/ourwork/spacelaw/nationalspacelaw/netherlands/index.html"
+    },
+    "POR": {
+      "state": "Portugal",
+      "law": "yes",
+      "instrument": "Decree-Law No. 16/2019",
+      "year": 2019,
+      "source_url": "https://www.unoosa.org/oosa/en/ourwork/spacelaw/nationalspacelaw/portugal/index.html"
+    },
+    "RWA": {
+      "state": "Rwanda",
+      "law": "unknown",
+      "instrument": "No comprehensive national space law identified; Rwanda Space Agency established by law but authorisation/licensing regime not confirmed",
+      "year": null,
+      "source_url": "https://www.unoosa.org/oosa/en/ourwork/spacelaw/nationalspacelaw/index.html"
+    },
+    "CZCH": {
+      "state": "Czech Republic",
+      "law": "no",
+      "instrument": "No space legislation enacted as of late 2024; draft law stalled",
+      "year": null,
+      "source_url": "https://journals.ceapublishing.hu/index.php/cealr/article/download/376/252"
+    },
+    "UKR": {
+      "state": "Ukraine",
+      "law": "yes",
+      "instrument": "Law of Ukraine on Space Activity No. 503/96-VR",
+      "year": 1996,
+      "source_url": "https://www.unoosa.org/oosa/en/ourwork/spacelaw/nationalspacelaw/ukraine/index.html"
+    },
+    "KAZ": {
+      "state": "Kazakhstan",
+      "law": "yes",
+      "instrument": "Law No. 528-IV on Space Activities",
+      "year": 2012,
+      "source_url": "https://www.unoosa.org/oosa/en/ourwork/spacelaw/nationalspacelaw/kazakhstan/index.html"
+    },
+    "CHBZ": {
+      "state": "China/Brazil (joint programme)",
+      "law": "unknown",
+      "instrument": "Joint CBERS programme; dual-owner SATCAT code, reported under China's registration regime (see PRC) and Brazil's AEB regime (see BRAZ)",
+      "year": null,
+      "source_url": "https://www.unoosa.org/oosa/en/ourwork/spacelaw/nationalspacelaw/index.html"
+    },
+    "NIG": {
+      "state": "Nigeria",
+      "law": "yes",
+      "instrument": "National Space Research and Development Agency Act (NASRDA Act)",
+      "year": 2010,
+      "source_url": "https://www.unoosa.org/oosa/en/ourwork/spacelaw/nationalspacelaw/nigeria/index.html"
+    },
+    "BUL": {
+      "state": "Bulgaria",
+      "law": "no",
+      "instrument": "No national space activities law identified; \"Spatial Development Act\" found in research is a land-use/construction law, unrelated to space activities",
+      "year": null,
+      "source_url": "https://www.unoosa.org/oosa/en/ourwork/spacelaw/nationalspacelaw/index.html"
+    },
+    "VTNM": {
+      "state": "Vietnam",
+      "law": "no",
+      "instrument": "No national space law promulgated",
+      "year": null,
+      "source_url": "http://adastra.im.edu.pl/wp-content/uploads/2022/09/Ad-Astra_Nr5_2022_Vietnam_artykul.pdf"
+    },
+    "AZER": {
+      "state": "Azerbaijan",
+      "law": "yes",
+      "instrument": "Law #927-VIQ on Space Activity",
+      "year": 2023,
+      "source_url": "https://www.unoosa.org/res/oosadoc/data/documents/2025/aac_105c_22025crp/aac_105c_22025crp_6_0_html/AC105_C2_2025_CRP06E.pdf"
+    },
+    "BELA": {
+      "state": "Belarus",
+      "law": "no",
+      "instrument": "Presidential Decree No. 609 (2004) is a policy/coordination decree, not a licensing law",
+      "year": 2004,
+      "source_url": "https://www.unoosa.org/res/oosadoc/data/documents/2025/aac_105c_22025crp/aac_105c_22025crp_6_0_html/AC105_C2_2025_CRP06E.pdf"
+    },
+    "MA": {
+      "state": "Morocco",
+      "law": "unknown",
+      "instrument": "SATCAT owner code MA; no comprehensive national space law identified in available sources",
+      "year": null,
+      "source_url": "https://www.unoosa.org/oosa/en/ourwork/spacelaw/nationalspacelaw/index.html"
+    },
+    "HUN": {
+      "state": "Hungary",
+      "law": "unknown",
+      "instrument": "No comprehensive national space law identified in available sources",
+      "year": null,
+      "source_url": "https://www.unoosa.org/oosa/en/ourwork/spacelaw/nationalspacelaw/index.html"
+    },
+    "RP": {
+      "state": "Philippines",
+      "law": "yes",
+      "instrument": "Republic Act No. 11363, Philippine Space Act",
+      "year": 2018,
+      "source_url": "https://www.unoosa.org/res/oosadoc/data/documents/2025/aac_105c_22025crp/aac_105c_22025crp_6_0_html/AC105_C2_2025_CRP06E.pdf"
+    },
+    "CHLE": {
+      "state": "Chile",
+      "law": "no",
+      "instrument": "Supreme Decree No. 338 establishes an advisory space committee only; no comprehensive licensing law",
+      "year": null,
+      "source_url": "https://www.unoosa.org/res/oosadoc/data/documents/2025/aac_105c_22025crp/aac_105c_22025crp_6_0_html/AC105_C2_2025_CRP06E.pdf"
+    },
+    "SAFR": {
+      "state": "South Africa",
+      "law": "yes",
+      "instrument": "Space Affairs Act No. 84 of 1993",
+      "year": 1993,
+      "source_url": "https://www.unoosa.org/oosa/en/ourwork/spacelaw/nationalspacelaw/south-africa/index.html"
+    },
+    "VENZ": {
+      "state": "Venezuela",
+      "law": "yes",
+      "instrument": "Ley de la Agencia Bolivariana para Actividades Espaciales (ABAE)",
+      "year": 2007,
+      "source_url": "https://www.asambleanacional.gob.ve/leyes/sancionadas/ley-de-la-agencia-bolivariana-para-actividades-espaciales"
+    },
+    "ASRA": {
+      "state": "Austria",
+      "law": "yes",
+      "instrument": "Austrian Outer Space Act",
+      "year": 2011,
+      "source_url": "https://www.unoosa.org/oosa/en/ourwork/spacelaw/nationalspacelaw/austria/index.html"
+    },
+    "FGER": {
+      "state": "France/Germany (joint)",
+      "law": "unknown",
+      "instrument": "Dual-owner SATCAT code; both France (Space Operations Act 2008, see FR) and Germany (SatDSiG 2007, see GER) have relevant instruments; treated as unknown at the code level",
+      "year": null,
+      "source_url": "https://www.unoosa.org/oosa/en/ourwork/spacelaw/nationalspacelaw/index.html"
+    },
+    "STCT": {
+      "state": "Singapore/Taiwan (joint)",
+      "law": "unknown",
+      "instrument": "Dual-owner SATCAT code; Taiwan has a Space Development Act (2021, see ROC) while Singapore has no space law (see SING); treated as unknown at the code level",
+      "year": null,
+      "source_url": "https://www.unoosa.org/oosa/en/ourwork/spacelaw/nationalspacelaw/index.html"
+    },
+    "RASC": {
+      "state": "RascomStar-QAF",
+      "law": "consortium",
+      "instrument": "Registered in Mauritius; operational HQ in Dubai, UAE",
+      "year": null,
+      "source_url": "https://itso.int/wp-content/uploads/2018/04/2.2b.pdf"
+    },
+    "ECU": {
+      "state": "Ecuador",
+      "law": "no",
+      "instrument": "Executive Decree No. 1246 (2012) creates the Ecuadorian Civilian Space Agency (agency-creation only); no comprehensive licensing law",
+      "year": 2012,
+      "source_url": "https://www.unoosa.org/res/oosadoc/data/documents/2025/aac_105c_22025crp/aac_105c_22025crp_6_0_html/AC105_C2_2025_CRP06E.pdf"
+    },
+    "PERU": {
+      "state": "Peru",
+      "law": "no",
+      "instrument": "Decree-Law No. 20643 (1974) creates CONIDA (agency-creation only); no comprehensive licensing law",
+      "year": 1974,
+      "source_url": "https://www.unoosa.org/res/oosadoc/data/documents/2025/aac_105c_22025crp/aac_105c_22025crp_6_0_html/AC105_C2_2025_CRP06E.pdf"
+    },
+    "FRIT": {
+      "state": "France/Italy (joint)",
+      "law": "unknown",
+      "instrument": "Dual-owner SATCAT code; both France (Space Operations Act 2008, see FR) and Italy (Law 23/1983 and Law 7/2018, see IT) have relevant instruments; treated as unknown at the code level",
+      "year": null,
+      "source_url": "https://www.unoosa.org/oosa/en/ourwork/spacelaw/nationalspacelaw/index.html"
+    },
+    "ANG": {
+      "state": "Angola",
+      "law": "unknown",
+      "instrument": "No comprehensive national space law identified in available sources",
+      "year": null,
+      "source_url": "https://www.unoosa.org/oosa/en/ourwork/spacelaw/nationalspacelaw/index.html"
+    },
+    "SVN": {
+      "state": "Slovenia",
+      "law": "yes",
+      "instrument": "Space Activities Act (ZVDej)",
+      "year": 2022,
+      "source_url": "https://www.unoosa.org/documents/pdf/copuos/stsc/2023/Statements/3_Slovenia_6_Feb_PM_1.pdf"
+    },
+    "LTU": {
+      "state": "Lithuania",
+      "law": "no",
+      "instrument": "No dedicated national space activities law identified; only territorial/spatial planning legislation found",
+      "year": null,
+      "source_url": "https://www.unoosa.org/oosa/en/ourwork/spacelaw/nationalspacelaw/index.html"
+    },
+    "KWT": {
+      "state": "Kuwait",
+      "law": "no",
+      "instrument": "No national space activities law identified; Law No. 37 of 2014 establishes CITRA (general telecom regulator), not a space-specific law",
+      "year": null,
+      "source_url": "https://kdipa.gov.kw/wp-content/uploads/2022/08/CITRA-law-ammended.pdf"
+    },
+    "ISS": {
+      "state": "International Space Station (multi-state programme)",
+      "law": "consortium",
+      "instrument": "Governed by the 1998 Intergovernmental Agreement (IGA) among ISS partner states (US, Russia, Japan, Canada, ESA member states); not a single national law",
+      "year": 1998,
+      "source_url": "https://www.nasa.gov/wp-content/uploads/2015/05/iss_iga.pdf"
+    },
+    "SEAL": {
+      "state": "Unidentified (SATCAT code SEAL)",
+      "law": "unknown",
+      "instrument": "State/entity identity not confidently resolved",
+      "year": null,
+      "source_url": "https://www.unoosa.org/oosa/en/ourwork/spacelaw/nationalspacelaw/index.html"
+    },
+    "NICO": {
+      "state": "Unidentified (SATCAT code NICO)",
+      "law": "unknown",
+      "instrument": "State/entity identity not confidently resolved",
+      "year": null,
+      "source_url": "https://www.unoosa.org/oosa/en/ourwork/spacelaw/nationalspacelaw/index.html"
+    },
+    "USBZ": {
+      "state": "United States/Brazil (joint)",
+      "law": "unknown",
+      "instrument": "Dual-owner SATCAT code; both US (see US) and Brazil (see BRAZ) have relevant instruments; treated as unknown at the code level",
+      "year": null,
+      "source_url": "https://www.unoosa.org/oosa/en/ourwork/spacelaw/nationalspacelaw/index.html"
+    },
+    "COL": {
+      "state": "Colombia",
+      "law": "no",
+      "instrument": "Decree 2442 (2006) creates the Colombian Space Commission (agency-creation only); no comprehensive licensing law",
+      "year": 2006,
+      "source_url": "https://www.unoosa.org/res/oosadoc/data/documents/2025/aac_105c_22025crp/aac_105c_22025crp_6_0_html/AC105_C2_2025_CRP06E.pdf"
+    },
+    "EST": {
+      "state": "Estonia",
+      "law": "no",
+      "instrument": "Draft Space Act sent for approval by Ministry of Economy and Communications in September 2024; not yet enacted as of mid-2026",
+      "year": null,
+      "source_url": "https://www.mkm.ee/en/news/estonia-gets-space-law"
+    },
+    "BOL": {
+      "state": "Bolivia",
+      "law": "no",
+      "instrument": "No comprehensive national space activities law identified; Bolivian Space Agency (ABE) created administratively",
+      "year": null,
+      "source_url": "https://derechoaeroespacial.org/cont/documentos/newsletter/12_legilacion2.pdf"
+    },
+    "URY": {
+      "state": "Uruguay",
+      "law": "no",
+      "instrument": "No comprehensive national space activities law identified",
+      "year": null,
+      "source_url": "https://derechoaeroespacial.org/cont/documentos/newsletter/12_legilacion2.pdf"
+    },
+    "IRAQ": {
+      "state": "Iraq",
+      "law": "unknown",
+      "instrument": "No comprehensive national space law identified in available sources",
+      "year": null,
+      "source_url": "https://www.unoosa.org/oosa/en/ourwork/spacelaw/nationalspacelaw/index.html"
+    },
+    "TMMC": {
+      "state": "Turkmenistan/Monaco (joint)",
+      "law": "unknown",
+      "instrument": "Dual-owner SATCAT code; neither Turkmenistan nor Monaco confirmed to have a comprehensive national space law; treated as unknown at the code level",
+      "year": null,
+      "source_url": "https://www.unoosa.org/oosa/en/ourwork/spacelaw/nationalspacelaw/index.html"
+    },
+    "LAOS": {
+      "state": "Laos",
+      "law": "unknown",
+      "instrument": "No comprehensive national space law identified in available sources",
+      "year": null,
+      "source_url": "https://www.unoosa.org/oosa/en/ourwork/spacelaw/nationalspacelaw/index.html"
+    },
+    "BGD": {
+      "state": "Bangladesh",
+      "law": "no",
+      "instrument": "No dedicated national space act; satellite licensing handled under the Bangladesh Telecommunication Act 2001 via BTRC; has acceded only to the Outer Space Treaty",
+      "year": 2001,
+      "source_url": "https://lawzana.com/space-law-lawyers/chittagong"
+    },
+    "JOR": {
+      "state": "Jordan",
+      "law": "unknown",
+      "instrument": "No comprehensive national space law identified in available sources",
+      "year": null,
+      "source_url": "https://www.unoosa.org/oosa/en/ourwork/spacelaw/nationalspacelaw/index.html"
+    },
+    "GRSA": {
+      "state": "Greece/Saudi Arabia (joint)",
+      "law": "unknown",
+      "instrument": "Dual-owner SATCAT code; both Greece (Law 4508/2017, see GREC) and Saudi Arabia (Space Law, see SAUD) have relevant instruments; treated as unknown at the code level",
+      "year": null,
+      "source_url": "https://www.unoosa.org/oosa/en/ourwork/spacelaw/nationalspacelaw/index.html"
+    },
+    "ETH": {
+      "state": "Ethiopia",
+      "law": "no",
+      "instrument": "Proclamation No. 1263/2021 and Regulation No. 511/2022 establish the Space Science and Geospatial Institute (SSGI) (agency-creation only); no comprehensive licensing regime for private space activities identified",
+      "year": 2021,
+      "source_url": "https://ssgi.gov.et/about-ssgi/"
+    },
+    "NKOR": {
+      "state": "North Korea",
+      "law": "yes",
+      "instrument": "Law on Space Development, adopted by the Supreme People's Assembly, amended 2022 to permit defence use",
+      "year": 2013,
+      "source_url": "https://en.wikipedia.org/wiki/North_Korean_space_program"
+    },
+    "SVK": {
+      "state": "Slovakia",
+      "law": "yes",
+      "instrument": "Act No. 378",
+      "year": 2024,
+      "source_url": "https://www.unoosa.org/res/oosadoc/data/documents/2025/aac_105c_22025crp/aac_105c_22025crp_6_0_html/AC105_C2_2025_CRP06E.pdf"
+    },
+    "HRV": {
+      "state": "Croatia",
+      "law": "no",
+      "instrument": "No dedicated national space activities law identified; only unrelated spatial/land-planning legislation found",
+      "year": null,
+      "source_url": "https://www.unoosa.org/oosa/en/ourwork/spacelaw/nationalspacelaw/index.html"
+    },
+    "DJI": {
+      "state": "Djibouti",
+      "law": "yes",
+      "instrument": "D\u00e9cret N\u00b02023-209 and Loi relative aux activit\u00e9s de lancement et d'exploitation d'objets spatiaux",
+      "year": 2023,
+      "source_url": "https://www.unoosa.org/oosa/en/ourwork/spacelaw/nationalspacelaw/index.html"
+    },
+    "BWA": {
+      "state": "Botswana",
+      "law": "unknown",
+      "instrument": "No comprehensive national space law identified in available sources",
+      "year": null,
+      "source_url": "https://www.unoosa.org/oosa/en/ourwork/spacelaw/nationalspacelaw/index.html"
+    },
+    "BHR": {
+      "state": "Bahrain",
+      "law": "unknown",
+      "instrument": "No comprehensive national space law identified in available sources",
+      "year": null,
+      "source_url": "https://www.unoosa.org/oosa/en/ourwork/spacelaw/nationalspacelaw/index.html"
+    },
+    "SLB": {
+      "state": "Solomon Islands",
+      "law": "unknown",
+      "instrument": "No comprehensive national space law identified in available sources",
+      "year": null,
+      "source_url": "https://www.unoosa.org/oosa/en/ourwork/spacelaw/nationalspacelaw/index.html"
+    },
+    "NZ": {
+      "state": "New Zealand",
+      "law": "yes",
+      "instrument": "Outer Space and High-Altitude Activities Act 2017",
+      "year": 2017,
+      "source_url": "https://www.unoosa.org/oosa/en/ourwork/spacelaw/nationalspacelaw/new-zealand/index.html"
+    },
+    "MNE": {
+      "state": "Montenegro",
+      "law": "unknown",
+      "instrument": "No comprehensive national space law identified in available sources",
+      "year": null,
+      "source_url": "https://www.unoosa.org/oosa/en/ourwork/spacelaw/nationalspacelaw/index.html"
+    },
+    "ROM": {
+      "state": "Romania",
+      "law": "unknown",
+      "instrument": "No comprehensive national space law identified in available sources; Romania has a national space agency (ROSA) established administratively",
+      "year": null,
+      "source_url": "https://www.unoosa.org/oosa/en/ourwork/spacelaw/nationalspacelaw/index.html"
+    }
+  }
+}

@@ -1,0 +1,56 @@
+name: Daily data refresh & deploy
+
+on:
+  schedule:
+    - cron: "0 6 * * *" # 06:00 UTC daily
+  workflow_dispatch: {} # manual trigger button
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: refresh-deploy
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Refresh dataset (skip on plain push)
+        if: github.event_name != 'push'
+        run: python pipeline/refresh.py
+
+      - name: Commit registration lag ledger
+        if: github.event_name != 'push'
+        run: |
+          git config user.name "stars-observatory-bot"
+          git config user.email "actions@github.com"
+          git add data/ledger.json
+          git diff --cached --quiet || git commit -m "Ledger update: $(date -u +%F)"
+          git push
+
+      - name: Upload site artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    needs: refresh
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+<title>STARS Observatory — Articles VI &amp; IX OST</title>
+<meta name="description" content="A demonstrative evidence instrument visualising all tracked objects in Earth orbit against State legal-responsibility obligations under Articles VI and IX of the Outer Space Treaty." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="./css/style.css" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='7' fill='none' stroke='%234fd1e0' stroke-width='2'/%3E%3Cellipse cx='16' cy='16' rx='14' ry='6' fill='none' stroke='%234fd1e0' stroke-width='1.5' transform='rotate(30 16 16)'/%3E%3Ccircle cx='27' cy='11' r='2' fill='%23ffb454'/%3E%3C/svg%3E" />
+<script type="importmap">
+{
+  "imports": {
+    "three": "./js/three.module.min.js",
+    "three/addons/controls/OrbitControls.js": "./js/OrbitControls.js"
+  }
+}
+</script>
+</head>
+<body>
+<div id="app">
+  <header id="topbar">
+    <div class="brand">
+      <svg viewBox="0 0 40 40" fill="none" aria-label="STARS Observatory logo">
+        <circle cx="20" cy="20" r="8" stroke="var(--accent)" stroke-width="2"/>
+        <ellipse cx="20" cy="20" rx="17" ry="7" stroke="var(--accent)" stroke-width="1.5" transform="rotate(28 20 20)"/>
+        <ellipse cx="20" cy="20" rx="17" ry="7" stroke="var(--txt-dim)" stroke-width="1" opacity="0.5" transform="rotate(-32 20 20)"/>
+        <circle cx="34.5" cy="12.5" r="2.4" fill="var(--accent-amber)"/>
+        <circle cx="6.5" cy="26" r="1.6" fill="var(--accent-warn)"/>
+      </svg>
+      <div class="brand-txt">
+        <h1>STARS Observatory</h1>
+        <p>A demonstrative evidence instrument — Articles VI &amp; IX OST</p>
+      </div>
+    </div>
+    <div class="topbar-spacer"></div>
+    <div class="clock">
+      <div class="label">Simulation UTC</div>
+      <div class="val" id="simclock">——:——:——</div>
+    </div>
+  </header>
+
+  <main>
+    <canvas id="scene"></canvas>
+
+    <div id="loader">
+      <div class="spinner"></div>
+      <div class="status" id="loadStatus">Initialising orbital catalog…</div>
+      <div class="bar"><div id="loadBar"></div></div>
+      <div class="sub" id="loadSub">Parsing element sets · SGP4 propagation</div>
+    </div>
+
+    <button class="rail-toggle" id="railToggle">☰ Controls &amp; Filters</button>
+
+    <!-- Left control rail -->
+    <aside class="rail" id="rail">
+      <div class="rail-scroll">
+        <div class="ctl-group">
+          <div class="gh"><span class="dot"></span>Color overlay</div>
+          <div class="chips" id="colorModes">
+            <button class="chip active" data-mode="type">Object type</button>
+            <button class="chip" data-mode="state">Art VI State</button>
+            <button class="chip" data-mode="reg">Registration</button>
+            <button class="chip" data-mode="const">Constellation</button>
+          </div>
+          <div class="legend" id="legend"></div>
+        </div>
+
+        <div class="ctl-group">
+          <div class="gh"><span class="dot"></span>Filters</div>
+          <div class="field">
+            <label>Responsible State</label>
+            <select id="fState"><option value="">All States</option></select>
+          </div>
+          <div class="field">
+            <label>Object type</label>
+            <select id="fType">
+              <option value="">All types</option>
+              <option value="PAY">Payloads</option>
+              <option value="R/B">Rocket bodies</option>
+              <option value="DEB">Debris</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Constellation</label>
+            <select id="fConst"><option value="">All / none</option></select>
+          </div>
+          <div class="field">
+            <label>Registration status</label>
+            <select id="fReg">
+              <option value="">All</option>
+              <option value="1">Registered</option>
+              <option value="0">Unregistered</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Orbital regime</label>
+            <div class="chips" id="fRegime">
+              <button class="chip active" data-r="">All</button>
+              <button class="chip" data-r="0">LEO</button>
+              <button class="chip" data-r="1">MEO</button>
+              <button class="chip" data-r="2">GEO</button>
+              <button class="chip" data-r="3">HEO</button>
+            </div>
+          </div>
+          <div class="count-badge" id="visibleCount">—</div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Detail card -->
+    <div id="detail">
+      <div class="dh">
+        <div>
+          <div class="name" id="dName">—</div>
+          <div class="type" id="dType">—</div>
+        </div>
+        <button class="close" id="dClose">×</button>
+      </div>
+      <div class="drows" id="dRows"></div>
+    </div>
+
+    <!-- Time controls -->
+    <div class="timebar">
+      <button class="tbtn icon" id="tPlay" title="Play / pause">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path id="playPath" d="M8 5v14l11-7z"/></svg>
+      </button>
+      <button class="tbtn" id="tNow" title="Reset to real time">NOW</button>
+      <div class="sep"></div>
+      <button class="tbtn active" data-speed="1">1×</button>
+      <button class="tbtn" data-speed="60">60×</button>
+      <button class="tbtn" data-speed="600">600×</button>
+      <button class="tbtn" data-speed="3600">3600×</button>
+    </div>
+
+    <!-- Panel tab bar -->
+    <div class="tabbar">
+      <button data-panel="art6" title="Article VI supervision burden">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><rect x="7" y="10" width="3" height="8"/><rect x="12" y="6" width="3" height="12"/><rect x="17" y="13" width="3" height="5"/></svg>
+        <span class="lbl">Art VI Burden</span>
+      </button>
+      <button data-panel="reggap" title="UN registration gap">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+        <span class="lbl">Registration Gap</span>
+      </button>
+      <button data-panel="art9" title="Article IX decision-time scenario">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+        <span class="lbl">Art IX Scenario</span>
+      </button>
+      <button data-panel="prov" title="Provenance &amp; limitations">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 16v-4M12 8h.01"/></svg>
+        <span class="lbl">Provenance</span>
+      </button>
+    </div>
+
+    <footer id="foot">
+      Data snapshot <span data-stat="date">2026-07-10</span> · CelesTrak GP / SATCAT · McDowell GCAT · <span class="lnk" id="footProv">provenance &amp; limitations →</span>
+    </footer>
+
+    <!-- Analytical drawer -->
+    <aside id="drawer">
+      <div class="drawer-head">
+        <div>
+          <div class="dt" id="drawerTag">Analytical panel</div>
+          <h2 id="drawerTitle">—</h2>
+        </div>
+        <button class="close2" id="drawerClose">×</button>
+      </div>
+      <nav class="drawer-nav" id="drawerNav">
+        <button data-panel="art6">01 · Art VI</button>
+        <button data-panel="reggap">02 · Registration</button>
+        <button data-panel="art9">03 · Art IX</button>
+        <button data-panel="prov">04 · Provenance</button>
+      </nav>
+      <div class="drawer-body">
+        <!-- Panel: Article VI -->
+        <section class="panel" id="panel-art6">
+          <div class="stat-hero">
+            <div class="big"><span data-stat="usPct">69</span><span style="font-size:26px">%</span></div>
+            <div class="cap">of all payloads on orbit fall under the Article VI supervisory responsibility of a single licensing State — the United States (<span data-stat="usPay">13,242</span> of <span data-stat="payTotal">19,298</span> payloads).</div>
+            <div class="sub">One private operator (SpaceX / Starlink) accounts for <span data-stat="starlink">10,748</span> payloads ≈ two-thirds of all active satellites.</div>
+          </div>
+          <div class="stat-grid">
+            <div class="stat-cell"><div class="n" data-stat="payTotal">19,298</div><div class="l">Payloads on orbit</div></div>
+            <div class="stat-cell"><div class="n" data-stat="usPay">13,242</div><div class="l">Under US Art VI responsibility</div></div>
+            <div class="stat-cell"><div class="n" data-stat="starlink">10,748</div><div class="l">Starlink payloads (SpaceX)</div></div>
+            <div class="stat-cell"><div class="n">≈2/3</div><div class="l">Active sats, one operator</div></div>
+          </div>
+          <h3 class="section">Payloads on orbit per responsible State</h3>
+          <div id="art6bars"></div>
+
+          <!-- Supervisory machinery (Phase 2 · Task B) -->
+          <h3 class="section">Supervisory Machinery — National Space Legislation</h3>
+          <div class="stat-hero" id="supHero"></div>
+          <div class="chart-wrap">
+            <div id="supBar"></div>
+            <div class="chart-legend" id="supLegend"></div>
+          </div>
+          <h4 class="section" style="margin-top:16px">Largest payload populations under a State with no dedicated space law</h4>
+          <div id="supNoLaw"></div>
+          <div class="note" id="supFoot"></div>
+
+          <div class="legal-caption">
+            <strong>Article VI OST.</strong> States Parties bear international responsibility for national activities in outer space, "whether such activities are carried on by governmental agencies or by non-governmental entities," and must ensure they are conducted with authorisation and <em>continuing supervision</em>. The chart quantifies the supervisory burden: a doctrine written for a handful of state programmes now attaches to tens of thousands of privately operated, software-defined objects concentrated under a few licensing States.
+          </div>
+        </section>
+
+        <!-- Panel: Registration gap -->
+        <section class="panel" id="panel-reggap">
+          <div class="stat-hero">
+            <div class="big warn"><span data-stat="unregPct">34</span><span style="font-size:26px">%</span></div>
+            <div class="cap">of payloads on orbit have no matching UN registration record — <span data-stat="unreg">6,580</span> of <span data-stat="payTotal">19,298</span> payloads, cross-referenced against McDowell's GCAT.</div>
+          </div>
+          <div class="note"><strong>Caveat:</strong> Registration submissions to UNOOSA lag launch by months to years. Most 2025–26 launches are therefore <em>pending</em> rather than definitively unregistered. But the lag itself is the finding: the State-based registry structurally trails operational reality by the very interval in which harmful interference must be prevented.</div>
+          <h3 class="section">Registered vs unregistered payloads by launch year</h3>
+          <div class="chart-wrap">
+            <div id="regChart"></div>
+            <div class="chart-legend">
+              <span><i style="background:#55d18b"></i>Registered</span>
+              <span><i style="background:#ff6b6b"></i>No registration record</span>
+            </div>
+          </div>
+          <h3 class="section">Largest absolute registration gaps by State</h3>
+          <table class="dt" id="regTable">
+            <thead><tr><th>Responsible State</th><th class="num">Registered</th><th class="num">No record</th><th class="num">Gap %</th></tr></thead>
+            <tbody></tbody>
+          </table>
+
+          <!-- Registration Lag Index (Phase 2 · Task A) -->
+          <h3 class="section">Registration Lag Index — Live Longitudinal Dataset</h3>
+          <div class="stat-grid" id="lagStats"></div>
+          <div class="note" id="lagMethod"></div>
+          <div id="lagFlips"></div>
+
+          <div class="legal-caption">
+            <strong>Registration Convention (1975), Art II.</strong> A launching State "shall register" the space object by entry in an appropriate registry and inform the UN Secretary-General. The registry is the foundational transparency instrument the OST architecture presupposes — identifying who bears responsibility and who must be consulted. Where it demonstrably trails the catalog, the doctrinal machinery of Articles VI and IX loses its factual anchor.
+          </div>
+        </section>
+
+        <!-- Panel: Article IX scenario library (Phase 2 · Tasks C & D) -->
+        <section class="panel" id="panel-art9">
+          <!-- Three-clocks strip (Task D) -->
+          <div class="three-clocks" id="threeClocks"></div>
+          <div class="logscale" id="clockScale"></div>
+
+          <!-- Scenario selector (Task C) -->
+          <h3 class="section">Case-study library</h3>
+          <div class="scen-cards" id="scenCards"></div>
+
+          <div class="stat-hero">
+            <div class="cap" id="scenIntro" style="margin-top:0"></div>
+          </div>
+
+          <div class="scenario-ctl">
+            <button id="scenPlay">▶ Replay sequence</button>
+            <div class="prog"><div id="scenProg"></div></div>
+            <button class="viz3d" id="scenViz">Show orbits in 3D</button>
+          </div>
+          <div class="note" id="scenVizNote" style="display:none"></div>
+          <div class="timeline" id="scenTimeline"></div>
+          <div class="legal-caption" id="scenCaption"></div>
+        </section>
+
+        <!-- Panel: Provenance -->
+        <section class="panel" id="panel-prov">
+          <div class="dt" style="font-family:var(--mono);font-size:10px;color:var(--txt-faint);letter-spacing:0.14em;margin-bottom:14px">SNAPSHOT <span data-stat="date">2026-07-10</span> · <span data-stat="totalOnorbit">34,157</span> CATALOGED ON-ORBIT OBJECTS · <span data-stat="propagated">18,594</span> PROPAGATED WITH VALID ELEMENT SETS</div>
+          <h3 class="section" style="margin-top:0">Data sources</h3>
+          <div class="prov-source">
+            <div class="ps-name"><a href="https://celestrak.org/NORAD/elements/" target="_blank" rel="noopener">CelesTrak GP element sets</a></div>
+            <div class="ps-desc">General-perturbations two-line element sets, derived from US Space Force 18th Space Defense Squadron (18 SDS) tracking. Used to propagate object positions via SGP4.</div>
+            <div class="ps-date">Retrieved <span data-stat="date">2026-07-10</span></div>
+          </div>
+          <div class="prov-source">
+            <div class="ps-name"><a href="https://celestrak.org/satcat/" target="_blank" rel="noopener">CelesTrak SATCAT</a></div>
+            <div class="ps-desc">Satellite catalog: object type, ownership attribution, launch year, and on-orbit status for all <span data-stat="totalOnorbit">34,157</span> cataloged objects.</div>
+            <div class="ps-date">Retrieved <span data-stat="date">2026-07-10</span></div>
+          </div>
+          <div class="prov-source">
+            <div class="ps-name"><a href="https://planet4589.org/space/gcat/" target="_blank" rel="noopener">Jonathan McDowell's GCAT</a></div>
+            <div class="ps-desc">General Catalog of Artificial Space Objects, cross-referenced to determine UN registration status of on-orbit payloads.</div>
+            <div class="ps-date">Retrieved <span data-stat="date">2026-07-10</span></div>
+          </div>
+          <div class="prov-source" id="provNatlaw"></div>
+          <div class="prov-source" id="provLedger"></div>
+          <h3 class="section">Case-study sources</h3>
+          <div class="prov-cases" id="provCases"></div>
+          <h3 class="section">Limitations</h3>
+          <ul class="limits">
+            <li>TLE / SGP4 positions carry km-scale error and degrade with propagation age; this is not an operational conjunction-assessment (SSA) system.</li>
+            <li>Classified and untracked objects are excluded from the public catalog entirely.</li>
+            <li>Sub-10&nbsp;cm debris is largely untrackable — an estimated 1,000,000+ fragments are not represented here.</li>
+            <li>UN registration submissions lag launch by months to years; recent "unregistered" payloads may be pending rather than in breach.</li>
+            <li>Ownership / responsible-State attribution follows the 18 SDS catalog convention and may differ from the formal "launching State" under the Registration Convention.</li>
+            <li><span data-stat="noGP">15,563</span> cataloged objects (largely debris fragments and rocket bodies without public GP element sets) are counted in the statistics but not propagated in the 3D view.</li>
+          </ul>
+          <div class="disclaimer">
+            This instrument fuses publicly available tracking and registration data with a legal-responsibility overlay. It is a demonstrative artifact supporting doctrinal analysis of State preventive obligations under Articles VI and IX of the Outer Space Treaty — not an operational SSA system.
+          </div>
+        </section>
+      </div>
+    </aside>
+  </main>
+</div>
+
+<script type="module" src="./js/app.js"></script>
+</body>
+</html>
