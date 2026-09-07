@@ -210,6 +210,8 @@ function initThree() {
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.setClearColor(0x05070d, 1);
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.15;
 
   scene = new THREE.Scene();
 
@@ -230,13 +232,13 @@ function initThree() {
   // Earth
   earthGroup = new THREE.Group();
   scene.add(earthGroup);
-  const tex = new THREE.TextureLoader().load('./assets/earth_day.png', () => { render(); });
+  const tex = new THREE.TextureLoader().load('./assets/earth_day.jpg', () => { render(); });
   tex.colorSpace = THREE.SRGBColorSpace;
   tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
   const earthGeo = new THREE.SphereGeometry(RE_SCENE, 96, 96);
   const earthMat = new THREE.MeshStandardMaterial({
-    map: tex, roughness: 1.0, metalness: 0.0,
-    emissive: 0x0a1424, emissiveIntensity: 0.25
+    map: tex, roughness: 0.92, metalness: 0.0,
+    emissive: 0xffffff, emissiveMap: tex, emissiveIntensity: 0.16
   });
   earthMesh = new THREE.Mesh(earthGeo, earthMat);
   // rotate so texture longitude 0 aligns with ECEF x-axis; texture center = lon 0

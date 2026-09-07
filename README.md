@@ -41,8 +41,13 @@ python -m http.server -d site 8000  # then open http://localhost:8000
 - **[CelesTrak](https://celestrak.org/)** — GP element sets and SATCAT (T.S. Kelso), derived from US Space Force 18 SDS tracking data.
 - **[GCAT](https://planet4589.org/space/gcat/)** — J. McDowell, General Catalog of Artificial Space Objects, used under [CC-BY 4.0](https://creativecommons.org/licenses/by/4.0/).
 - **[UNOOSA National Space Law database](https://www.unoosa.org/oosa/en/ourwork/spacelaw/nationalspacelaw/index.html)** — national space legislation status.
+- **[NASA Blue Marble](https://visibleearth.nasa.gov/collection/1484/blue-marble)** — Earth surface texture, courtesy NASA Earth Observatory.
 
 Please retain these attributions in any fork or derivative.
+
+## Author
+
+Built and maintained by **Hallam Burnapp**, PhD researcher in international space law, University of Aberdeen. The instrument supports doctoral research on State preventive obligations under Articles VI & IX of the Outer Space Treaty.
 
 ## Citation
 
