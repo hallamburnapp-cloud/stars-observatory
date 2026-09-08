@@ -1,0 +1,24 @@
+cff-version: 1.2.0
+message: "If you use STARS Observatory in academic work, please cite it as below."
+title: "STARS Observatory"
+abstract: "A demonstrative evidence instrument for State obligations under Articles VI & IX of the Outer Space Treaty. Fuses the public orbital catalogue (CelesTrak GP / SATCAT, GCAT) with the legal layer that governs it: per-State supervision burden, UN registration gap and lag, and Article IX decision-time compression case studies, propagating ~19,000 objects with SGP4 in the browser."
+type: software
+authors:
+  - family-names: Burnapp
+    given-names: Hallam
+    affiliation: "University of Aberdeen"
+repository-code: "https://github.com/hallamburnapp-cloud/stars-observatory"
+url: "https://hallamburnapp-cloud.github.io/stars-observatory/"
+license: MIT
+keywords:
+  - space law
+  - Outer Space Treaty
+  - Article VI
+  - Article IX
+  - registration convention
+  - space situational awareness
+  - space debris
+  - SGP4
+  - space governance
+version: 1.0.0
+date-released: 2026-09-08

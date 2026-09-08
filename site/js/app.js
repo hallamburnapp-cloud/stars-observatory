@@ -182,8 +182,12 @@ function startWorker(tle1, tle2) {
         state.lastPropTime = m.time;
         state.ready = true;
       } else if (m.type === 'tracks') {
-        state.scenarioTracks = m.tracks.map(b => new Float32Array(b));
-        drawScenarioOrbits();
+        if (m.tag === 'sel') {
+          drawSelOrbit(new Float32Array(m.tracks[0]));
+        } else {
+          state.scenarioTracks = m.tracks.map(b => new Float32Array(b));
+          drawScenarioOrbits();
+        }
       }
     };
     worker.postMessage({ type: 'init', tle1, tle2 });
@@ -200,6 +204,8 @@ function requestPropagation(t) {
 // 3. Three.js scene
 // ============================================================
 let renderer, scene, camera, controls, points, earthMesh, earthGroup, atmosphere;
+let sunDirWorld, earthMaterial, sunLight;
+let selOrbitLine = null, flyAnim = null;
 let raycaster, pointer, hoverIndex = -1, selectedIndex = -1;
 let colorAttr, sizeAttr, posAttr, geom;
 let selMarker;
@@ -235,12 +241,60 @@ function initThree() {
   const tex = new THREE.TextureLoader().load('./assets/earth_day.jpg', () => { render(); });
   tex.colorSpace = THREE.SRGBColorSpace;
   tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
+  const nightTex = new THREE.TextureLoader().load('./assets/earth_night.jpg', () => { render(); });
+  nightTex.colorSpace = THREE.SRGBColorSpace;
+  nightTex.anisotropy = renderer.capabilities.getMaxAnisotropy();
   const earthGeo = new THREE.SphereGeometry(RE_SCENE, 96, 96);
-  const earthMat = new THREE.MeshStandardMaterial({
-    map: tex, roughness: 0.92, metalness: 0.0,
-    emissive: 0xffffff, emissiveMap: tex, emissiveIntensity: 0.16
+  // Physically-motivated day/night shader: NASA Blue Marble day side,
+  // Black Marble city lights on the night side, real solar terminator
+  // computed from the simulation clock, and specular sun-glint on oceans.
+  sunDirWorld = new THREE.Vector3(1, 0, 0);
+  const earthMat = new THREE.ShaderMaterial({
+    uniforms: {
+      dayTex: { value: tex },
+      nightTex: { value: nightTex },
+      uSun: { value: sunDirWorld }
+    },
+    vertexShader: `
+      varying vec2 vUv; varying vec3 vWN; varying vec3 vWP;
+      void main(){
+        vUv = uv;
+        vWN = normalize(mat3(modelMatrix) * normal);
+        vWP = (modelMatrix * vec4(position, 1.0)).xyz;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }`,
+    fragmentShader: `
+      uniform sampler2D dayTex; uniform sampler2D nightTex; uniform vec3 uSun;
+      varying vec2 vUv; varying vec3 vWN; varying vec3 vWP;
+      void main(){
+        vec3 n = normalize(vWN);
+        vec3 s = normalize(uSun);
+        float sunAmt = dot(n, s);
+        float dayMix = smoothstep(-0.12, 0.28, sunAmt);
+        vec3 day = texture2D(dayTex, vUv).rgb;
+        vec3 night = texture2D(nightTex, vUv).rgb;
+        // ocean mask from the day map (oceans are blue-dominant)
+        float ocean = smoothstep(0.02, 0.18, day.b - day.r);
+        vec3 viewDir = normalize(cameraPosition - vWP);
+        vec3 halfDir = normalize(s + viewDir);
+        float spec = pow(max(dot(n, halfDir), 0.0), 64.0) * ocean * dayMix;
+        vec3 dayCol = day * (0.16 + 1.15 * max(sunAmt, 0.0)) + vec3(0.95, 0.88, 0.72) * spec * 0.6;
+        vec3 lights = night * vec3(1.0, 0.82, 0.55) * 2.3;
+        vec3 nightCol = lights + day * vec3(0.030, 0.042, 0.065);
+        vec3 col = mix(nightCol, dayCol, dayMix);
+        // subtle warm band along the terminator
+        float term = 1.0 - smoothstep(0.0, 0.18, abs(sunAmt));
+        col += vec3(0.10, 0.045, 0.0) * term * dayMix;
+        // faint camera-facing rim so the night limb stays defined
+        float rim = pow(1.0 - max(dot(n, viewDir), 0.0), 3.0);
+        col += vec3(0.10, 0.16, 0.24) * rim * 0.55;
+        gl_FragColor = vec4(col, 1.0);
+        #include <tonemapping_fragment>
+        #include <colorspace_fragment>
+      }`
   });
   earthMesh = new THREE.Mesh(earthGeo, earthMat);
+  earthMaterial = earthMat;
   // rotate so texture longitude 0 aligns with ECEF x-axis; texture center = lon 0
   earthMesh.rotation.y = -Math.PI / 2;
   earthGroup.add(earthMesh);
@@ -249,17 +303,23 @@ function initThree() {
   const atmGeo = new THREE.SphereGeometry(RE_SCENE * 1.025, 64, 64);
   const atmMat = new THREE.ShaderMaterial({
     transparent: true, side: THREE.BackSide, depthWrite: false,
-    uniforms: {},
-    vertexShader: `varying vec3 vN; void main(){ vN = normalize(normalMatrix * normal); gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0);} `,
-    fragmentShader: `varying vec3 vN; void main(){ float i = pow(0.72 - dot(vN, vec3(0.0,0.0,1.0)), 2.4); gl_FragColor = vec4(0.31,0.63,0.9,1.0) * i * 0.9; }`
+    uniforms: { uSun: { value: sunDirWorld } },
+    vertexShader: `varying vec3 vN; varying vec3 vWN; void main(){ vN = normalize(normalMatrix * normal); vWN = normalize(mat3(modelMatrix) * normal); gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0);} `,
+    fragmentShader: `varying vec3 vN; varying vec3 vWN; uniform vec3 uSun;
+      void main(){
+        float i = pow(0.72 - dot(vN, vec3(0.0,0.0,1.0)), 2.4);
+        float day = smoothstep(-0.35, 0.35, dot(normalize(vWN), normalize(uSun)));
+        vec3 col = mix(vec3(0.10, 0.20, 0.40), vec3(0.31, 0.63, 0.90), day);
+        gl_FragColor = vec4(col, 1.0) * i * (0.42 + 0.62 * day);
+      }`
   });
   atmosphere = new THREE.Mesh(atmGeo, atmMat);
   earthGroup.add(atmosphere);
 
-  // Lights
-  const sun = new THREE.DirectionalLight(0xffffff, 2.2);
-  sun.position.set(30, 12, 20);
-  scene.add(sun);
+  // Lights (marker/lines are unlit; kept for any standard materials)
+  sunLight = new THREE.DirectionalLight(0xffffff, 2.2);
+  sunLight.position.set(30, 12, 20);
+  scene.add(sunLight);
   scene.add(new THREE.AmbientLight(0x2a3348, 1.4));
 
   // selection marker ring
@@ -279,20 +339,37 @@ function initThree() {
 }
 
 function addStarfield() {
-  const n = 2500;
-  const g = new THREE.BufferGeometry();
-  const p = new Float32Array(n * 3);
-  for (let i = 0; i < n; i++) {
-    const r = 800 + Math.random() * 400;
-    const th = Math.random() * Math.PI * 2;
-    const ph = Math.acos(2 * Math.random() - 1);
-    p[i*3] = r * Math.sin(ph) * Math.cos(th);
-    p[i*3+1] = r * Math.sin(ph) * Math.sin(th);
-    p[i*3+2] = r * Math.cos(ph);
-  }
-  g.setAttribute('position', new THREE.BufferAttribute(p, 3));
-  const m = new THREE.PointsMaterial({ color: 0x8899bb, size: 1.1, sizeAttenuation: false, transparent: true, opacity: 0.55 });
-  scene.add(new THREE.Points(g, m));
+  // Two-layer starfield: a dim base population plus a sparse bright layer,
+  // with black-body-ish colour temperature variation for realism.
+  const disc = makeDiscTexture();
+  const mk = (n, sizePx, opacity, brightBoost) => {
+    const g = new THREE.BufferGeometry();
+    const p = new Float32Array(n * 3);
+    const c = new Float32Array(n * 3);
+    for (let i = 0; i < n; i++) {
+      const r = 800 + Math.random() * 400;
+      const th = Math.random() * Math.PI * 2;
+      const ph = Math.acos(2 * Math.random() - 1);
+      p[i*3] = r * Math.sin(ph) * Math.cos(th);
+      p[i*3+1] = r * Math.sin(ph) * Math.sin(th);
+      p[i*3+2] = r * Math.cos(ph);
+      // power-law brightness + colour temperature (blue-white .. warm)
+      const b = (0.35 + 0.65 * Math.pow(Math.random(), 2.2)) * brightBoost;
+      const t = Math.random();
+      const rr = b * (t < 0.7 ? 0.82 + 0.18 * t : 1.0);
+      const gg = b * (0.86 + 0.10 * Math.sin(t * 3.1));
+      const bb = b * (t < 0.7 ? 1.0 : 0.80 - 0.25 * (t - 0.7));
+      c[i*3] = rr; c[i*3+1] = gg; c[i*3+2] = bb;
+    }
+    g.setAttribute('position', new THREE.BufferAttribute(p, 3));
+    g.setAttribute('color', new THREE.BufferAttribute(c, 3));
+    const m = new THREE.PointsMaterial({ size: sizePx, sizeAttenuation: false,
+      map: disc, transparent: true, opacity, vertexColors: true,
+      depthWrite: false, blending: THREE.AdditiveBlending });
+    scene.add(new THREE.Points(g, m));
+  };
+  mk(3200, 1.6, 0.6, 0.8);   // base population
+  mk(240, 3.2, 0.85, 1.15);  // bright stars
 }
 
 // Circular sprite texture for additive points
@@ -468,6 +545,15 @@ function animate() {
     state.simTime += dt * 1000 * state.speed;
   }
   updateClock();
+  updateSun(state.simTime);
+
+  // camera fly-to animation (search / permalink selection)
+  if (flyAnim) {
+    const k = Math.min(1, (now - flyAnim.t0) / flyAnim.dur);
+    const s = k * k * (3 - 2 * k); // smoothstep ease
+    camera.position.lerpVectors(flyAnim.from, flyAnim.to, s);
+    if (k >= 1) flyAnim = null;
+  }
 
   // Earth rotation: rotate the Earth by GMST so the ECEF surface aligns with
   // the inertial (ECI) satellite positions. Scene maps ECI y->-z, so a positive
@@ -489,6 +575,23 @@ function animate() {
 function render() {
   if (renderer && scene && camera) renderer.render(scene, camera);
 }
+
+// Low-precision solar ephemeris (Meeus). Returns the Sun direction as a unit
+// vector in the scene frame (ECI mapped x,y,z -> x,z,-y), driven by the
+// simulation clock so the terminator is astronomically correct.
+function updateSun(tMs) {
+  const d = tMs / 86400000 - 10957.5;            // days since J2000.0
+  const g = (357.529 + 0.98560028 * d) * DEG;    // mean anomaly
+  const q = (280.459 + 0.98564736 * d) * DEG;    // mean longitude
+  const L = q + (1.915 * Math.sin(g) + 0.020 * Math.sin(2 * g)) * DEG;
+  const e = (23.439 - 0.00000036 * d) * DEG;     // obliquity
+  const x = Math.cos(L), y = Math.cos(e) * Math.sin(L), z = Math.sin(e) * Math.sin(L);
+  if (sunDirWorld) {
+    sunDirWorld.set(x, z, -y).normalize();
+    if (sunLight) sunLight.position.copy(sunDirWorld).multiplyScalar(200);
+  }
+}
+const DEG = Math.PI / 180;
 
 function updateClock() {
   const d = new Date(state.simTime);
@@ -555,10 +658,68 @@ function pickAt() {
   if (best >= 0) selectObject(best);
 }
 
-function selectObject(i) {
+function selectObject(i, fly) {
   selectedIndex = i;
   updateColors();
   showDetail(i);
+  requestSelOrbit(i);
+  if (fly) flyToIndex(i);
+}
+
+// One-period orbit trail for the selected object, propagated by the SGP4
+// worker in the ECI frame (the render frame), so the path is exact.
+function requestSelOrbit(i) {
+  clearSelOrbit();
+  if (!worker) return;
+  const tle2 = state.data.sats[i][3];
+  const mm = parseFloat(tle2.substring(52, 63)); // rev/day
+  const periodMs = (mm > 0 ? 1440 / mm : 95) * 60 * 1000;
+  const t0 = state.simTime;
+  const times = [];
+  const STEPS = 180;
+  for (let k = 0; k <= STEPS; k++) times.push(t0 + (k / STEPS) * periodMs);
+  worker.postMessage({ type: 'track', indices: [i], times, tag: 'sel' });
+}
+
+function drawSelOrbit(track) {
+  clearSelOrbit();
+  const n = track.length / 3;
+  const p = new Float32Array(n * 3);
+  let valid = 0;
+  for (let j = 0; j < n; j++) {
+    const x = track[j*3], y = track[j*3+1], z = track[j*3+2];
+    if (x === 0 && y === 0 && z === 0) continue;
+    p[valid*3] = x * SCALE; p[valid*3+1] = z * SCALE; p[valid*3+2] = -y * SCALE;
+    valid++;
+  }
+  if (valid < 2) return;
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(p.slice(0, valid * 3), 3));
+  const m = new THREE.LineBasicMaterial({ color: 0x4fd1e0, transparent: true, opacity: 0.55 });
+  selOrbitLine = new THREE.Line(g, m);
+  scene.add(selOrbitLine);
+}
+
+function clearSelOrbit() {
+  if (selOrbitLine) {
+    scene.remove(selOrbitLine);
+    selOrbitLine.geometry.dispose();
+    selOrbitLine.material.dispose();
+    selOrbitLine = null;
+  }
+}
+
+function flyToIndex(i) {
+  if (!state.lastPositions || !state.lastAlive || !state.lastAlive[i]) return;
+  const pa = posAttr.array;
+  const p = new THREE.Vector3(pa[i*3], pa[i*3+1], pa[i*3+2]);
+  if (p.length() < 0.01) return;
+  const dist = Math.min(Math.max(p.length() * 1.55, RE_SCENE * 2.2), 200);
+  flyAnim = {
+    from: camera.position.clone(),
+    to: p.clone().normalize().multiplyScalar(dist),
+    t0: performance.now(), dur: 950
+  };
 }
 
 function showDetail(i) {
@@ -579,7 +740,24 @@ function showDetail(i) {
     <div class="drow"><span class="k">Orbital regime</span><span class="v">${regimeName(state.regime ? state.regime[i] : 0)}</span></div>
     <div class="drow"><span class="k">Altitude</span><span class="v live" id="dAlt">—</span></div>
     <div class="drow"><span class="k">Inclination</span><span class="v live" id="dInc">—</span></div>
-    <div class="drow"><span class="k">Period</span><span class="v live" id="dPer">—</span></div>`;
+    <div class="drow"><span class="k">Period</span><span class="v live" id="dPer">—</span></div>
+    <div class="dverify">
+      <div class="k">Verify this object</div>
+      <div class="vlinks">
+        <a href="https://celestrak.org/satcat/table-satcat.php?CATNR=${state.norad[i]}" target="_blank" rel="noopener">CelesTrak SATCAT</a>
+        <a href="https://www.n2yo.com/satellite/?s=${state.norad[i]}" target="_blank" rel="noopener">N2YO live track</a>
+        <a href="https://www.unoosa.org/oosa/osoindex/search-ng.jspx" target="_blank" rel="noopener">UNOOSA registry</a>
+      </div>
+      <button class="dcopy" id="dCopy">Copy link to this object</button>
+    </div>`;
+  const cp = $('#dCopy');
+  if (cp) cp.addEventListener('click', () => {
+    const url = location.origin + location.pathname + '?sat=' + state.norad[i];
+    navigator.clipboard.writeText(url).then(() => {
+      cp.textContent = 'Link copied ✓';
+      setTimeout(() => { cp.textContent = 'Copy link to this object'; }, 1600);
+    }).catch(() => { cp.textContent = url; });
+  });
   el.classList.add('show');
 }
 
@@ -1068,7 +1246,7 @@ function requestScenarioOrbits(pair) {
   const times = [];
   const span = 95 * 60 * 1000; // 95 min
   for (let k = 0; k <= 120; k++) times.push(t0 + (k / 120) * span);
-  worker.postMessage({ type: 'track', indices: pair, times });
+  worker.postMessage({ type: 'track', indices: pair, times, tag: 'scen' });
 }
 function clearScenarioOrbits() {
   scenOrbitLines.forEach(l => { scene.remove(l); l.geometry.dispose(); l.material.dispose(); });
@@ -1273,7 +1451,10 @@ function wireUI() {
   }));
 
   // detail close
-  $('#dClose').addEventListener('click', () => { $('#detail').classList.remove('show'); selectedIndex = -1; if(!state._scenIsolate) updateColors(); selMarker.visible=false; });
+  $('#dClose').addEventListener('click', () => { $('#detail').classList.remove('show'); selectedIndex = -1; if(!state._scenIsolate) updateColors(); selMarker.visible=false; clearSelOrbit(); });
+
+  // catalogue search (name / NORAD / international designator)
+  wireSearch();
 
   // panels / drawer
   $$('.tabbar button').forEach(btn => btn.addEventListener('click', () => openPanel(btn.dataset.panel)));
@@ -1295,6 +1476,84 @@ function wireUI() {
 function refreshFilters() {
   if (state._scenIsolate) return;
   updateColors();
+}
+
+// ============================================================
+// Catalogue search
+// ============================================================
+function searchCatalogue(q) {
+  q = q.trim().toLowerCase();
+  if (q.length < 2) return [];
+  const out = [];
+  const isNum = /^\d+$/.test(q);
+  for (let i = 0; i < state.N; i++) {
+    let score = -1;
+    const nm = state.name[i].toLowerCase();
+    if (isNum) {
+      const nid = String(state.norad[i]);
+      if (nid === q) score = 0;
+      else if (nid.startsWith(q)) score = 1;
+    } else {
+      if (nm.startsWith(q)) score = 0;
+      else if (nm.includes(q)) score = 2;
+      else if (state.intl[i] && state.intl[i].toLowerCase().includes(q)) score = 1;
+    }
+    if (score >= 0) out.push([score, i]);
+    if (out.length > 400) break;
+  }
+  out.sort((a, b) => a[0] - b[0] || state.name[a[1]].length - state.name[b[1]].length);
+  return out.slice(0, 10).map(x => x[1]);
+}
+
+function wireSearch() {
+  const inp = $('#satSearch'), box = $('#searchResults');
+  if (!inp || !box) return;
+  const close = () => { box.classList.remove('open'); box.innerHTML = ''; };
+  const run = () => {
+    const hits = searchCatalogue(inp.value);
+    if (!hits.length) { close(); return; }
+    box.innerHTML = hits.map(i => `
+      <button class="sr" data-i="${i}">
+        <span class="sr-name">${state.name[i]}</span>
+        <span class="sr-meta">${state.norad[i]} · ${fullType(state.objType[i])} · ${state.ownerCode[i]}</span>
+      </button>`).join('');
+    box.classList.add('open');
+    box.querySelectorAll('.sr').forEach(b => b.addEventListener('click', () => {
+      const i = parseInt(b.dataset.i, 10);
+      selectObject(i, true);
+      close(); inp.blur();
+    }));
+  };
+  inp.addEventListener('input', run);
+  inp.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { const f = box.querySelector('.sr'); if (f) f.click(); }
+    if (e.key === 'Escape') { close(); inp.blur(); }
+  });
+  document.addEventListener('click', (e) => { if (!e.target.closest('.search')) close(); });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === '/' && document.activeElement !== inp &&
+        !/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) {
+      e.preventDefault(); inp.focus();
+    }
+  });
+}
+
+// Deep link: ?sat=<NORAD> selects and flies to an object once positions exist.
+function applyPermalink() {
+  const q = new URLSearchParams(location.search).get('sat');
+  if (!q) return;
+  for (let i = 0; i < state.N; i++) {
+    if (String(state.norad[i]) === q) {
+      const wait = setInterval(() => {
+        if (state.lastAlive && state.lastAlive[i]) {
+          clearInterval(wait);
+          selectObject(i, true);
+        }
+      }, 150);
+      setTimeout(() => clearInterval(wait), 15000);
+      return;
+    }
+  }
 }
 
 const PANEL_META = {
@@ -1342,6 +1601,7 @@ async function boot() {
         clearInterval(waitReady);
         setLoad('Live', 100);
         applyPositions();
+        applyPermalink();
         setTimeout(() => { const l = $('#loader'); if (l) l.style.display = 'none'; }, 350);
       }
     }, 80);
@@ -1364,6 +1624,8 @@ window.__QA = {
   },
   select(idx) { selectObject(idx); },
   get selected() { return selectedIndex; },
+  setCam(x, y, z) { camera.position.set(x, y, z); controls.update(); },
+  get sunDir() { return sunDirWorld ? sunDirWorld.toArray() : null; },
   rayTest(nx, ny) {
     pointer.x = nx; pointer.y = ny;
     raycaster.setFromCamera(pointer, camera);

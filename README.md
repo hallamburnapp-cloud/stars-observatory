@@ -1,6 +1,12 @@
 # STARS Observatory
 
+[![Daily data refresh](https://github.com/hallamburnapp-cloud/stars-observatory/actions/workflows/refresh.yml/badge.svg)](https://github.com/hallamburnapp-cloud/stars-observatory/actions/workflows/refresh.yml)
+[![DOI](https://zenodo.org/badge/1355854787.svg)](https://zenodo.org/badge/latestdoi/1355854787)
+[![License: MIT](https://img.shields.io/badge/code-MIT-blue.svg)](LICENSE)
+
 **A demonstrative evidence instrument for State obligations under Articles VI & IX of the Outer Space Treaty.**
+
+**Live instrument → [hallamburnapp-cloud.github.io/stars-observatory](https://hallamburnapp-cloud.github.io/stars-observatory/)**
 
 STARS Observatory fuses the public orbital catalog with the legal layer that governs it. Every tracked payload carries its Article VI responsible State and its UN registration status; the instrument propagates ~18,600 objects with SGP4 in the browser and turns treaty obligations into measurable quantities:
 

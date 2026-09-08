@@ -113,7 +113,7 @@ self.onmessage = function (e) {
       }
       out.push(track.buffer);
     }
-    self.postMessage({ type: 'tracks', tracks: out }, out);
+    self.postMessage({ type: 'tracks', tag: msg.tag || 'scen', tracks: out }, out);
     return;
   }
 };

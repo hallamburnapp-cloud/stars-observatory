@@ -48,6 +48,19 @@
       </div>
     </div>
     <div class="topbar-spacer"></div>
+    <div class="search">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      <input id="satSearch" type="text" placeholder="Search name / NORAD / designator…" autocomplete="off" spellcheck="false" aria-label="Search the catalogue"/>
+      <kbd>/</kbd>
+      <div id="searchResults" role="listbox"></div>
+    </div>
+    <div class="databadge" title="The catalogue refreshes automatically every day at 06:00 UTC">
+      <span class="livedot" aria-hidden="true"></span>
+      <div>
+        <div class="label">Live catalogue</div>
+        <div class="val"><span data-stat="date">—</span> · daily 06:00Z</div>
+      </div>
+    </div>
     <div class="clock">
       <div class="label">Simulation UTC</div>
       <div class="val" id="simclock">——:——:——</div>
