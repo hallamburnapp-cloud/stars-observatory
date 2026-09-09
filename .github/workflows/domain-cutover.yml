@@ -1,0 +1,118 @@
+# Domain cutover watcher — runs entirely on GitHub, zero external dependencies.
+# Waits for starsobservatory.org DNS to point at GitHub Pages, then attaches the
+# custom domain, rewrites canonical/social URLs, enforces HTTPS, opens a
+# notification issue, and disables itself.
+name: Domain cutover (starsobservatory.org)
+
+on:
+  schedule:
+    - cron: '*/30 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  actions: write
+  issues: write
+
+concurrency:
+  group: domain-cutover
+  cancel-in-progress: false
+
+jobs:
+  cutover:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      DOMAIN: starsobservatory.org
+      REPO: ${{ github.repository }}
+    steps:
+      - name: Check DNS
+        id: dns
+        run: |
+          IPS=$(dig +short "$DOMAIN" A @1.1.1.1; dig +short "$DOMAIN" A @8.8.8.8)
+          echo "Resolved: $IPS"
+          if echo "$IPS" | grep -qE '185\.199\.(108|109|110|111)\.153'; then
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Expire watcher if DNS still wrong after 2026-09-24
+        if: steps.dns.outputs.ok == 'false'
+        run: |
+          if [ "$(date -u +%Y%m%d)" -ge 20260924 ]; then
+            printf '%s\n\n%s\n\n%s\n' \
+              "The automatic cutover watcher for **$DOMAIN** has been checking every 30 minutes since 8 September and is now expiring." \
+              "In Cloudflare DNS the four A records must have **Name: @** (not the IP address) with the IPs as **Content** (185.199.108.153, 185.199.109.153, 185.199.110.153, 185.199.111.153), plus a CNAME with **Name: www** pointing to hallamburnapp-cloud.github.io - all set to DNS only (grey cloud)." \
+              "Once fixed, re-enable this workflow from the Actions tab (Domain cutover) and it will finish the job automatically." > /tmp/body.md
+            gh issue create --repo "$REPO" \
+              --title "Domain watcher expired - Cloudflare DNS still not pointing at GitHub Pages" \
+              --body-file /tmp/body.md
+            gh workflow disable domain-cutover.yml --repo "$REPO"
+          else
+            echo "DNS not ready yet — will check again in 30 minutes."
+          fi
+
+      - name: Checkout
+        if: steps.dns.outputs.ok == 'true'
+        uses: actions/checkout@v4
+
+      - name: Attach custom domain to Pages
+        if: steps.dns.outputs.ok == 'true'
+        id: cname
+        run: |
+          CURRENT=$(gh api "repos/$REPO/pages" --jq '.cname // empty' || true)
+          if [ "$CURRENT" != "$DOMAIN" ]; then
+            gh api "repos/$REPO/pages" -X PUT -f cname="$DOMAIN" \
+              || { gh issue create --repo "$REPO" \
+                     --title "Action needed: add starsobservatory.org in Pages settings" \
+                     --body "DNS is correct, but the API could not set the custom domain automatically. Open Settings > Pages, enter $DOMAIN under Custom domain, and click Save. The watcher will handle HTTPS afterwards."; \
+                   exit 0; }
+            echo "Custom domain set."
+          else
+            echo "Custom domain already set."
+          fi
+
+      - name: Point canonical & social URLs at the custom domain
+        if: steps.dns.outputs.ok == 'true'
+        run: |
+          if grep -q 'hallamburnapp-cloud.github.io/stars-observatory/' site/index.html; then
+            sed -i 's#https://hallamburnapp-cloud\.github\.io/stars-observatory/#https://starsobservatory.org/#g' site/index.html
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add site/index.html
+            git commit -m "Point canonical/social URLs at starsobservatory.org"
+            git pull --rebase origin main
+            git push origin main
+          else
+            echo "URLs already updated."
+          fi
+
+      - name: Enforce HTTPS once the certificate is ready
+        if: steps.dns.outputs.ok == 'true'
+        id: https
+        run: |
+          ENFORCED=$(gh api "repos/$REPO/pages" --jq '.https_enforced')
+          if [ "$ENFORCED" != "true" ]; then
+            if gh api "repos/$REPO/pages" -X PUT -F https_enforced=true; then
+              echo "HTTPS enforced."
+              echo "done=true" >> "$GITHUB_OUTPUT"
+            else
+              echo "Certificate not ready yet — next run will retry."
+              echo "done=false" >> "$GITHUB_OUTPUT"
+            fi
+          else
+            echo "done=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Notify and retire the watcher
+        if: steps.dns.outputs.ok == 'true' && steps.https.outputs.done == 'true'
+        run: |
+          printf '%s\n\n%s\n' \
+            "DNS resolved correctly, the custom domain is attached to GitHub Pages, canonical and social-card URLs now point at **https://$DOMAIN/**, and HTTPS is enforced." \
+            "This watcher has disabled itself - nothing further to do." > /tmp/body.md
+          gh issue create --repo "$REPO" \
+            --title "starsobservatory.org is live" \
+            --body-file /tmp/body.md || true
+          gh workflow disable domain-cutover.yml --repo "$REPO"
