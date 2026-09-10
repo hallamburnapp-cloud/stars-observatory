@@ -170,7 +170,7 @@ function setLoad(msg, pct, sub) {
 let worker;
 function startWorker(tle1, tle2) {
   return new Promise((resolve) => {
-    worker = new Worker('./js/worker.js?v=1.4.0');
+    worker = new Worker('./js/worker.js?v=1.4.1');
     worker.onmessage = (e) => {
       const m = e.data;
       if (m.type === 'ready') {
@@ -645,7 +645,7 @@ function onPointerMove(e) {
     if (_pv.z > 1) continue;
     const px = (_pv.x * 0.5 + 0.5) * window.innerWidth;
     const py = (-_pv.y * 0.5 + 0.5) * window.innerHeight;
-    if (Math.hypot(px - sx, py - sy) <= 10) { hit = true; break; }
+    if (Math.hypot(px - sx, py - sy) <= 10 && !earthOccluded(pa[i*3], pa[i*3+1], pa[i*3+2])) { hit = true; break; }
   }
   renderer.domElement.style.cursor = hit ? 'pointer' : '';
 }
@@ -658,7 +658,7 @@ function renderPickBind() {
     const moved = Math.hypot(e.clientX - downXY.x, e.clientY - downXY.y);
     const dt = performance.now() - downXY.t;
     downXY = null;
-    if (moved > 6 || dt > 500) return; // drag, not click
+    if (moved > 8 || dt > 900) return; // drag, not click
     if (e.target !== renderer?.domElement) return;
     pointer.x = (e.clientX / window.innerWidth) * 2 - 1;
     pointer.y = -(e.clientY / window.innerHeight) * 2 + 1;
@@ -671,6 +671,20 @@ function renderPickBind() {
 // recomputed each frame. Projects candidate points to screen and finds the
 // closest visible one within a pixel radius, preferring nearer-camera objects.
 const _pv = new THREE.Vector3();
+// True when the scene point (x,y,z) is hidden behind the Earth's disc from the
+// current camera position — such points are excluded from picking so a click
+// always lands on the dot the viewer can actually see.
+function earthOccluded(x, y, z) {
+  const cx = camera.position.x, cy = camera.position.y, cz = camera.position.z;
+  const dx = x - cx, dy = y - cy, dz = z - cz;
+  const L2 = dx * dx + dy * dy + dz * dz;
+  if (L2 === 0) return false;
+  const t = -(cx * dx + cy * dy + cz * dz) / L2; // closest approach to Earth centre
+  if (t <= 0 || t >= 1) return false;
+  const qx = cx + t * dx, qy = cy + t * dy, qz = cz + t * dz;
+  const R = RE_SCENE * 0.985;
+  return (qx * qx + qy * qy + qz * qz) < R * R;
+}
 function pickAt() {
   if (!points || !state.lastAlive) return;
   const sx = (pointer.x * 0.5 + 0.5) * window.innerWidth;
@@ -682,29 +696,32 @@ function pickAt() {
   const cands = [];
   for (let i = 0; i < N; i++) {
     if (!state.lastAlive[i] || !passesFilter(i)) continue;
-    _pv.set(pa[i*3], pa[i*3+1], pa[i*3+2]).project(camera);
+    const wx = pa[i*3], wy = pa[i*3+1], wz = pa[i*3+2];
+    _pv.set(wx, wy, wz).project(camera);
     if (_pv.z > 1) continue; // behind camera / clipped
     const px = (_pv.x * 0.5 + 0.5) * window.innerWidth;
     const py = (-_pv.y * 0.5 + 0.5) * window.innerHeight;
     const d = Math.hypot(px - sx, py - sy);
     if (d > RADIUS) continue;
+    if (earthOccluded(wx, wy, wz)) continue; // hidden behind the Earth
     // prefer closest-to-cursor, strongly favouring nearer-camera (front) objects
     cands.push({ i, d, s: d + _pv.z * 30 });
   }
   if (!cands.length) return;
   cands.sort((a, b) => a.s - b.s);
-  // Unambiguous click: single hit, or the nearest is clearly separated.
-  if (cands.length === 1 || cands[1].d - cands[0].d >= 6) { selectObject(cands[0].i); return; }
-  showPickChooser(cands.slice(0, 7), sx, sy);
+  // Unambiguous click: dead-on hit, single hit, or the nearest is clearly separated.
+  if (cands[0].d <= 4 || cands.length === 1 || cands[1].d - cands[0].d >= 6) { selectObject(cands[0].i); return; }
+  showPickChooser(cands.slice(0, 9), sx, sy, cands.length);
 }
 
 // Disambiguation chooser — in dense clusters every object stays reachable.
 let pickEl = null;
 function hidePickChooser() { if (pickEl) { pickEl.remove(); pickEl = null; } }
-function showPickChooser(cands, sx, sy) {
+function showPickChooser(cands, sx, sy, total) {
   pickEl = document.createElement('div');
   pickEl.id = 'pickChooser';
-  pickEl.innerHTML = `<div class="pc-h">${cands.length} objects here — select one</div>` + cands.map(c => `
+  const more = (total || cands.length) - cands.length;
+  pickEl.innerHTML = `<div class="pc-h">${total || cands.length} objects here — select one${more > 0 ? ` <span style=\"opacity:.55\">(${more} more — zoom in to separate)</span>` : ''}</div>` + cands.map(c => `
     <button class="sr" data-i="${c.i}">
       <span class="sr-name">${state.name[c.i]}</span>
       <span class="sr-meta">${state.norad[c.i]} · ${fullType(state.objType[c.i])} · ${state.ownerCode[c.i]}</span>
@@ -1207,7 +1224,16 @@ function scenStep(i) {
   });
   $('#scenProg').style.width = (Math.max(0, i + 1) / n * 100) + '%';
   const cur = $('#scenTimeline .tl-step.cur');
-  if (cur && scenTimer) cur.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  if (cur && scenTimer) {
+    // Scroll only the drawer body — scrollIntoView would also scroll the fixed
+    // page layout's ancestors, which shifts the whole UI off-screen.
+    const body = cur.closest('.drawer-body');
+    if (body) {
+      const cr = cur.getBoundingClientRect(), br = body.getBoundingClientRect();
+      if (cr.top < br.top + 8) body.scrollBy({ top: cr.top - br.top - 8, behavior: 'smooth' });
+      else if (cr.bottom > br.bottom - 8) body.scrollBy({ top: cr.bottom - br.bottom + 8, behavior: 'smooth' });
+    }
+  }
   updateScenNow();
 }
 // Event chip over the 3D scene — narrates the active step while isolation is on.
@@ -1262,6 +1288,12 @@ function toggleScenViz() {
   scenVizOn = !scenVizOn;
   const note = $('#scenVizNote');
   if (scenVizOn) {
+    // Isolation views are read at close range — a leftover 600×/3600× clock
+    // makes the pair whirl unwatchably, so settle back to real time.
+    if (state.speed > 60) {
+      state.speed = 1;
+      $$('.timebar [data-speed]').forEach(b => b.classList.toggle('active', b.dataset.speed === '1'));
+    }
     const built = buildScenIsolation(curScen().viz);
     state._scenGroups = built.groups;
     state._scenIsolate = built.all;      // kept for compatibility / QA
@@ -1435,13 +1467,13 @@ function loadSatLib() {
   if (self.satellite) return Promise.resolve();
   if (!_satLibP) _satLibP = new Promise((res, rej) => {
     const s = document.createElement('script');
-    s.src = './js/satellite.min.js?v=1.4.0'; s.onload = res; s.onerror = rej;
+    s.src = './js/satellite.min.js?v=1.4.1'; s.onload = res; s.onerror = rej;
     document.head.appendChild(s);
   });
   return _satLibP;
 }
 async function loadHistData() {
-  if (!histData) histData = await (await fetch('./data/histevents.json?v=1.4.0')).json();
+  if (!histData) histData = await (await fetch('./data/histevents.json?v=1.4.1')).json();
   return histData;
 }
 
@@ -1504,8 +1536,23 @@ function histTimeOf(H, p) {
   const a = H.keyT - slow;
   if (!slow || a <= H.t0) return H.t0 + p * (H.t1 - H.t0);
   const cf = H.ev.codaFrac || 0.10;          // share of runtime after the key moment
-  const pPre = 1 - 0.35 - cf;                // fast approach · slow-motion · coda
-  if (p < pPre) return H.t0 + (p / pPre) * (a - H.t0);
+  const pPre = 1 - 0.35 - cf;                // approach · slow-motion · coda
+  if (p < pPre) {
+    if (H.chapters) {
+      // Documentary chapters: dwell calmly at each pre-event milestone with a
+      // hard cut between them, instead of a continuous fast-forward that spins
+      // the Earth like a strobe over multi-day windows.
+      const C = H.chapters.length;
+      const q = Math.min(C - 1e-9, (p / pPre) * C);
+      const c = Math.floor(q);
+      H._chNow = c;
+      const dwellSimMs = (pPre * H.ev.durationSec / C) * 1000 * H.chRate;
+      return H.chapters[c] + (q - c) * dwellSimMs;
+    }
+    H._chNow = -1;
+    return H.t0 + (p / pPre) * (a - H.t0);
+  }
+  H._chNow = 'S'; // slow-motion / coda — continuous time from here on
   if (p < pPre + 0.35) return a + ((p - pPre) / 0.35) * (H.keyT - a);
   return H.keyT + ((p - pPre - 0.35) / cf) * (H.t1 - H.keyT);
 }
@@ -1518,6 +1565,7 @@ function histTimeOf(H, p) {
 // mechanics — spreading along-track into a ring on the parent's orbital
 // plane — without claiming to be the catalogued fragment orbits.
 const _MU = 398600.4418; // km^3/s^2
+const _YUP = new THREE.Vector3(0, 1, 0); // scene spin axis (ECI z maps to scene +Y)
 function _makeCloud(o, tMs, hex) {
   const S = self.satellite;
   const d = new Date(tMs);
@@ -1639,6 +1687,22 @@ function histStart(evId) {
     ms: (ev.milestones || []).map(m => ({ t: Date.parse(m.t), step: m.step })).sort((a, b) => a.t - b.t),
     msIdx: 0, lastHud: 0, userCam: false, flash: null,
     trailMax: ev.kind === 'rpo' ? 1600 : 800, camDist: 0, camDir: null };
+  // Chapters: when the pre-event window would need a >2500× continuous
+  // time-lapse (Earth strobing several revolutions), replay it instead as calm
+  // dwells at each milestone (≈48×) with clean cuts between them.
+  {
+    const _slow = (ev.slowFinalMin || 0) * 60000;
+    const _a = keyT - _slow;
+    if (_slow && _a > t0) {
+      const _cf = ev.codaFrac || 0.10;
+      const _pPre = 1 - 0.35 - _cf;
+      const rate = (_a - t0) / (_pPre * ev.durationSec * 1000);
+      if (rate > 2500) {
+        histMode.chapters = [t0, ...histMode.ms.map(m => m.t).filter(mt => mt > t0 + 60000 && mt < _a - 120000)];
+        histMode.chRate = 48;
+      }
+    }
+  }
   if (points) points.visible = false;
   selMarker.visible = false; clearSelOrbit();
   if (ev.preSteps && ev.preSteps.length) scenStep(ev.preSteps[ev.preSteps.length - 1]);
@@ -1722,8 +1786,13 @@ function histTick(dt, now) {
     if (H.p >= 1) histFinish();
   }
   const t = histTimeOf(H, H.p);
+  // Detect a chapter cut (or the cut into slow-motion) so trails don't streak
+  // across the jump and the camera snaps rather than swirling.
+  const cut = H.chapters !== undefined && H._chPrev !== undefined && H._chNow !== H._chPrev;
+  H._chPrev = H._chNow;
   state.simTime = t;
   histPropagate(H, t);
+  if (cut) for (const o of H.objs) { o.trail.length = 0; o.trailLine.geometry.setFromPoints([]); }
   while (H.msIdx < H.ms.length && t >= H.ms[H.msIdx].t) { scenStep(H.ms[H.msIdx].step); H.msIdx++; }
   if (!H.fired && t >= H.keyT) histFire();
   for (const o of H.objs) {
@@ -1761,8 +1830,18 @@ function histTick(dt, now) {
     }
   }
   if (!H.userCam) {
+    // For GEO proximity events the camera co-rotates with the Earth, so the
+    // planet and the geostationary belt hold still while months of drift play
+    // out — instead of the whole scene strobing through dozens of rotations.
+    if (H.ev.kind === 'rpo' && H._pg !== undefined) {
+      let dg = H.gmst - H._pg;
+      if (dg > Math.PI) dg -= 2 * Math.PI; else if (dg < -Math.PI) dg += 2 * Math.PI;
+      H.camDir.applyAxisAngle(_YUP, dg);
+    }
+    H._pg = H.gmst;
     const lead = H.objs[0].pos;
     if (lead.lengthSq() > 1) {
+      if (cut) H.camDir.copy(lead).normalize(); // hard cut — snap, don't swirl
       const k = 1 - Math.exp(-dt * 2.2); // frame-rate independent chase
       H.camDir.lerp(lead.clone().normalize(), k).normalize();
       camera.position.copy(H.camDir).multiplyScalar(H.camDist);
@@ -1997,6 +2076,7 @@ function wireUI() {
     $('#footSupportLink').href = SUPPORT_URL;
     $('#supportBox').style.display = '';
     $('#supportBtn').href = SUPPORT_URL;
+    const ts = $('#topSupport'); if (ts) { ts.href = SUPPORT_URL; ts.style.display = ''; }
   }
 
   // detail close
@@ -2009,7 +2089,7 @@ function wireUI() {
 
 // Citation formats — filled at runtime so the accessed date is always current.
 function fillCitations() {
-  const APP_VERSION = '1.4.0';
+  const APP_VERSION = '1.4.1';
   const acc = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
   const os = $('#citeOscola'), bib = $('#citeBibtex');
   if (os) os.textContent = `Hallam Burnapp, 'STARS Observatory' (v${APP_VERSION}, University of Aberdeen 2026) <https://starsobservatory.org> accessed ${acc}. DOI: 10.5281/zenodo.22662849.`;
@@ -2033,7 +2113,10 @@ function wireUITail() {
   $('#footProv').addEventListener('click', () => openPanel('prov'));
   $('#footCite').addEventListener('click', () => {
     openPanel('prov');
-    setTimeout(() => $('#citeSec')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 350);
+    setTimeout(() => {
+      const el = $('#citeSec'); const body = el && el.closest('.drawer-body');
+      if (el && body) body.scrollTo({ top: el.getBoundingClientRect().top - body.getBoundingClientRect().top + body.scrollTop - 10, behavior: 'smooth' });
+    }, 350);
   });
   fillCitations();
   $$('.copybtn').forEach(b => b.addEventListener('click', () => {
@@ -2165,6 +2248,11 @@ function openPanel(name) {
   $$('#drawerNav button').forEach(b => b.classList.toggle('active', b.dataset.panel === name));
   $('#drawer').querySelector('.drawer-body').scrollTop = 0;
   $('#drawer').classList.add('open');
+  // Defensive: some browsers scroll fixed-layout ancestors on focus/scrollIntoView,
+  // which has no scrollbar to recover from. Pin them back to the origin.
+  const mn = document.querySelector('main'); if (mn) { mn.scrollTop = 0; mn.scrollLeft = 0; }
+  const app = document.getElementById('app'); if (app) { app.scrollTop = 0; app.scrollLeft = 0; }
+  if (document.scrollingElement) { document.scrollingElement.scrollTop = 0; document.scrollingElement.scrollLeft = 0; }
 }
 function closeDrawer() { $('#drawer').classList.remove('open'); }
 
