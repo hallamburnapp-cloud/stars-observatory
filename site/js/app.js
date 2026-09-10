@@ -11,6 +11,9 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 const EARTH_R = 6371;          // km (mean)
 const SCALE = 1 / 1000;        // scene units: 1 unit = 1000 km
 const RE_SCENE = EARTH_R * SCALE;
+// Support / donation link — set to a Ko-fi or GitHub Sponsors URL to enable
+// the support UI (footer link + provenance-panel box). null = hidden.
+const SUPPORT_URL = null;
 
 // ---- palettes ----
 const COL_TYPE = {
@@ -167,7 +170,7 @@ function setLoad(msg, pct, sub) {
 let worker;
 function startWorker(tle1, tle2) {
   return new Promise((resolve) => {
-    worker = new Worker('./js/worker.js?v=1.2.0');
+    worker = new Worker('./js/worker.js?v=1.3.0');
     worker.onmessage = (e) => {
       const m = e.data;
       if (m.type === 'ready') {
@@ -552,7 +555,9 @@ function animate() {
   const now = performance.now();
   const dt = (now - lastFrame) / 1000; lastFrame = now;
 
-  if (state.playing) {
+  if (histMode) {
+    histTick(dt, now);
+  } else if (state.playing) {
     state.simTime += dt * 1000 * state.speed;
   }
   updateClock();
@@ -570,15 +575,15 @@ function animate() {
   // the inertial (ECI) satellite positions. Scene maps ECI y->-z, so a positive
   // rotation about the ECI z-axis is a rotation about scene +Y.
   if (earthGroup && state.ready) {
-    earthGroup.rotation.y = state.lastGmst;
+    earthGroup.rotation.y = histMode ? histMode.gmst : state.lastGmst;
   }
 
   // request new propagation ~10Hz (or when speed high, each frame-ish)
-  if (worker && now - lastPropReq > (IS_TOUCH ? 240 : 90)) {
+  if (!histMode && worker && now - lastPropReq > (IS_TOUCH ? 240 : 90)) {
     requestPropagation(state.simTime);
     lastPropReq = now;
   }
-  applyPositions();
+  if (!histMode) applyPositions();
   controls.update();
   render();
 }
@@ -894,14 +899,40 @@ function populateFilters() {
   for (const [code, n] of owners) {
     const name = state.stats.owner_names[code] || code;
     const o = document.createElement('option');
-    o.value = code; o.textContent = `${name} (${code})`;
+    const disp = name.includes(`(${code})`) ? name : `${name} (${code})`;
+    o.value = code; o.textContent = `${disp} · ${n.toLocaleString('en-GB')}`;
     fState.appendChild(o);
   }
+  // object-type counts (propagated population)
+  const tc = { 'PAY': 0, 'R/B': 0, 'DEB': 0 };
+  for (let i = 0; i < state.N; i++) if (tc[state.objType[i]] !== undefined) tc[state.objType[i]]++;
+  const tLabels = { 'PAY': 'Payloads', 'R/B': 'Rocket bodies', 'DEB': 'Debris' };
+  $$('#fType option').forEach(o => {
+    if (o.value) o.textContent = `${tLabels[o.value]} · ${(tc[o.value] || 0).toLocaleString('en-GB')}`;
+  });
+  // constellation counts, ordered largest → smallest
+  const cc = { Starlink: 0, OneWeb: 0, Qianfan: 0, Guowang: 0, Kuiper: 0, other: 0, __none: 0 };
+  for (let i = 0; i < state.N; i++) {
+    const l = state.constLabel[i];
+    if (!l) { cc.__none++; continue; }
+    const k = constKey(l);
+    cc[k] = (cc[k] || 0) + 1;
+  }
+  const cLabels = { Starlink: 'Starlink (SpaceX)', OneWeb: 'OneWeb', Qianfan: 'Qianfan/G60',
+    Guowang: 'Guowang', Kuiper: 'Kuiper (Amazon)', other: 'Other constellation', __none: 'Not in a constellation' };
   const fConst = $('#fConst');
-  [['Starlink','Starlink (SpaceX)'],['OneWeb','OneWeb'],['Qianfan','Qianfan/G60'],
-   ['Guowang','Guowang'],['Kuiper','Kuiper (Amazon)'],['other','Other constellation'],
-   ['__none','Not in a constellation']].forEach(([v,l]) => {
-    const o = document.createElement('option'); o.value = v; o.textContent = l; fConst.appendChild(o);
+  const named = ['Starlink', 'OneWeb', 'Qianfan', 'Guowang', 'Kuiper', 'other'].sort((a, b) => cc[b] - cc[a]);
+  [...named, '__none'].forEach(v => {
+    const o = document.createElement('option');
+    o.value = v; o.textContent = `${cLabels[v]} · ${cc[v].toLocaleString('en-GB')}`;
+    fConst.appendChild(o);
+  });
+  // registration counts (payloads only — the filter applies to payloads)
+  let reg = 0, unreg = 0;
+  for (let i = 0; i < state.N; i++) if (state.objType[i] === 'PAY') (state.registered[i] ? reg++ : unreg++);
+  $$('#fReg option').forEach(o => {
+    if (o.value === '1') o.textContent = `Registered · ${reg.toLocaleString('en-GB')}`;
+    if (o.value === '0') o.textContent = `Unregistered · ${unreg.toLocaleString('en-GB')}`;
   });
 }
 
@@ -1131,6 +1162,7 @@ function buildScenarioCards() {
 
 function selectScenario(idx) {
   if (idx === scenActiveIdx && state._scenBuilt) return;
+  if (histMode) histExit();
   if (scenVizOn) toggleScenViz();
   scenActiveIdx = idx;
   state._scenBuilt = true;
@@ -1138,6 +1170,8 @@ function selectScenario(idx) {
   const s = curScen();
   $('#scenIntro').innerHTML = s.intro;
   $('#scenCaption').innerHTML = s.caption;
+  const hb = $('#scenHist');
+  if (hb) hb.style.display = HIST_IDS.has(s.id) ? '' : 'none';
   buildScenario();
   updateScenNow();
   updateScenVizButton();
@@ -1180,6 +1214,7 @@ function scenStep(i) {
 function updateScenNow() {
   const chip = $('#scenNow');
   if (!chip) return;
+  if (histMode) { chip.style.display = 'none'; return; }
   const s = (scenIndex >= 0) ? curScen().steps[scenIndex] : null;
   if (scenVizOn && s) {
     chip.innerHTML = `<span class="sn-k">${curScen().title}</span><span class="sn-d">${s.date}</span>${s.prob ? `<span class="sn-p">${s.prob}</span>` : ''}`;
@@ -1194,6 +1229,7 @@ function updateScenNow() {
 }
 
 function scenPlay() {
+  if (histMode) histExit();
   const n = curScen().steps.length;
   if (scenTimer) { // second press = pause
     clearInterval(scenTimer); scenTimer = null;
@@ -1222,6 +1258,7 @@ function updateScenVizButton() {
 // -- 3D isolation view (Task C) ------------------------------------------
 let scenVizOn = false;
 function toggleScenViz() {
+  if (histMode) histExit();
   scenVizOn = !scenVizOn;
   const note = $('#scenVizNote');
   if (scenVizOn) {
@@ -1260,7 +1297,7 @@ function buildScenIsolation(viz) {
     if (pair[1] >= 0) groups.push({ indices: new Set([pair[1]]), color: 0xff6b6b });
     return {
       groups, all: pair, cam: [9, 7, 20], orbitPair: pair.length >= 2 ? pair : null,
-      note: '<strong>Illustrative.</strong> Starlink-44 has since decayed and Aeolus (NORAD 43600) was de-orbited in 2023, so neither is in the current catalog. The 3D view shows a representative present-day Starlink alongside a sun-synchronous Earth-observation payload to convey the crossing geometry. It is a visual re-creation, not the 2019 ephemeris.'
+      note: '<strong>Illustrative.</strong> Starlink-44 has since decayed and Aeolus (NORAD 43600) was de-orbited in 2023, so neither is in the current catalog. The 3D view shows a representative present-day Starlink alongside a sun-synchronous Earth-observation payload to convey the crossing geometry. For the actual 2019 objects propagated from archival element sets, press “⏱ Replay the event”.'
     };
   }
   if (viz.mode === 'names') {
@@ -1381,6 +1418,275 @@ function drawScenarioOrbits() {
     scene.add(line);
     scenOrbitLines.push(line);
   });
+}
+
+// ============================================================
+// 11a½. Historical event replay — archival element sets
+// ============================================================
+// Replays each case study on the globe from archival US SSN general-
+// perturbations element sets (data/histevents.json, static, validated at
+// build — see pipeline/build_histevents.py). SGP4-propagated in the browser
+// with satellite.js; Earth rotation and the solar terminator follow the
+// historical clock automatically.
+const HIST_IDS = new Set(['aeolus', 'iridium', 'fengyun', 'cosmos1408', 'luch']);
+let histData = null, histMode = null, _satLibP = null;
+
+function loadSatLib() {
+  if (self.satellite) return Promise.resolve();
+  if (!_satLibP) _satLibP = new Promise((res, rej) => {
+    const s = document.createElement('script');
+    s.src = './js/satellite.min.js?v=1.3.0'; s.onload = res; s.onerror = rej;
+    document.head.appendChild(s);
+  });
+  return _satLibP;
+}
+async function loadHistData() {
+  if (!histData) histData = await (await fetch('./data/histevents.json?v=1.3.0')).json();
+  return histData;
+}
+
+function _glowTex(hex) {
+  const c = document.createElement('canvas'); c.width = c.height = 64;
+  const x = c.getContext('2d');
+  const g = x.createRadialGradient(32, 32, 2, 32, 32, 30);
+  g.addColorStop(0, '#ffffff'); g.addColorStop(0.3, hex); g.addColorStop(1, 'rgba(0,0,0,0)');
+  x.fillStyle = g; x.fillRect(0, 0, 64, 64);
+  return new THREE.CanvasTexture(c);
+}
+function _labelSprite(text, hex) {
+  const fs = 26, pad = 10;
+  const m = document.createElement('canvas').getContext('2d');
+  m.font = `600 ${fs}px "IBM Plex Mono", monospace`;
+  const w = Math.ceil(m.measureText(text).width) + pad * 2;
+  const c = document.createElement('canvas'); c.width = w; c.height = fs + pad * 1.6;
+  const x = c.getContext('2d');
+  x.font = `600 ${fs}px "IBM Plex Mono", monospace`;
+  x.fillStyle = 'rgba(7,11,18,0.78)'; x.fillRect(0, 0, c.width, c.height);
+  x.strokeStyle = hex; x.globalAlpha = 0.5; x.strokeRect(0.5, 0.5, c.width - 1, c.height - 1);
+  x.globalAlpha = 1; x.fillStyle = hex; x.textBaseline = 'middle';
+  x.fillText(text, pad, c.height / 2 + 1);
+  const spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), transparent: true, depthWrite: false }));
+  return { spr, aspect: c.width / c.height };
+}
+
+function histPick(recs, jd) {
+  let r = recs[0];
+  for (const c of recs) { if (c.jdsatepoch <= jd) r = c; else break; }
+  return r;
+}
+function histMid(H) {
+  const v = new THREE.Vector3(); let n = 0;
+  for (const o of H.objs) { v.add(o.pos); n++; }
+  return n ? v.multiplyScalar(1 / n) : v;
+}
+function histPropagate(H, tMs) {
+  const S = self.satellite;
+  const d = new Date(tMs);
+  const jd = tMs / 86400000 + 2440587.5;
+  H.gmst = S.gstime(d);
+  for (const o of H.objs) {
+    if (o.dead) continue;
+    try {
+      const pv = S.propagate(histPick(o.recs, jd), d);
+      if (pv && pv.position) {
+        o.pos.set(pv.position.x * SCALE, pv.position.z * SCALE, -pv.position.y * SCALE);
+        o.grp.position.copy(o.pos);
+        o.grp.visible = true;
+      }
+    } catch (e) { /* propagation edge — keep last position */ }
+  }
+  if (H.objs.length === 2) H.sepKm = H.objs[0].pos.distanceTo(H.objs[1].pos) * 1000;
+}
+function histTimeOf(H, p) {
+  const slow = (H.ev.slowFinalMin || 0) * 60000;
+  const a = H.keyT - slow;
+  if (!slow || a <= H.t0) return H.t0 + p * (H.t1 - H.t0);
+  if (p < 0.55) return H.t0 + (p / 0.55) * (a - H.t0);
+  if (p < 0.90) return a + ((p - 0.55) / 0.35) * (H.keyT - a);
+  return H.keyT + ((p - 0.90) / 0.10) * (H.t1 - H.keyT);
+}
+
+function histStart(evId) {
+  const ev = histData.events[evId]; if (!ev || !self.satellite) return;
+  if (histMode) histExit();
+  if (scenVizOn) toggleScenViz();
+  if (window.matchMedia('(max-width: 820px)').matches) closeDrawer();
+  const S = self.satellite;
+  const t0 = Date.parse(ev.window[0]), t1 = Date.parse(ev.window[1]);
+  const keyT = Date.parse(ev.keyTime);
+  const objs = ev.objects.map(oc => {
+    const recs = oc.tles.map(t => { try { return S.twoline2satrec(t[0], t[1]); } catch (e) { return null; } })
+      .filter(r => r && !r.error).sort((a, b) => a.jdsatepoch - b.jdsatepoch);
+    const grp = new THREE.Group();
+    const marker = new THREE.Sprite(new THREE.SpriteMaterial({ map: _glowTex(oc.color), transparent: true, depthWrite: false }));
+    grp.add(marker);
+    const lab = _labelSprite(oc.name, oc.color);
+    const tl = new THREE.Line(new THREE.BufferGeometry(),
+      new THREE.LineBasicMaterial({ color: new THREE.Color(oc.color), transparent: true, opacity: 0.55 }));
+    tl.frustumCulled = false;
+    scene.add(grp); scene.add(lab.spr); scene.add(tl);
+    return { ...oc, recs, grp, marker, label: lab.spr, labAspect: lab.aspect,
+             trailLine: tl, trail: [], lastTrail: 0, pos: new THREE.Vector3(), dead: false };
+  });
+  let sepLine = null;
+  if (objs.length === 2) {
+    sepLine = new THREE.Line(
+      new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3()]),
+      new THREE.LineBasicMaterial({ color: 0xff6b6b, transparent: true, opacity: 0 }));
+    sepLine.frustumCulled = false; sepLine.visible = false; scene.add(sepLine);
+  }
+  histMode = { id: evId, ev, t0, t1, keyT, objs, sepLine,
+    p: 0, paused: false, done: false, fired: false, gmst: 0, sepKm: null,
+    saved: { speed: state.speed, playing: state.playing },
+    ms: (ev.milestones || []).map(m => ({ t: Date.parse(m.t), step: m.step })).sort((a, b) => a.t - b.t),
+    msIdx: 0, lastHud: 0, userCam: false, flash: null,
+    trailMax: ev.kind === 'rpo' ? 1600 : 800, camDist: 0, camDir: null };
+  if (points) points.visible = false;
+  selMarker.visible = false; clearSelOrbit();
+  if (ev.preSteps && ev.preSteps.length) scenStep(ev.preSteps[ev.preSteps.length - 1]);
+  histPropagate(histMode, t0);
+  // Camera follows the primary object (first in the event's object list) at a
+  // distance that keeps the whole Earth comfortably in frame.
+  const lead = histMode.objs[0].pos;
+  const r = Math.max(lead.length(), RE_SCENE + 0.4);
+  histMode.camDist = r + (r > 20 ? 22 : 13);
+  // Start from the camera's current bearing and swing smoothly toward the
+  // primary object; the radius is held constant so the camera orbits, never
+  // cutting a chord through the near-Earth region.
+  histMode.camDir = camera.position.lengthSq() > 0.01 ? camera.position.clone().normalize() : new THREE.Vector3(0, 0, 1);
+  controls.target.set(0, 0, 0);
+  controls.addEventListener('start', histCamGrab);
+  document.body.classList.add('hist-run');
+  $('#hhTitle').textContent = `${curScen().title} · ${curScen().year}`;
+  $('#hhDone').style.display = 'none';
+  $('#hhCount').textContent = '';
+  $('#histHud').style.display = 'block';
+  const hb = $('#scenHist'); if (hb) hb.textContent = '⟳ Restart replay';
+  updateScenNow();
+}
+function histCamGrab() { if (histMode) histMode.userCam = true; }
+
+function histFire() {
+  const H = histMode; H.fired = true;
+  const at = H.objs.length === 2 ? histMid(H) : H.objs[0].pos.clone();
+  const kind = H.ev.kind;
+  const col = kind === 'collision' || kind === 'asat' ? '#ff5a5a'
+            : kind === 'conjunction' ? '#ffd76a' : '#9ad1ff';
+  const spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: _glowTex(col), transparent: true, depthWrite: false }));
+  spr.position.copy(at); scene.add(spr);
+  H.flash = { spr, t0: performance.now() };
+  if (kind === 'collision' || kind === 'asat') {
+    for (const o of H.objs) {
+      o.dead = true;
+      o.marker.material.opacity = 0.3;
+      o.trailLine.material.opacity = 0.22;
+    }
+    if (H.sepLine) H.sepLine.visible = false;
+  }
+}
+function histFinish() {
+  const H = histMode; H.done = true;
+  $('#hhDoneLabel').textContent = H.ev.keyLabel;
+  $('#hhDone').style.display = 'flex';
+}
+
+function _fmtDur(s) {
+  const p = (n) => String(n).padStart(2, '0');
+  if (s >= 86400) return `${Math.floor(s / 86400)}d ${p(Math.floor(s % 86400 / 3600))}h`;
+  return `${p(Math.floor(s / 3600))}:${p(Math.floor(s % 3600 / 60))}:${p(Math.floor(s % 60))}`;
+}
+function _fmtKm(km) {
+  return km < 100 ? km.toFixed(1) + ' km' : Math.round(km).toLocaleString('en-GB') + ' km';
+}
+const _KIND_WORD = { collision: 'collision', asat: 'intercept', conjunction: 'closest approach', rpo: 'minimum separation' };
+function histHud(t) {
+  const H = histMode;
+  const d = new Date(t);
+  const p = (n) => String(n).padStart(2, '0');
+  $('#hhClock').textContent = `${d.getUTCFullYear()}-${p(d.getUTCMonth()+1)}-${p(d.getUTCDate())} ${p(d.getUTCHours())}:${p(d.getUTCMinutes())}:${p(d.getUTCSeconds())} UTC`;
+  let line;
+  if (t < H.keyT) line = `T–${_fmtDur((H.keyT - t) / 1000)} to ${_KIND_WORD[H.ev.kind] || 'event'}`;
+  else line = H.ev.keyLabel;
+  if (H.sepKm != null && !H.objs.some(o => o.dead) && (t < H.keyT || H.ev.kind === 'rpo')) line += ` · separation ${_fmtKm(H.sepKm)}`;
+  $('#hhCount').textContent = line;
+}
+
+function histTick(dt, now) {
+  const H = histMode;
+  if (!H.paused && !H.done) {
+    H.p = Math.min(1, H.p + dt / H.ev.durationSec);
+    if (H.p >= 1) histFinish();
+  }
+  const t = histTimeOf(H, H.p);
+  state.simTime = t;
+  histPropagate(H, t);
+  while (H.msIdx < H.ms.length && t >= H.ms[H.msIdx].t) { scenStep(H.ms[H.msIdx].step); H.msIdx++; }
+  if (!H.fired && t >= H.keyT) histFire();
+  for (const o of H.objs) {
+    const dd = camera.position.distanceTo(o.pos);
+    const pulse = 1 + 0.14 * Math.sin(now * 0.005);
+    o.marker.scale.setScalar(dd * (o.dead ? 0.02 : 0.035) * pulse);
+    const lh = dd * 0.03;
+    o.label.scale.set(lh * o.labAspect, lh, 1);
+    o.label.position.copy(o.pos); o.label.position.y += dd * 0.05;
+    if (!o.dead && now - o.lastTrail > 50) {
+      o.trail.push(o.pos.clone());
+      if (o.trail.length > H.trailMax) o.trail.shift();
+      o.trailLine.geometry.setFromPoints(o.trail);
+      o.lastTrail = now;
+    }
+  }
+  if (H.sepLine && !H.objs.some(o => o.dead)) {
+    const thr = H.ev.kind === 'rpo' ? 60000 : 4000;
+    if (H.sepKm < thr) {
+      H.sepLine.geometry.setFromPoints([H.objs[0].pos, H.objs[1].pos]);
+      const k = 1 - H.sepKm / thr;
+      H.sepLine.material.opacity = 0.15 + 0.6 * k;
+      H.sepLine.material.color.setHSL(0.52 - 0.52 * k, 0.85, 0.62);
+      H.sepLine.visible = true;
+    } else H.sepLine.visible = false;
+  }
+  if (H.flash) {
+    const k = (now - H.flash.t0) / 1600;
+    if (k >= 1) { scene.remove(H.flash.spr); H.flash.spr.material.dispose(); H.flash = null; }
+    else {
+      const dd = camera.position.distanceTo(H.flash.spr.position);
+      H.flash.spr.scale.setScalar(dd * (0.05 + k * 0.4));
+      H.flash.spr.material.opacity = 1 - k;
+    }
+  }
+  if (!H.userCam) {
+    const lead = H.objs[0].pos;
+    if (lead.lengthSq() > 1) {
+      const k = 1 - Math.exp(-dt * 2.2); // frame-rate independent chase
+      H.camDir.lerp(lead.clone().normalize(), k).normalize();
+      camera.position.copy(H.camDir).multiplyScalar(H.camDist);
+    }
+  }
+  if (now - H.lastHud > 200) { histHud(t); H.lastHud = now; }
+}
+
+function histExit() {
+  if (!histMode) return;
+  const H = histMode; histMode = null;
+  controls.removeEventListener('start', histCamGrab);
+  for (const o of H.objs) {
+    scene.remove(o.grp); scene.remove(o.label); scene.remove(o.trailLine);
+    if (o.marker.material.map) o.marker.material.map.dispose();
+    o.marker.material.dispose();
+    if (o.label.material.map) o.label.material.map.dispose();
+    o.label.material.dispose();
+    o.trailLine.geometry.dispose(); o.trailLine.material.dispose();
+  }
+  if (H.sepLine) { scene.remove(H.sepLine); H.sepLine.geometry.dispose(); H.sepLine.material.dispose(); }
+  if (H.flash) { scene.remove(H.flash.spr); H.flash.spr.material.dispose(); }
+  if (points) points.visible = true;
+  state.speed = H.saved.speed; state.playing = true;
+  state.simTime = Date.now();
+  document.body.classList.remove('hist-run');
+  $('#histHud').style.display = 'none';
+  const hb = $('#scenHist'); if (hb) hb.textContent = '⏱ Replay the event · archival orbits';
+  updateScenNow();
 }
 
 // ============================================================
@@ -1547,15 +1853,45 @@ function wireUI() {
 
   // time
   $('#tPlay').addEventListener('click', () => {
+    if (histMode) { // during a replay, play/pause controls the replay itself
+      histMode.paused = !histMode.paused;
+      $('#playPath').setAttribute('d', !histMode.paused ? 'M6 4h4v16H6zM14 4h4v16h-4z' : 'M8 5v14l11-7z');
+      return;
+    }
     state.playing = !state.playing;
     $('#playPath').setAttribute('d', state.playing ? 'M6 4h4v16H6zM14 4h4v16h-4z' : 'M8 5v14l11-7z');
   });
-  $('#tNow').addEventListener('click', () => { state.simTime = Date.now(); });
+  $('#tNow').addEventListener('click', () => { if (histMode) histExit(); state.simTime = Date.now(); });
   $$('.timebar [data-speed]').forEach(btn => btn.addEventListener('click', () => {
+    if (histMode) return; // replay owns the clock
     $$('.timebar [data-speed]').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     state.speed = parseInt(btn.dataset.speed);
   }));
+
+  // historical replay
+  const hbBtn = $('#scenHist');
+  if (hbBtn) hbBtn.addEventListener('click', async () => {
+    const id = curScen().id;
+    if (!HIST_IDS.has(id)) return;
+    hbBtn.disabled = true;
+    try {
+      await Promise.all([loadSatLib(), loadHistData()]);
+      if (histData.events[id]) histStart(id);
+    } catch (e) {
+      console.error('replay load failed', e);
+    } finally { hbBtn.disabled = false; }
+  });
+  $('#hhExit').addEventListener('click', histExit);
+  $('#hhAgain').addEventListener('click', () => { if (histMode) histStart(histMode.id); });
+
+  // support / donation UI (hidden until SUPPORT_URL is configured)
+  if (SUPPORT_URL) {
+    $('#footSupport').style.display = '';
+    $('#footSupportLink').href = SUPPORT_URL;
+    $('#supportBox').style.display = '';
+    $('#supportBtn').href = SUPPORT_URL;
+  }
 
   // detail close
   $('#dClose').addEventListener('click', () => { $('#detail').classList.remove('show'); selectedIndex = -1; if(!state._scenIsolate) updateColors(); selMarker.visible=false; clearSelOrbit(); });
@@ -1567,7 +1903,7 @@ function wireUI() {
 
 // Citation formats — filled at runtime so the accessed date is always current.
 function fillCitations() {
-  const APP_VERSION = '1.2.0';
+  const APP_VERSION = '1.3.0';
   const acc = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
   const os = $('#citeOscola'), bib = $('#citeBibtex');
   if (os) os.textContent = `Hallam Burnapp, 'STARS Observatory' (v${APP_VERSION}, University of Aberdeen 2026) <https://starsobservatory.org> accessed ${acc}. DOI: 10.5281/zenodo.22662849.`;
@@ -1769,6 +2105,11 @@ boot();
 window.__OBS = state; // debug handle for QA
 // QA-only helpers: expose projection + select so automated tests can verify picking
 window.__QA = {
+  hist() {
+    if (!histMode) return null;
+    return { cam: camera.position.toArray(), userCam: histMode.userCam, camDist: histMode.camDist, camDir: histMode.camDir && histMode.camDir.toArray(),
+      objs: histMode.objs.map(o => ({ pos: o.pos.toArray(), vis: o.grp.visible, hasParent: !!o.grp.parent, mScale: o.marker.scale.toArray(), lScale: o.label.scale.toArray(), lPos: o.label.position.toArray() })) };
+  },
   screenOf(idx) {
     const pa = posAttr.array;
     const v = new THREE.Vector3(pa[idx*3], pa[idx*3+1], pa[idx*3+2]);

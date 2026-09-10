@@ -20,7 +20,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="./css/style.css?v=1.2.0" />
+<link rel="stylesheet" href="./css/style.css?v=1.3.0" />
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='7' fill='none' stroke='%234fd1e0' stroke-width='2'/%3E%3Cellipse cx='16' cy='16' rx='14' ry='6' fill='none' stroke='%234fd1e0' stroke-width='1.5' transform='rotate(30 16 16)'/%3E%3Ccircle cx='27' cy='11' r='2' fill='%23ffb454'/%3E%3C/svg%3E" />
 <script type="importmap">
 {
@@ -137,6 +137,19 @@
 
     <!-- Detail card -->
     <div id="scenNow" style="display:none"></div>
+    <div id="histHud" style="display:none">
+      <div class="hh-top">
+        <span class="hh-badge">HISTORICAL REPLAY</span>
+        <span class="hh-title" id="hhTitle"></span>
+        <button id="hhExit" title="Exit replay">✕</button>
+      </div>
+      <div class="hh-clock" id="hhClock"></div>
+      <div class="hh-count" id="hhCount"></div>
+      <div class="hh-done" id="hhDone" style="display:none">
+        <span id="hhDoneLabel"></span>
+        <button id="hhAgain">⟳ Watch again</button>
+      </div>
+    </div>
     <div id="detail">
       <div class="dh">
         <div>
@@ -182,7 +195,7 @@
     </div>
 
     <footer id="foot">
-      Data snapshot <span data-stat="date">2026-07-10</span> · CelesTrak GP / SATCAT · McDowell GCAT · <span class="lnk" id="footProv">provenance &amp; limitations →</span> · <span class="lnk" id="footCite">cite this instrument →</span> · built by <a href="https://github.com/hallamburnapp-cloud/stars-observatory" target="_blank" rel="noopener" style="color:inherit">Hallam Burnapp</a> (University of Aberdeen) · <a href="https://doi.org/10.5281/zenodo.22662849" target="_blank" rel="noopener" style="color:inherit">DOI 10.5281/zenodo.22662849</a>
+      Data snapshot <span data-stat="date">2026-07-10</span> · CelesTrak GP / SATCAT · McDowell GCAT · <span class="lnk" id="footProv">provenance &amp; limitations →</span> · <span class="lnk" id="footCite">cite this instrument →</span><span id="footSupport" style="display:none"> · <a id="footSupportLink" href="#" target="_blank" rel="noopener" style="color:inherit">support this instrument ↗</a></span> · built by <a href="https://github.com/hallamburnapp-cloud/stars-observatory" target="_blank" rel="noopener" style="color:inherit">Hallam Burnapp</a> (University of Aberdeen) · <a href="https://doi.org/10.5281/zenodo.22662849" target="_blank" rel="noopener" style="color:inherit">DOI 10.5281/zenodo.22662849</a>
     </footer>
 
     <!-- Analytical drawer -->
@@ -283,6 +296,7 @@
             <button id="scenPlay">▶ Replay sequence</button>
             <div class="prog"><div id="scenProg"></div></div>
             <button class="viz3d" id="scenViz">Show orbits in 3D</button>
+            <button class="viz3d hist" id="scenHist" style="display:none">⏱ Replay the event · archival orbits</button>
           </div>
           <div class="note" id="scenVizNote" style="display:none"></div>
           <div class="timeline" id="scenTimeline"></div>
@@ -291,7 +305,8 @@
 
         <!-- Panel: Provenance -->
         <section class="panel" id="panel-prov">
-          <div class="dt" style="font-family:var(--mono);font-size:10px;color:var(--txt-faint);letter-spacing:0.14em;margin-bottom:14px">SNAPSHOT <span data-stat="date">2026-07-10</span> · <span data-stat="totalOnorbit">34,157</span> CATALOGED ON-ORBIT OBJECTS · <span data-stat="propagated">18,594</span> PROPAGATED WITH VALID ELEMENT SETS</div>
+          <div class="dt" style="font-family:var(--mono);font-size:10px;color:var(--txt-faint);letter-spacing:0.14em;margin-bottom:6px">DAILY SNAPSHOT <span data-stat="date">2026-07-10</span> · REGENERATED 06:00 UTC · <span data-stat="totalOnorbit">34,157</span> CATALOGED ON-ORBIT OBJECTS · <span data-stat="propagated">18,594</span> PROPAGATED WITH VALID ELEMENT SETS</div>
+          <div class="cap" style="margin:0 0 14px">Every figure on this page is recomputed from that morning's catalog pull — the totals move day to day as launches, re-entries and newly catalogued debris enter the public record. The gap between the two headline numbers is objects that are tracked and counted but have no public element set to propagate (mostly debris and rocket bodies).</div>
           <h3 class="section" style="margin-top:0">Scope — managing expectations</h3>
           <div class="scope-grid">
             <div class="scope-col">
@@ -309,7 +324,7 @@
               <ul class="limits">
                 <li>No operational awareness: it does not predict conjunctions, issue warnings, or substitute for SSA services.</li>
                 <li>No real-time truth: positions are SGP4 propagations of daily element sets, carrying km-scale error.</li>
-                <li>No historical reconstruction: case-study 3D views use <em>current</em> element sets as illustrative geometry, not the original event ephemerides.</li>
+                <li>Historical replays use archival general-perturbations element sets from the US Space Surveillance Network — km-scale accuracy, not the operator/CDM precision on which real decisions were made. The replay of each case study is evidence of geometry and chronology, not a conjunction-assessment tool.</li>
                 <li>No complete population: classified, untracked, and sub-10 cm objects (est. 1.2 million+ fragments ≥ 1 cm) are absent.</li>
                 <li>No legal determinations: registration and attribution fields are evidence for analysis, not findings of breach, and nothing here is legal advice.</li>
               </ul>
@@ -335,6 +350,11 @@
             <div class="ps-name"><a href="https://visibleearth.nasa.gov/collection/1484/blue-marble" target="_blank" rel="noopener">NASA Blue Marble</a></div>
             <div class="ps-desc">Earth surface texture (Blue Marble Next Generation with topography and bathymetry). Courtesy NASA Earth Observatory.</div>
           </div>
+          <div class="prov-source">
+            <div class="ps-name"><a href="https://huggingface.co/datasets/oxzoid/space-track-tle-history" target="_blank" rel="noopener">Archival element sets (Space-Track history)</a></div>
+            <div class="ps-desc">Historical general-perturbations element sets from the US Space Surveillance Network, used only for the case-study event replays. Static archival data, validated at build time: propagating the final published element sets for Iridium 33 and Cosmos 2251 reproduces the 10 February 2009 collision to within <span id="hvValid">≈700 m</span> at 16:56:00 UTC. Reproducible via <code>pipeline/build_histevents.py</code>.</div>
+            <div class="ps-date">Static · historical events do not change</div>
+          </div>
           <div class="prov-source" id="provNatlaw"></div>
           <div class="prov-source" id="provLedger"></div>
           <h3 class="section">Case-study sources</h3>
@@ -350,6 +370,11 @@
               <pre id="citeBibtex"></pre>
             </div>
             <div class="ps-desc">Each release is archived with a versioned DOI: <a href="https://doi.org/10.5281/zenodo.22662849" target="_blank" rel="noopener">10.5281/zenodo.22662849</a> · <a href="https://github.com/hallamburnapp-cloud/stars-observatory" target="_blank" rel="noopener">source &amp; data pipeline</a></div>
+          </div>
+          <div id="supportBox" style="display:none">
+            <h3 class="section">Support this instrument</h3>
+            <div class="ps-desc" style="margin-bottom:10px">STARS Observatory is independent, non-commercial doctoral research infrastructure — hosting, the daily data refresh and continued development are maintained by one researcher. If it is useful to you, you can help keep it live and growing.</div>
+            <a id="supportBtn" class="support-btn" href="#" target="_blank" rel="noopener">♡ Support the observatory</a>
           </div>
           <h3 class="section">Limitations</h3>
           <ul class="limits">
@@ -369,6 +394,6 @@
   </main>
 </div>
 
-<script type="module" src="./js/app.js?v=1.2.0"></script>
+<script type="module" src="./js/app.js?v=1.3.0"></script>
 </body>
 </html>
