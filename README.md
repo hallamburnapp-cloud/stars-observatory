@@ -6,7 +6,7 @@
 
 **A demonstrative evidence instrument for State obligations under Articles VI & IX of the Outer Space Treaty.**
 
-**Live instrument → [hallamburnapp-cloud.github.io/stars-observatory](https://hallamburnapp-cloud.github.io/stars-observatory/)**
+**Live instrument → [starsobservatory.org](https://starsobservatory.org/)**
 
 STARS Observatory fuses the public orbital catalog with the legal layer that governs it. Every tracked payload carries its Article VI responsible State and its UN registration status; the instrument propagates ~18,600 objects with SGP4 in the browser and turns treaty obligations into measurable quantities:
 
