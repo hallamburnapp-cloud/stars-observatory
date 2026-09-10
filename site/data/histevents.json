@@ -16,7 +16,7 @@
    "aeolus_tle_space_min_sep_km_2sep": 247.5,
    "luch_is901_min_sep_km": 36.0
   },
-  "built": "2026-09-10T13:59:55Z"
+  "built": "2026-09-10T15:26:47Z"
  },
  "events": {
   "aeolus": {
@@ -91,7 +91,8 @@
        "1 43600U 18066A   19245.30035846  .00030299  00000+0  11844-3 0  9997",
        "2 43600  96.7220 251.0137 0004546  95.6435  32.6923 15.86967333999992"
       ]
-     ]
+     ],
+     "fragments": 0
     },
     {
      "norad": 44244,
@@ -146,7 +147,8 @@
        "1 44244U 19029K   19244.89984523  .00001910  00000+0  15052-3 0  9993",
        "2 44244  53.0025  79.5413 0002080  97.2297 262.8928 15.05498382999997"
       ]
-     ]
+     ],
+     "fragments": 0
     }
    ],
    "milestones": [
@@ -177,12 +179,13 @@
    "kind": "collision",
    "window": [
     "2009-02-09T00:00:00Z",
-    "2009-02-10T16:56:30Z"
+    "2009-02-11T04:00:00Z"
    ],
    "keyTime": "2009-02-10T16:55:59Z",
    "keyLabel": "Collision \u2014 11.647 km/s, both satellites destroyed",
    "slowFinalMin": 45,
-   "durationSec": 40,
+   "durationSec": 55,
+   "codaFrac": 0.25,
    "objects": [
     {
      "norad": 24946,
@@ -201,7 +204,8 @@
        "1 24946U 97051C   09040.78448243  .00000153  00000+0  47668-4 0  9993",
        "2 24946  86.3994 121.7028 0002288  85.1644 274.9812 14.34219863999994"
       ]
-     ]
+     ],
+     "fragments": 521
     },
     {
      "norad": 22675,
@@ -216,7 +220,8 @@
        "1 22675U 93036A   09040.49834364 -.00000001  00000+0  95251-5 0  9995",
        "2 22675  74.0355  19.4646 0016027  98.7014 261.5952 14.31135643999999"
       ]
-     ]
+     ],
+     "fragments": 1267
     }
    ],
    "milestones": [
@@ -233,18 +238,19 @@
     0,
     1
    ],
-   "note": "Propagated from the final published element sets, the two objects pass within 700 m of each other at 16:56:00 UTC \u2014 independent confirmation of the collision geometry from public data alone (SOCRATES had predicted a 584 m miss; TLE-space accuracy is of km order)."
+   "note": "Propagated from the final published element sets, the two objects pass within 700 m of each other at 16:56:00 UTC \u2014 independent confirmation of the collision geometry from public data alone (SOCRATES had predicted a 584 m miss; TLE-space accuracy is of km order). The debris cloud is a physically derived visualisation: one particle per catalogued fragment (521 from Iridium 33, 1,267 from Cosmos 2251), released from the true collision state vector with a modelled velocity spread and propagated by two-body dynamics \u2014 it shows the real mechanics of ring formation, not the catalogued fragment orbits themselves."
   },
   "fengyun": {
    "kind": "asat",
    "window": [
     "2007-01-11T19:00:00Z",
-    "2007-01-11T22:30:00Z"
+    "2007-01-12T08:00:00Z"
    ],
    "keyTime": "2007-01-11T22:26:00Z",
    "keyLabel": "Kinetic-kill intercept at ~863 km \u2014 no advance notification",
    "slowFinalMin": 30,
-   "durationSec": 35,
+   "durationSec": 50,
+   "codaFrac": 0.25,
    "objects": [
     {
      "norad": 25730,
@@ -263,7 +269,8 @@
        "1 25730U 99025A   07011.90621003  .00000180  00000+0  12153-3 0  9995",
        "2 25730  98.6464   1.7411 0013513 266.0357  94.0215 14.11820274999998"
       ]
-     ]
+     ],
+     "fragments": 3037
     }
    ],
    "milestones": [
@@ -275,18 +282,19 @@
    "preSteps": [
     0
    ],
-   "note": "At the documented intercept time the element sets place Fengyun-1C at 34.7\u00b0N 100.3\u00b0E, approaching Xichang's latitude band \u2014 the ascending pass the SC-19 interceptor met head-on. The interceptor itself was never a catalogued object; only the target is replayed."
+   "note": "At the documented intercept time the element sets place Fengyun-1C at 34.7\u00b0N 100.3\u00b0E, approaching Xichang's latitude band \u2014 the ascending pass the SC-19 interceptor met head-on. The interceptor itself was never a catalogued object; only the target is replayed. The debris cloud is a physically derived visualisation \u2014 one particle per catalogued fragment (3,037), released from the true intercept state vector with a modelled velocity spread and propagated by two-body dynamics \u2014 not the catalogued fragment orbits themselves."
   },
   "cosmos1408": {
    "kind": "asat",
    "window": [
     "2021-11-15T00:00:00Z",
-    "2021-11-15T02:52:00Z"
+    "2021-11-15T13:00:00Z"
    ],
    "keyTime": "2021-11-15T02:47:00Z",
    "keyLabel": "Nudol intercept at ~470 km \u2014 ISS crew sheltered",
    "slowFinalMin": 25,
-   "durationSec": 35,
+   "durationSec": 50,
+   "codaFrac": 0.25,
    "objects": [
     {
      "norad": 13552,
@@ -309,7 +317,8 @@
        "1 13552U 82092A   21319.03826954  .00002024  00000+0  69413-4 0  9994",
        "2 13552  82.5637 123.6906 0018570 108.1104 252.2161 15.29390138999997"
       ]
-     ]
+     ],
+     "fragments": 1604
     }
    ],
    "milestones": [
@@ -321,7 +330,7 @@
    "preSteps": [
     0
    ],
-   "note": "At the documented intercept time the element sets place Cosmos 1408 at 66.5\u00b0N 45.0\u00b0E over northern Russia, downrange of the Plesetsk launch site \u2014 consistent with the published intercept geometry. The interceptor was never a catalogued object."
+   "note": "At the documented intercept time the element sets place Cosmos 1408 at 66.5\u00b0N 45.0\u00b0E over northern Russia, downrange of the Plesetsk launch site \u2014 consistent with the published intercept geometry. The interceptor was never a catalogued object. The debris cloud is a physically derived visualisation \u2014 one particle per catalogued fragment (1,604), released from the true intercept state vector with a modelled velocity spread and propagated by two-body dynamics \u2014 not the catalogued fragment orbits themselves."
   },
   "luch": {
    "kind": "rpo",
@@ -519,7 +528,8 @@
        "1 40258U 14058A   15286.34663193 -.00000192  00000+0  00000+0 0  9995",
        "2 40258   0.0329 250.5771 0001671 246.2202 345.2263  1.00273429999993"
       ]
-     ]
+     ],
+     "fragments": 0
     },
     {
      "norad": 26824,
@@ -666,7 +676,8 @@
        "1 26824U 01024A   15284.31425372 -.00000155  00000+0  00000+0 0  9996",
        "2 26824   0.0385 291.7107 0002362 270.4318 272.5911  1.00271937999997"
       ]
-     ]
+     ],
+     "fragments": 0
     }
    ],
    "milestones": [

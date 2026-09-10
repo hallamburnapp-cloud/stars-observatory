@@ -175,10 +175,11 @@ def main():
                      lu_coarse[1] - timedelta(days=2),
                      lu_coarse[1] + timedelta(days=2), 300)
 
-    def obj(nid, name, color, t0, t1, cutoff=None, per_day=2.0):
+    def obj(nid, name, color, t0, t1, cutoff=None, per_day=2.0, fragments=0):
         return {
             "norad": nid, "name": name, "color": color,
             "tles": [list(make_tle(d)) for d in sample(rows, nid, t0, t1, cutoff, per_day)],
+            "fragments": fragments,
         }
 
     ev = {}
@@ -213,17 +214,17 @@ def main():
     }
     # -- Iridium 33 / Cosmos 2251 -------------------------------------------
     t0 = datetime(2009, 2, 9, 0, 0, tzinfo=UTC)
-    t1 = datetime(2009, 2, 10, 16, 56, 30, tzinfo=UTC)
+    t1 = datetime(2009, 2, 11, 4, 0, tzinfo=UTC)   # coda: ~11 h of debris-cloud evolution
     cut = datetime(2009, 2, 10, 16, 56, 0, tzinfo=UTC)
     ev["iridium"] = {
         "kind": "collision",
         "window": [iso(t0), iso(t1)],
         "keyTime": "2009-02-10T16:55:59Z",
         "keyLabel": "Collision — 11.647 km/s, both satellites destroyed",
-        "slowFinalMin": 45, "durationSec": 40,
+        "slowFinalMin": 45, "durationSec": 55, "codaFrac": 0.25,
         "objects": [
-            obj(24946, "Iridium 33 (US, active)", "#4fd1e0", t0, t1, cutoff=cut, per_day=4),
-            obj(22675, "Cosmos 2251 (RU, derelict)", "#ff6b6b", t0, t1, cutoff=cut, per_day=4),
+            obj(24946, "Iridium 33 (US, active)", "#4fd1e0", t0, t1, cutoff=cut, per_day=4, fragments=521),
+            obj(22675, "Cosmos 2251 (RU, derelict)", "#ff6b6b", t0, t1, cutoff=cut, per_day=4, fragments=1267),
         ],
         "milestones": [
             {"t": "2009-02-10T15:02:00Z", "step": 2},
@@ -234,41 +235,56 @@ def main():
                  f"pass within {miss*1000:.0f} m of each other at 16:56:00 UTC — "
                  "independent confirmation of the collision geometry from public data "
                  "alone (SOCRATES had predicted a 584 m miss; TLE-space accuracy is "
-                 "of km order)."),
+                 "of km order). The debris cloud is a physically derived visualisation: "
+                 "one particle per catalogued fragment (521 from Iridium 33, 1,267 from "
+                 "Cosmos 2251), released from the true collision state vector with a "
+                 "modelled velocity spread and propagated by two-body dynamics — it "
+                 "shows the real mechanics of ring formation, not the catalogued "
+                 "fragment orbits themselves."),
     }
     # -- Fengyun-1C ----------------------------------------------------------
     t0 = datetime(2007, 1, 11, 19, 0, tzinfo=UTC)
-    t1 = datetime(2007, 1, 11, 22, 30, tzinfo=UTC)
+    t1 = datetime(2007, 1, 12, 8, 0, tzinfo=UTC)   # coda: ~9.5 h of debris-cloud evolution
+    cut_fy = datetime(2007, 1, 11, 22, 26, 0, tzinfo=UTC)
     ev["fengyun"] = {
         "kind": "asat",
         "window": [iso(t0), iso(t1)],
         "keyTime": "2007-01-11T22:26:00Z",
         "keyLabel": "Kinetic-kill intercept at ~863 km — no advance notification",
-        "slowFinalMin": 30, "durationSec": 35,
-        "objects": [obj(25730, "Fengyun-1C (CN, defunct)", "#ffb347", t0, t1, per_day=4)],
+        "slowFinalMin": 30, "durationSec": 50, "codaFrac": 0.25,
+        "objects": [obj(25730, "Fengyun-1C (CN, defunct)", "#ffb347", t0, t1, cutoff=cut_fy, per_day=4, fragments=3037)],
         "milestones": [{"t": "2007-01-11T22:26:00Z", "step": 1}],
         "preSteps": [0],
         "note": (f"At the documented intercept time the element sets place Fengyun-1C "
                  f"at {la:.1f}°N {lo:.1f}°E, approaching Xichang's latitude band — the "
                  "ascending pass the SC-19 interceptor met head-on. The interceptor "
-                 "itself was never a catalogued object; only the target is replayed."),
+                 "itself was never a catalogued object; only the target is replayed. "
+                 "The debris cloud is a physically derived visualisation — one particle "
+                 "per catalogued fragment (3,037), released from the true intercept "
+                 "state vector with a modelled velocity spread and propagated by "
+                 "two-body dynamics — not the catalogued fragment orbits themselves."),
     }
     # -- Cosmos 1408 ----------------------------------------------------------
     t0 = datetime(2021, 11, 15, 0, 0, tzinfo=UTC)
-    t1 = datetime(2021, 11, 15, 2, 52, tzinfo=UTC)
+    t1 = datetime(2021, 11, 15, 13, 0, tzinfo=UTC)  # coda: ~10 h of debris-cloud evolution
+    cut_ck = datetime(2021, 11, 15, 2, 47, 0, tzinfo=UTC)
     ev["cosmos1408"] = {
         "kind": "asat",
         "window": [iso(t0), iso(t1)],
         "keyTime": "2021-11-15T02:47:00Z",
         "keyLabel": "Nudol intercept at ~470 km — ISS crew sheltered",
-        "slowFinalMin": 25, "durationSec": 35,
-        "objects": [obj(13552, "Cosmos 1408 (RU, defunct)", "#ff6b6b", t0, t1, per_day=4)],
+        "slowFinalMin": 25, "durationSec": 50, "codaFrac": 0.25,
+        "objects": [obj(13552, "Cosmos 1408 (RU, defunct)", "#ff6b6b", t0, t1, cutoff=cut_ck, per_day=4, fragments=1604)],
         "milestones": [{"t": "2021-11-15T02:47:00Z", "step": 1}],
         "preSteps": [0],
         "note": (f"At the documented intercept time the element sets place Cosmos 1408 "
                  f"at {la2:.1f}°N {lo2:.1f}°E over northern Russia, downrange of the "
                  "Plesetsk launch site — consistent with the published intercept "
-                 "geometry. The interceptor was never a catalogued object."),
+                 "geometry. The interceptor was never a catalogued object. The debris "
+                 "cloud is a physically derived visualisation — one particle per "
+                 "catalogued fragment (1,604), released from the true intercept state "
+                 "vector with a modelled velocity spread and propagated by two-body "
+                 "dynamics — not the catalogued fragment orbits themselves."),
     }
     # -- Luch / Olymp ---------------------------------------------------------
     t0 = datetime(2015, 7, 1, 0, 0, tzinfo=UTC)

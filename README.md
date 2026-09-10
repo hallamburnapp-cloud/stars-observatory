@@ -48,6 +48,15 @@ python -m http.server -d site 8000  # then open http://localhost:8000
 - **[GCAT](https://planet4589.org/space/gcat/)** — J. McDowell, General Catalog of Artificial Space Objects, used under [CC-BY 4.0](https://creativecommons.org/licenses/by/4.0/).
 - **[UNOOSA National Space Law database](https://www.unoosa.org/oosa/en/ourwork/spacelaw/nationalspacelaw/index.html)** — national space legislation status.
 - **[NASA Blue Marble](https://visibleearth.nasa.gov/collection/1484/blue-marble)** — Earth surface texture, courtesy NASA Earth Observatory.
+- **[NASA Black Marble / Earth at Night](https://earthobservatory.nasa.gov/features/NightLights)** — night-lights texture, courtesy NASA Earth Observatory.
+- **[Space-Track GP history mirror](https://huggingface.co/datasets/oxzoid/space-track-tle-history)** — archival general-perturbations element sets (US Space Surveillance Network via Space-Track.org) used to reconstruct the historical event replays.
+
+### Third-party libraries (vendored)
+
+- **[three.js](https://threejs.org/)** (incl. OrbitControls) — © 2010–present three.js authors, [MIT](https://github.com/mrdoob/three.js/blob/dev/LICENSE).
+- **[satellite.js](https://github.com/shashwatak/satellite-js)** — SGP4/SDP4 propagation, [MIT](https://github.com/shashwatak/satellite-js/blob/develop/LICENSE).
+
+All other code, design, text, and the debris-cloud and replay engines are original work by the author (MIT). No trademarked assets or restricted imagery are used.
 
 Please retain these attributions in any fork or derivative.
 
@@ -57,7 +66,7 @@ Built and maintained by **Hallam Burnapp**, PhD researcher in international spac
 
 ## Citation
 
-If you use the instrument or the lag ledger dataset in academic work, please cite the repository (a Zenodo DOI is planned) and the underlying sources above.
+If you use the instrument or the lag ledger dataset in academic work, please cite it via the archived release DOI [10.5281/zenodo.22662849](https://doi.org/10.5281/zenodo.22662849) (see `CITATION.cff`) together with the underlying sources above.
 
 ## License
 

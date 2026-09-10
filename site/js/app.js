@@ -13,7 +13,7 @@ const SCALE = 1 / 1000;        // scene units: 1 unit = 1000 km
 const RE_SCENE = EARTH_R * SCALE;
 // Support / donation link — set to a Ko-fi or GitHub Sponsors URL to enable
 // the support UI (footer link + provenance-panel box). null = hidden.
-const SUPPORT_URL = null;
+const SUPPORT_URL = 'https://ko-fi.com/hallamburnapp';
 
 // ---- palettes ----
 const COL_TYPE = {
@@ -170,7 +170,7 @@ function setLoad(msg, pct, sub) {
 let worker;
 function startWorker(tle1, tle2) {
   return new Promise((resolve) => {
-    worker = new Worker('./js/worker.js?v=1.3.0');
+    worker = new Worker('./js/worker.js?v=1.4.0');
     worker.onmessage = (e) => {
       const m = e.data;
       if (m.type === 'ready') {
@@ -1435,13 +1435,13 @@ function loadSatLib() {
   if (self.satellite) return Promise.resolve();
   if (!_satLibP) _satLibP = new Promise((res, rej) => {
     const s = document.createElement('script');
-    s.src = './js/satellite.min.js?v=1.3.0'; s.onload = res; s.onerror = rej;
+    s.src = './js/satellite.min.js?v=1.4.0'; s.onload = res; s.onerror = rej;
     document.head.appendChild(s);
   });
   return _satLibP;
 }
 async function loadHistData() {
-  if (!histData) histData = await (await fetch('./data/histevents.json?v=1.3.0')).json();
+  if (!histData) histData = await (await fetch('./data/histevents.json?v=1.4.0')).json();
   return histData;
 }
 
@@ -1490,6 +1490,8 @@ function histPropagate(H, tMs) {
       const pv = S.propagate(histPick(o.recs, jd), d);
       if (pv && pv.position) {
         o.pos.set(pv.position.x * SCALE, pv.position.z * SCALE, -pv.position.y * SCALE);
+        if (pv.velocity) o.eciV = pv.velocity; // km/s ECI — needed for breakup state
+        o.eciR = pv.position;                  // km ECI
         o.grp.position.copy(o.pos);
         o.grp.visible = true;
       }
@@ -1501,9 +1503,105 @@ function histTimeOf(H, p) {
   const slow = (H.ev.slowFinalMin || 0) * 60000;
   const a = H.keyT - slow;
   if (!slow || a <= H.t0) return H.t0 + p * (H.t1 - H.t0);
-  if (p < 0.55) return H.t0 + (p / 0.55) * (a - H.t0);
-  if (p < 0.90) return a + ((p - 0.55) / 0.35) * (H.keyT - a);
-  return H.keyT + ((p - 0.90) / 0.10) * (H.t1 - H.keyT);
+  const cf = H.ev.codaFrac || 0.10;          // share of runtime after the key moment
+  const pPre = 1 - 0.35 - cf;                // fast approach · slow-motion · coda
+  if (p < pPre) return H.t0 + (p / pPre) * (a - H.t0);
+  if (p < pPre + 0.35) return a + ((p - pPre) / 0.35) * (H.keyT - a);
+  return H.keyT + ((p - pPre - 0.35) / cf) * (H.t1 - H.keyT);
+}
+
+// ---- Debris cloud: one particle per catalogued fragment ----------------
+// Fragments are released from the object's true breakup state vector (SGP4
+// from archival element sets), given an isotropic modelled velocity spread
+// (log-normal, tens of m/s — NASA standard-breakup-model magnitudes), and
+// propagated individually by two-body Kepler dynamics. This shows the real
+// mechanics — spreading along-track into a ring on the parent's orbital
+// plane — without claiming to be the catalogued fragment orbits.
+const _MU = 398600.4418; // km^3/s^2
+function _makeCloud(o, tMs, hex) {
+  const S = self.satellite;
+  const d = new Date(tMs);
+  let pv;
+  try { pv = S.propagate(histPick(o.recs, tMs / 86400000 + 2440587.5), d); } catch (e) { return null; }
+  if (!pv || !pv.position || !pv.velocity) return null;
+  const R = pv.position, V = pv.velocity;
+  const N = Math.max(0, o.fragments | 0);
+  if (!N) return null;
+  const hot = histMode && histMode.ev.kind === 'asat';
+  const med = hot ? 0.065 : 0.05, cap = hot ? 0.5 : 0.35; // km/s
+  const a_ = new Float32Array(N), e_ = new Float32Array(N), n_ = new Float32Array(N),
+        M_ = new Float32Array(N), P_ = new Float32Array(N * 3), Q_ = new Float32Array(N * 3);
+  let m = 0;
+  for (let i = 0; i < N; i++) {
+    for (let tries = 0; tries < 4; tries++) {
+      // isotropic direction, log-normal magnitude
+      const u = Math.random() * 2 - 1, ph = Math.random() * Math.PI * 2;
+      const s = Math.sqrt(1 - u * u);
+      const mag = Math.min(cap, med * Math.exp(0.85 * _gauss()));
+      const vx = V.x + mag * s * Math.cos(ph), vy = V.y + mag * s * Math.sin(ph), vz = V.z + mag * u;
+      const r = Math.hypot(R.x, R.y, R.z), v2 = vx * vx + vy * vy + vz * vz;
+      const aa = 1 / (2 / r - v2 / _MU); // vis-viva
+      if (aa <= 0) continue;             // hyperbolic — resample
+      // eccentricity vector
+      const rv = R.x * vx + R.y * vy + R.z * vz;
+      const c1 = v2 / _MU - 1 / r, c2 = rv / _MU;
+      const ex = c1 * R.x - c2 * vx, ey = c1 * R.y - c2 * vy, ez = c1 * R.z - c2 * vz;
+      const ee = Math.hypot(ex, ey, ez);
+      if (ee > 0.92 || aa * (1 - ee) < EARTH_R + 60) continue; // sub-surface perigee — resample
+      // perifocal basis: P = periapsis dir, Q = W x P
+      const hx = R.y * vz - R.z * vy, hy = R.z * vx - R.x * vz, hz = R.x * vy - R.y * vx;
+      const hn = Math.hypot(hx, hy, hz);
+      let px, py, pz;
+      if (ee > 1e-6) { px = ex / ee; py = ey / ee; pz = ez / ee; }
+      else { px = R.x / r; py = R.y / r; pz = R.z / r; }
+      const wx = hx / hn, wy = hy / hn, wz = hz / hn;
+      const qx = wy * pz - wz * py, qy = wz * px - wx * pz, qz = wx * py - wy * px;
+      const esE = rv / Math.sqrt(_MU * aa), ecE = 1 - r / aa;
+      const E0 = Math.atan2(esE, ecE);
+      a_[m] = aa; e_[m] = ee; n_[m] = Math.sqrt(_MU / (aa * aa * aa));
+      M_[m] = E0 - esE;
+      P_[m * 3] = px; P_[m * 3 + 1] = py; P_[m * 3 + 2] = pz;
+      Q_[m * 3] = qx; Q_[m * 3 + 1] = qy; Q_[m * 3 + 2] = qz;
+      m++; break;
+    }
+  }
+  const geo = new THREE.BufferGeometry();
+  const pos = new Float32Array(m * 3);
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  const mat = new THREE.PointsMaterial({ color: new THREE.Color(hex), size: 2.2, sizeAttenuation: false,
+    transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false });
+  const pts = new THREE.Points(geo, mat);
+  pts.frustumCulled = false;
+  scene.add(pts);
+  return { pts, pos, n: m, t0: tMs, born: performance.now(), a: a_, e: e_, mm: n_, M0: M_, P: P_, Q: Q_ };
+}
+let _g2 = null;
+function _gauss() { // Box–Muller with spare
+  if (_g2 !== null) { const g = _g2; _g2 = null; return g; }
+  let u = 0, v = 0;
+  while (u === 0) u = Math.random();
+  v = Math.random();
+  const r = Math.sqrt(-2 * Math.log(u)), th = 2 * Math.PI * v;
+  _g2 = r * Math.sin(th);
+  return r * Math.cos(th);
+}
+function _cloudUpdate(C, tMs) {
+  const dt = (tMs - C.t0) / 1000; // seconds since breakup
+  const pos = C.pos;
+  for (let i = 0; i < C.n; i++) {
+    const e = C.e[i], a = C.a[i];
+    let E = C.M0[i] + C.mm[i] * dt;
+    const M = E;
+    for (let k = 0; k < 5; k++) E -= (E - e * Math.sin(E) - M) / (1 - e * Math.cos(E));
+    const x = a * (Math.cos(E) - e), y = a * Math.sqrt(1 - e * e) * Math.sin(E);
+    const X = C.P[i * 3] * x + C.Q[i * 3] * y,
+          Y = C.P[i * 3 + 1] * x + C.Q[i * 3 + 1] * y,
+          Z = C.P[i * 3 + 2] * x + C.Q[i * 3 + 2] * y;
+    pos[i * 3] = X * SCALE; pos[i * 3 + 1] = Z * SCALE; pos[i * 3 + 2] = -Y * SCALE;
+  }
+  C.pts.geometry.attributes.position.needsUpdate = true;
+  // fade in over ~1.8 s of real time
+  C.pts.material.opacity = Math.min(0.85, (performance.now() - C.born) / 1800 * 0.85);
 }
 
 function histStart(evId) {
@@ -1576,10 +1674,13 @@ function histFire() {
   spr.position.copy(at); scene.add(spr);
   H.flash = { spr, t0: performance.now() };
   if (kind === 'collision' || kind === 'asat') {
+    H.debris = [];
     for (const o of H.objs) {
       o.dead = true;
       o.marker.material.opacity = 0.3;
       o.trailLine.material.opacity = 0.22;
+      const cloud = _makeCloud(o, H.keyT, o.color);
+      if (cloud) H.debris.push(cloud);
     }
     if (H.sepLine) H.sepLine.visible = false;
   }
@@ -1606,7 +1707,10 @@ function histHud(t) {
   $('#hhClock').textContent = `${d.getUTCFullYear()}-${p(d.getUTCMonth()+1)}-${p(d.getUTCDate())} ${p(d.getUTCHours())}:${p(d.getUTCMinutes())}:${p(d.getUTCSeconds())} UTC`;
   let line;
   if (t < H.keyT) line = `T–${_fmtDur((H.keyT - t) / 1000)} to ${_KIND_WORD[H.ev.kind] || 'event'}`;
-  else line = H.ev.keyLabel;
+  else if (H.debris && H.debris.length) {
+    const tot = H.debris.reduce((s, C) => s + C.n, 0);
+    line = `Debris cloud forming — ${tot.toLocaleString('en-GB')} catalogued fragments, one particle each`;
+  } else line = H.ev.keyLabel;
   if (H.sepKm != null && !H.objs.some(o => o.dead) && (t < H.keyT || H.ev.kind === 'rpo')) line += ` · separation ${_fmtKm(H.sepKm)}`;
   $('#hhCount').textContent = line;
 }
@@ -1646,6 +1750,7 @@ function histTick(dt, now) {
       H.sepLine.visible = true;
     } else H.sepLine.visible = false;
   }
+  if (H.debris) for (const C of H.debris) _cloudUpdate(C, t);
   if (H.flash) {
     const k = (now - H.flash.t0) / 1600;
     if (k >= 1) { scene.remove(H.flash.spr); H.flash.spr.material.dispose(); H.flash = null; }
@@ -1680,6 +1785,7 @@ function histExit() {
   }
   if (H.sepLine) { scene.remove(H.sepLine); H.sepLine.geometry.dispose(); H.sepLine.material.dispose(); }
   if (H.flash) { scene.remove(H.flash.spr); H.flash.spr.material.dispose(); }
+  if (H.debris) for (const C of H.debris) { scene.remove(C.pts); C.pts.geometry.dispose(); C.pts.material.dispose(); }
   if (points) points.visible = true;
   state.speed = H.saved.speed; state.playing = true;
   state.simTime = Date.now();
@@ -1903,7 +2009,7 @@ function wireUI() {
 
 // Citation formats — filled at runtime so the accessed date is always current.
 function fillCitations() {
-  const APP_VERSION = '1.3.0';
+  const APP_VERSION = '1.4.0';
   const acc = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
   const os = $('#citeOscola'), bib = $('#citeBibtex');
   if (os) os.textContent = `Hallam Burnapp, 'STARS Observatory' (v${APP_VERSION}, University of Aberdeen 2026) <https://starsobservatory.org> accessed ${acc}. DOI: 10.5281/zenodo.22662849.`;
@@ -2105,6 +2211,12 @@ boot();
 window.__OBS = state; // debug handle for QA
 // QA-only helpers: expose projection + select so automated tests can verify picking
 window.__QA = {
+  histJump(p) { if (histMode) { histMode.p = Math.max(0, Math.min(1, p)); } },
+  histDebris() {
+    if (!histMode || !histMode.debris) return null;
+    return histMode.debris.map(C => ({ n: C.n, opacity: C.pts.material.opacity,
+      sample: [C.pos[0], C.pos[1], C.pos[2]], inScene: !!C.pts.parent }));
+  },
   hist() {
     if (!histMode) return null;
     return { cam: camera.position.toArray(), userCam: histMode.userCam, camDist: histMode.camDist, camDir: histMode.camDir && histMode.camDir.toArray(),
