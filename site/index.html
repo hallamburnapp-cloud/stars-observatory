@@ -20,7 +20,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="./css/style.css?v=1.1.0" />
+<link rel="stylesheet" href="./css/style.css?v=1.2.0" />
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='7' fill='none' stroke='%234fd1e0' stroke-width='2'/%3E%3Cellipse cx='16' cy='16' rx='14' ry='6' fill='none' stroke='%234fd1e0' stroke-width='1.5' transform='rotate(30 16 16)'/%3E%3Ccircle cx='27' cy='11' r='2' fill='%23ffb454'/%3E%3C/svg%3E" />
 <script type="importmap">
 {
@@ -136,6 +136,7 @@
     </aside>
 
     <!-- Detail card -->
+    <div id="scenNow" style="display:none"></div>
     <div id="detail">
       <div class="dh">
         <div>
@@ -181,7 +182,7 @@
     </div>
 
     <footer id="foot">
-      Data snapshot <span data-stat="date">2026-07-10</span> · CelesTrak GP / SATCAT · McDowell GCAT · <span class="lnk" id="footProv">provenance &amp; limitations →</span> · built by <a href="https://github.com/hallamburnapp-cloud/stars-observatory" target="_blank" rel="noopener" style="color:inherit">Hallam Burnapp</a> (University of Aberdeen) · <a href="https://doi.org/10.5281/zenodo.22662849" target="_blank" rel="noopener" style="color:inherit">DOI 10.5281/zenodo.22662849</a>
+      Data snapshot <span data-stat="date">2026-07-10</span> · CelesTrak GP / SATCAT · McDowell GCAT · <span class="lnk" id="footProv">provenance &amp; limitations →</span> · <span class="lnk" id="footCite">cite this instrument →</span> · built by <a href="https://github.com/hallamburnapp-cloud/stars-observatory" target="_blank" rel="noopener" style="color:inherit">Hallam Burnapp</a> (University of Aberdeen) · <a href="https://doi.org/10.5281/zenodo.22662849" target="_blank" rel="noopener" style="color:inherit">DOI 10.5281/zenodo.22662849</a>
     </footer>
 
     <!-- Analytical drawer -->
@@ -291,7 +292,30 @@
         <!-- Panel: Provenance -->
         <section class="panel" id="panel-prov">
           <div class="dt" style="font-family:var(--mono);font-size:10px;color:var(--txt-faint);letter-spacing:0.14em;margin-bottom:14px">SNAPSHOT <span data-stat="date">2026-07-10</span> · <span data-stat="totalOnorbit">34,157</span> CATALOGED ON-ORBIT OBJECTS · <span data-stat="propagated">18,594</span> PROPAGATED WITH VALID ELEMENT SETS</div>
-          <h3 class="section" style="margin-top:0">Data sources</h3>
+          <h3 class="section" style="margin-top:0">Scope — managing expectations</h3>
+          <div class="scope-grid">
+            <div class="scope-col">
+              <div class="sc-h sc-yes">What this instrument demonstrates</div>
+              <ul class="limits">
+                <li>The scale and distribution of the tracked orbital population each State is answerable for under Article VI — computed live from the public catalog, never hand-drawn.</li>
+                <li>The UN registration gap: the measurable share of on-orbit payloads with no matching entry in the UN Register, cross-referenced per object against GCAT.</li>
+                <li>Registration lag as a time series: a daily ledger of how long objects remain catalogued but unregistered.</li>
+                <li>Documented Article IX incident chronologies, each step traceable to the primary and secondary sources cited below.</li>
+                <li>Reproducibility: every figure shown is recomputed daily by an open pipeline from cited public data.</li>
+              </ul>
+            </div>
+            <div class="scope-col">
+              <div class="sc-h sc-no">What it does not do</div>
+              <ul class="limits">
+                <li>No operational awareness: it does not predict conjunctions, issue warnings, or substitute for SSA services.</li>
+                <li>No real-time truth: positions are SGP4 propagations of daily element sets, carrying km-scale error.</li>
+                <li>No historical reconstruction: case-study 3D views use <em>current</em> element sets as illustrative geometry, not the original event ephemerides.</li>
+                <li>No complete population: classified, untracked, and sub-10 cm objects (est. 1.2 million+ fragments ≥ 1 cm) are absent.</li>
+                <li>No legal determinations: registration and attribution fields are evidence for analysis, not findings of breach, and nothing here is legal advice.</li>
+              </ul>
+            </div>
+          </div>
+          <h3 class="section">Data sources</h3>
           <div class="prov-source">
             <div class="ps-name"><a href="https://celestrak.org/NORAD/elements/" target="_blank" rel="noopener">CelesTrak GP element sets</a></div>
             <div class="ps-desc">General-perturbations two-line element sets, derived from US Space Force 18th Space Defense Squadron (18 SDS) tracking. Used to propagate object positions via SGP4.</div>
@@ -315,6 +339,18 @@
           <div class="prov-source" id="provLedger"></div>
           <h3 class="section">Case-study sources</h3>
           <div class="prov-cases" id="provCases"></div>
+          <h3 class="section" id="citeSec">Cite this instrument</h3>
+          <div class="cite-block">
+            <div class="cite-fmt">
+              <div class="cf-h">OSCOLA <button class="copybtn" data-copy="citeOscola">Copy</button></div>
+              <pre id="citeOscola"></pre>
+            </div>
+            <div class="cite-fmt">
+              <div class="cf-h">BibTeX <button class="copybtn" data-copy="citeBibtex">Copy</button></div>
+              <pre id="citeBibtex"></pre>
+            </div>
+            <div class="ps-desc">Each release is archived with a versioned DOI: <a href="https://doi.org/10.5281/zenodo.22662849" target="_blank" rel="noopener">10.5281/zenodo.22662849</a> · <a href="https://github.com/hallamburnapp-cloud/stars-observatory" target="_blank" rel="noopener">source &amp; data pipeline</a></div>
+          </div>
           <h3 class="section">Limitations</h3>
           <ul class="limits">
             <li>TLE / SGP4 positions carry km-scale error and degrade with propagation age; this is not an operational conjunction-assessment (SSA) system.</li>
@@ -333,6 +369,6 @@
   </main>
 </div>
 
-<script type="module" src="./js/app.js?v=1.1.0"></script>
+<script type="module" src="./js/app.js?v=1.2.0"></script>
 </body>
 </html>

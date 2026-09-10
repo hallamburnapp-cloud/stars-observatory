@@ -518,3 +518,72 @@ footer#foot .lnk { color: var(--txt-dim); pointer-events: auto; cursor: pointer;
   .search.mopen #searchResults { top: calc(100% + 4px); }
   #searchResults .sr { padding: 12px; }
 }
+
+/* ============ Pick chooser (dense-cluster disambiguation) ============ */
+#pickChooser {
+  position: fixed; z-index: 70; min-width: 240px; max-width: 320px;
+  background: rgba(12,17,27,0.98); border: 1px solid var(--accent-dim, rgba(79,209,224,0.45));
+  border-radius: 8px; overflow: hidden;
+  box-shadow: 0 12px 32px rgba(0,0,0,0.6);
+}
+#pickChooser .pc-h {
+  font-family: var(--mono); font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--txt-faint); padding: 8px 12px 6px; border-bottom: 1px solid rgba(120,160,210,0.12);
+}
+#pickChooser .sr {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 1px;
+  width: 100%; text-align: left; background: none; border: none; cursor: pointer;
+  padding: 9px 12px; border-bottom: 1px solid rgba(120,160,210,0.08);
+}
+#pickChooser .sr:last-child { border-bottom: none; }
+#pickChooser .sr:hover, #pickChooser .sr:focus { background: rgba(79,209,224,0.1); }
+#pickChooser .sr-name { font-size: 12px; color: var(--txt); font-weight: 500; }
+#pickChooser .sr-meta { font-family: var(--mono); font-size: 10px; color: var(--txt-dim); }
+
+/* ============ Scenario event chip ============ */
+#scenNow {
+  position: fixed; left: 50%; transform: translateX(-50%); top: 72px; z-index: 22;
+  display: none; align-items: baseline; gap: 10px; max-width: min(92vw, 640px);
+  background: rgba(12,17,27,0.92); border: 1px solid rgba(79,209,224,0.4);
+  border-radius: 8px; padding: 8px 14px; backdrop-filter: blur(6px);
+  animation: chipIn 0.25s ease;
+}
+@keyframes chipIn { from { opacity: 0; transform: translate(-50%, -6px); } to { opacity: 1; transform: translate(-50%, 0); } }
+#scenNow .sn-k { font-family: var(--mono); font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--txt-faint); white-space: nowrap; }
+#scenNow .sn-d { font-size: 13px; font-weight: 600; color: var(--txt); white-space: nowrap; }
+#scenNow .sn-p { font-family: var(--mono); font-size: 10px; color: #ffb454; }
+/* When the drawer is open on desktop, centre the chip over the visible canvas. */
+@media (min-width: 821px) {
+  body:has(#drawer.open) #scenNow { left: calc(50% - 151px); max-width: 540px; }
+}
+
+/* ============ Scope grid (provenance panel) ============ */
+.scope-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-bottom: 6px; }
+@media (max-width: 1080px) { .scope-grid { grid-template-columns: 1fr; } }
+.sc-h {
+  font-family: var(--mono); font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase;
+  padding-bottom: 6px; margin-bottom: 4px; border-bottom: 1px solid rgba(120,160,210,0.14);
+}
+.sc-yes { color: #55d18b; }
+.sc-no { color: #ff6b6b; }
+
+/* ============ Citation block ============ */
+.cite-block { display: flex; flex-direction: column; gap: 12px; }
+.cite-fmt .cf-h {
+  display: flex; align-items: center; justify-content: space-between;
+  font-family: var(--mono); font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--txt-faint); margin-bottom: 5px;
+}
+.cite-fmt pre {
+  font-family: var(--mono); font-size: 11px; line-height: 1.55; color: var(--txt-dim);
+  background: rgba(120,160,210,0.06); border: 1px solid rgba(120,160,210,0.14);
+  border-radius: 6px; padding: 10px 12px; margin: 0;
+  white-space: pre-wrap; word-break: break-word; user-select: all;
+}
+.copybtn {
+  font-family: var(--mono); font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--accent, #4fd1e0); background: rgba(79,209,224,0.08);
+  border: 1px solid rgba(79,209,224,0.35); border-radius: 5px;
+  padding: 3px 9px; cursor: pointer;
+}
+.copybtn:hover { background: rgba(79,209,224,0.16); }

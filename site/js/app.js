@@ -167,7 +167,7 @@ function setLoad(msg, pct, sub) {
 let worker;
 function startWorker(tle1, tle2) {
   return new Promise((resolve) => {
-    worker = new Worker('./js/worker.js?v=1.1.0');
+    worker = new Worker('./js/worker.js?v=1.2.0');
     worker.onmessage = (e) => {
       const m = e.data;
       if (m.type === 'ready') {
@@ -496,7 +496,7 @@ function updateColors() {
     ca[i*3] = _c.r * f; ca[i*3+1] = _c.g * f; ca[i*3+2] = _c.b * f;
     // payloads slightly larger, debris small
     let base = state.objType[i] === 'DEB' ? 0.7 : (state.objType[i] === 'R/B' ? 1.2 : 0.95);
-    if (i === selectedIndex) base = 3.4;
+    if (i === selectedIndex) base = 4.4;
     sa[i] = vis ? base : 0.55;
   }
   colorAttr.needsUpdate = true;
@@ -531,6 +531,11 @@ function applyPositions() {
     selMarker.position.set(pa[selectedIndex*3], pa[selectedIndex*3+1], pa[selectedIndex*3+2]);
     selMarker.visible = true;
     selMarker.lookAt(camera.position);
+    // Constant screen size (~20 px) with a slow pulse — unmissable at any zoom.
+    const selDist = camera.position.distanceTo(selMarker.position);
+    const pulse = 1 + 0.16 * Math.sin(performance.now() * 0.004);
+    selMarker.scale.setScalar(selDist * 0.052 * pulse);
+    selMarker.material.opacity = 0.75 + 0.25 * Math.sin(performance.now() * 0.004);
     updateDetailLive(selectedIndex);
   } else {
     selMarker.visible = false;
@@ -617,9 +622,27 @@ function onResize() {
 // ============================================================
 // 7. Picking / detail card
 // ============================================================
+let lastHover = 0;
 function onPointerMove(e) {
   pointer.x = (e.clientX / window.innerWidth) * 2 - 1;
   pointer.y = -(e.clientY / window.innerHeight) * 2 + 1;
+  // Desktop hover affordance: pointer cursor over any selectable object.
+  if (IS_TOUCH || !points || !state.lastAlive || downXY) return;
+  const now = performance.now();
+  if (now - lastHover < 120) return;
+  lastHover = now;
+  const sx = e.clientX, sy = e.clientY;
+  const pa = posAttr.array;
+  let hit = false;
+  for (let i = 0; i < state.N; i++) {
+    if (!state.lastAlive[i] || !passesFilter(i)) continue;
+    _pv.set(pa[i*3], pa[i*3+1], pa[i*3+2]).project(camera);
+    if (_pv.z > 1) continue;
+    const px = (_pv.x * 0.5 + 0.5) * window.innerWidth;
+    const py = (-_pv.y * 0.5 + 0.5) * window.innerHeight;
+    if (Math.hypot(px - sx, py - sy) <= 10) { hit = true; break; }
+  }
+  renderer.domElement.style.cursor = hit ? 'pointer' : '';
 }
 let downXY = null;
 function onPointerDown(e) { downXY = { x: e.clientX, y: e.clientY, t: performance.now() }; }
@@ -650,7 +673,8 @@ function pickAt() {
   const pa = posAttr.array;
   const N = state.N;
   const RADIUS = IS_TOUCH ? 26 : 14; // px — wider hit area for fingers
-  let best = -1, bestScore = Infinity;
+  hidePickChooser();
+  const cands = [];
   for (let i = 0; i < N; i++) {
     if (!state.lastAlive[i] || !passesFilter(i)) continue;
     _pv.set(pa[i*3], pa[i*3+1], pa[i*3+2]).project(camera);
@@ -660,10 +684,41 @@ function pickAt() {
     const d = Math.hypot(px - sx, py - sy);
     if (d > RADIUS) continue;
     // prefer closest-to-cursor, strongly favouring nearer-camera (front) objects
-    const score = d + _pv.z * 30;
-    if (score < bestScore) { bestScore = score; best = i; }
+    cands.push({ i, d, s: d + _pv.z * 30 });
   }
-  if (best >= 0) selectObject(best);
+  if (!cands.length) return;
+  cands.sort((a, b) => a.s - b.s);
+  // Unambiguous click: single hit, or the nearest is clearly separated.
+  if (cands.length === 1 || cands[1].d - cands[0].d >= 6) { selectObject(cands[0].i); return; }
+  showPickChooser(cands.slice(0, 7), sx, sy);
+}
+
+// Disambiguation chooser — in dense clusters every object stays reachable.
+let pickEl = null;
+function hidePickChooser() { if (pickEl) { pickEl.remove(); pickEl = null; } }
+function showPickChooser(cands, sx, sy) {
+  pickEl = document.createElement('div');
+  pickEl.id = 'pickChooser';
+  pickEl.innerHTML = `<div class="pc-h">${cands.length} objects here — select one</div>` + cands.map(c => `
+    <button class="sr" data-i="${c.i}">
+      <span class="sr-name">${state.name[c.i]}</span>
+      <span class="sr-meta">${state.norad[c.i]} · ${fullType(state.objType[c.i])} · ${state.ownerCode[c.i]}</span>
+    </button>`).join('');
+  document.body.appendChild(pickEl);
+  const W = pickEl.offsetWidth, H = pickEl.offsetHeight;
+  pickEl.style.left = Math.min(Math.max(8, sx + 12), window.innerWidth - W - 8) + 'px';
+  pickEl.style.top = Math.min(Math.max(8, sy + 12), window.innerHeight - H - 8) + 'px';
+  pickEl.querySelectorAll('.sr').forEach(b => b.addEventListener('click', (e) => {
+    e.stopPropagation();
+    selectObject(parseInt(b.dataset.i, 10));
+    hidePickChooser();
+  }));
+  setTimeout(() => {
+    document.addEventListener('pointerdown', function dismiss(e) {
+      if (pickEl && !pickEl.contains(e.target)) hidePickChooser();
+      if (!pickEl) document.removeEventListener('pointerdown', dismiss);
+    });
+  }, 0);
 }
 
 function selectObject(i, fly) {
@@ -1084,6 +1139,7 @@ function selectScenario(idx) {
   $('#scenIntro').innerHTML = s.intro;
   $('#scenCaption').innerHTML = s.caption;
   buildScenario();
+  updateScenNow();
   updateScenVizButton();
 }
 
@@ -1118,6 +1174,23 @@ function scenStep(i) {
   $('#scenProg').style.width = (Math.max(0, i + 1) / n * 100) + '%';
   const cur = $('#scenTimeline .tl-step.cur');
   if (cur && scenTimer) cur.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  updateScenNow();
+}
+// Event chip over the 3D scene — narrates the active step while isolation is on.
+function updateScenNow() {
+  const chip = $('#scenNow');
+  if (!chip) return;
+  const s = (scenIndex >= 0) ? curScen().steps[scenIndex] : null;
+  if (scenVizOn && s) {
+    chip.innerHTML = `<span class="sn-k">${curScen().title}</span><span class="sn-d">${s.date}</span>${s.prob ? `<span class="sn-p">${s.prob}</span>` : ''}`;
+    chip.style.display = 'flex';
+  } else if (scenVizOn) {
+    // Isolation on but no step active yet — identify the scene.
+    chip.innerHTML = `<span class="sn-k">${curScen().title}</span><span class="sn-d">${curScen().year}</span>`;
+    chip.style.display = 'flex';
+  } else {
+    chip.style.display = 'none';
+  }
 }
 
 function scenPlay() {
@@ -1136,6 +1209,9 @@ function scenPlay() {
   };
   advance(); // first step immediately — no dead delay
   scenTimer = setInterval(advance, 2200);
+  // Playing means watching: bring up the 3D isolation automatically on
+  // desktop, where the timeline stays readable beside the scene.
+  if (!scenVizOn && curScen().viz && !window.matchMedia('(max-width: 820px)').matches) toggleScenViz();
 }
 
 function updateScenVizButton() {
@@ -1169,6 +1245,7 @@ function toggleScenViz() {
     clearScenarioOrbits();
     note.style.display = 'none';
   }
+  updateScenNow();
   updateScenVizButton();
 }
 
@@ -1219,7 +1296,7 @@ function buildScenIsolation(viz) {
     const luchHex = '#' + viz.noradColor.toString(16).padStart(6, '0');
     const itsoHex = '#' + viz.ownerColor.toString(16).padStart(6, '0');
     const luchName = luch.size ? 'Luch-5X (Olymp-K 2)' : 'the Luch successor';
-    const note = `<strong>Live catalog · GEO ring.</strong> <span style="color:${luchHex}">${luchName}</span> (NORAD ${viz.norad}) is isolated against the <span style="color:${itsoHex}">${itso.size} Intelsat (ITSO) GEO payloads</span> it and its predecessor shadowed. The original Olymp (NORAD 40258) is no longer on orbit — it was moved to a graveyard orbit and destroyed by a debris strike on 31 January 2026, so it cannot be shown here.`;
+    const note = `<strong>Live catalog · GEO ring.</strong> <span style="color:${luchHex}">${luchName}</span> (NORAD ${viz.norad}) is isolated against the <span style="color:${itsoHex}">${itso.size} Intelsat (ITSO) GEO payloads</span> it and its predecessor shadowed. The original Olymp (NORAD 40258) is no longer intact — it was moved to a graveyard orbit in October 2025 and fragmented there on 30 January 2026, most plausibly struck by untracked debris, so it cannot be shown here.`;
     return { groups, all, cam: [0, 20, 55], orbitPair: null, note };
   }
   return { groups: [], all: [], cam: [9, 7, 20], orbitPair: null, note: '' };
@@ -1485,12 +1562,45 @@ function wireUI() {
 
   // catalogue search (name / NORAD / international designator)
   wireSearch();
+  wireUITail();
+}
+
+// Citation formats — filled at runtime so the accessed date is always current.
+function fillCitations() {
+  const APP_VERSION = '1.2.0';
+  const acc = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+  const os = $('#citeOscola'), bib = $('#citeBibtex');
+  if (os) os.textContent = `Hallam Burnapp, 'STARS Observatory' (v${APP_VERSION}, University of Aberdeen 2026) <https://starsobservatory.org> accessed ${acc}. DOI: 10.5281/zenodo.22662849.`;
+  if (bib) bib.textContent = `@software{burnapp_stars_2026,
+  author  = {Burnapp, Hallam},
+  title   = {STARS Observatory},
+  version = {${APP_VERSION}},
+  year    = {2026},
+  organization = {University of Aberdeen},
+  url     = {https://starsobservatory.org},
+  doi     = {10.5281/zenodo.22662849}
+}`;
+}
+
+function wireUITail() {
 
   // panels / drawer
   $$('.tabbar button').forEach(btn => btn.addEventListener('click', () => openPanel(btn.dataset.panel)));
   $$('#drawerNav button').forEach(btn => btn.addEventListener('click', () => openPanel(btn.dataset.panel)));
   $('#drawerClose').addEventListener('click', closeDrawer);
   $('#footProv').addEventListener('click', () => openPanel('prov'));
+  $('#footCite').addEventListener('click', () => {
+    openPanel('prov');
+    setTimeout(() => $('#citeSec')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 350);
+  });
+  fillCitations();
+  $$('.copybtn').forEach(b => b.addEventListener('click', () => {
+    const src = $('#' + b.dataset.copy);
+    navigator.clipboard.writeText(src.textContent).then(() => {
+      const t = b.textContent; b.textContent = 'Copied ✓';
+      setTimeout(() => { b.textContent = t; }, 1400);
+    });
+  }));
 
   // scenario
   $('#scenPlay').addEventListener('click', scenPlay);
