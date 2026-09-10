@@ -71,10 +71,10 @@ const $$ = (s) => Array.from(document.querySelectorAll(s));
 async function loadData() {
   setLoad('Loading orbital catalog…', 10);
   const [sats, stats, lag, natlaw] = await Promise.all([
-    fetch('./data/sats.json').then(r => r.json()),
-    fetch('./data/stats.json').then(r => r.json()),
-    fetch('./data/lag.json').then(r => r.json()).catch(() => null),
-    fetch('./data/national_law.json').then(r => r.json()).catch(() => null)
+    fetch('./data/sats.json', { cache: 'no-cache' }).then(r => r.json()),
+    fetch('./data/stats.json', { cache: 'no-cache' }).then(r => r.json()),
+    fetch('./data/lag.json', { cache: 'no-cache' }).then(r => r.json()).catch(() => null),
+    fetch('./data/national_law.json', { cache: 'no-cache' }).then(r => r.json()).catch(() => null)
   ]);
   state.data = sats; state.stats = stats; state.lag = lag; state.natlaw = natlaw;
   const arr = sats.sats;
@@ -167,7 +167,7 @@ function setLoad(msg, pct, sub) {
 let worker;
 function startWorker(tle1, tle2) {
   return new Promise((resolve) => {
-    worker = new Worker('./js/worker.js');
+    worker = new Worker('./js/worker.js?v=1.1.0');
     worker.onmessage = (e) => {
       const m = e.data;
       if (m.type === 'ready') {
@@ -363,7 +363,7 @@ function addStarfield() {
     }
     g.setAttribute('position', new THREE.BufferAttribute(p, 3));
     g.setAttribute('color', new THREE.BufferAttribute(c, 3));
-    const m = new THREE.PointsMaterial({ size: sizePx, sizeAttenuation: false,
+    const m = new THREE.PointsMaterial({ size: sizePx * renderer.getPixelRatio(), sizeAttenuation: false,
       map: disc, transparent: true, opacity, vertexColors: true,
       depthWrite: false, blending: THREE.AdditiveBlending });
     scene.add(new THREE.Points(g, m));
@@ -374,12 +374,13 @@ function addStarfield() {
 
 // Circular sprite texture for additive points
 function makeDiscTexture() {
-  const s = 64;
+  const s = 128;
   const c = document.createElement('canvas'); c.width = c.height = s;
   const ctx = c.getContext('2d');
   const g = ctx.createRadialGradient(s/2, s/2, 0, s/2, s/2, s/2);
   g.addColorStop(0, 'rgba(255,255,255,1)');
-  g.addColorStop(0.35, 'rgba(255,255,255,0.85)');
+  g.addColorStop(0.45, 'rgba(255,255,255,0.98)');
+  g.addColorStop(0.62, 'rgba(255,255,255,0.5)');
   g.addColorStop(1, 'rgba(255,255,255,0)');
   ctx.fillStyle = g; ctx.fillRect(0, 0, s, s);
   const t = new THREE.CanvasTexture(c);
@@ -399,26 +400,31 @@ function buildPointCloud() {
   geom.setAttribute('color', colorAttr);
   geom.setAttribute('size', sizeAttr);
 
-  const disc = makeDiscTexture();
   const mat = new THREE.ShaderMaterial({
-    uniforms: { uTex: { value: disc }, uPix: { value: renderer.getPixelRatio() } },
+    uniforms: { uPix: { value: renderer.getPixelRatio() } },
     vertexShader: `
       attribute float size;
+      uniform float uPix;
       varying vec3 vColor;
       void main(){
         vColor = color;
         vec4 mv = modelViewMatrix * vec4(position, 1.0);
-        gl_PointSize = size * (300.0 / -mv.z);
-        gl_PointSize = clamp(gl_PointSize, 1.0, 18.0);
+        gl_PointSize = size * (300.0 / -mv.z) * uPix;
+        gl_PointSize = clamp(gl_PointSize, 1.0 * uPix, 12.0 * uPix);
         gl_Position = projectionMatrix * mv;
       }`,
     fragmentShader: `
-      uniform sampler2D uTex;
       varying vec3 vColor;
       void main(){
-        vec4 t = texture2D(uTex, gl_PointCoord);
-        if (t.a < 0.05) discard;
-        gl_FragColor = vec4(vColor, t.a);
+        // Analytic disc: crisp antialiased core + subtle additive halo,
+        // sharp at every point size and pixel ratio (no texture blur).
+        vec2 p = gl_PointCoord * 2.0 - 1.0;
+        float r = length(p);
+        float core = 1.0 - smoothstep(0.40, 0.60, r);
+        float halo = (1.0 - smoothstep(0.25, 1.00, r)) * 0.12;
+        float a = clamp(core + halo, 0.0, 1.0);
+        if (a < 0.02) discard;
+        gl_FragColor = vec4(vColor, a);
       }`,
     transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
     vertexColors: true
@@ -563,7 +569,7 @@ function animate() {
   }
 
   // request new propagation ~10Hz (or when speed high, each frame-ish)
-  if (worker && now - lastPropReq > 90) {
+  if (worker && now - lastPropReq > (IS_TOUCH ? 240 : 90)) {
     requestPropagation(state.simTime);
     lastPropReq = now;
   }
@@ -603,7 +609,9 @@ function updateClock() {
 function onResize() {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.setSize(window.innerWidth, window.innerHeight);
+  if (points) points.material.uniforms.uPix.value = renderer.getPixelRatio();
 }
 
 // ============================================================
@@ -641,7 +649,7 @@ function pickAt() {
   const sy = (-pointer.y * 0.5 + 0.5) * window.innerHeight;
   const pa = posAttr.array;
   const N = state.N;
-  const RADIUS = 14; // px
+  const RADIUS = IS_TOUCH ? 26 : 14; // px — wider hit area for fingers
   let best = -1, bestScore = Infinity;
   for (let i = 0; i < N; i++) {
     if (!state.lastAlive[i] || !passesFilter(i)) continue;
@@ -949,7 +957,7 @@ const SCENARIOS = [
       { date: '17–18 Jan 2007', crit: false, txt: 'Aviation Week first reports the test; the US National Security Council publicly confirms it on 18 January.', prob: null },
       { date: '19–22 Jan 2007', crit: true, txt: 'The US, Japan, Australia, Canada and others lodge formal diplomatic protests; China declines to confirm or deny for 12 days.', prob: 'Bilateral protests — not Art IX' },
       { date: '23 Jan 2007', crit: false, txt: 'China confirms the test, stating it "was not directed at any country" and reiterating opposition to the weaponization of space.', prob: null },
-      { date: 'Ongoing', crit: true, txt: 'By 2010 the catalog held 3,037 fragments (97% on orbit). As of ~April 2025 nearly 2,500 remain active — almost 19% of all tracked debris, still the single largest contributor of any event.', prob: '≈2,500 fragments still on orbit (2025)' }
+      { date: 'Ongoing', crit: true, txt: 'By 2010 the catalog held 3,037 fragments (97% on orbit). As of ~April 2025 nearly 2,500 remained on orbit — almost 19% of all tracked debris, still the single largest contributor of any event.', prob: '≈2,500 fragments still on orbit (2025)' }
     ],
     caption: '<strong>Article IX due regard.</strong> A deliberate, unannounced destruction that will pollute the same orbital shells used by every other State for a century drew only bilateral protests — never a formal Article IX consultation. The case proves the "due regard" and "harmful interference" clauses impose no operative constraint on national-security space activity: the most consequential debris event on record triggered no treaty mechanism at all.',
     viz: { mode: 'names', groups: [{ prefix: 'FENGYUN 1C DEB', color: 0xffb347, label: 'Fengyun-1C debris' }] }
@@ -979,12 +987,14 @@ const SCENARIOS = [
       { date: '26 Nov 2017', crit: true, txt: 'Luch approaches the Franco-Italian military satellite Athena-Fidus to within ~12.5 km.', prob: '~12.5 km to Athena-Fidus' },
       { date: '7 Sep 2018', crit: true, txt: 'French Defence Minister Florence Parly publicly declares: "Trying to listen to your neighbours is not only unfriendly. It\'s an act of espionage." No treaty mechanism is invoked — the response is a diplomatic statement.', prob: '"An act of espionage" · no Art IX' },
       { date: '12 Mar 2023', crit: false, txt: 'Russia launches a successor, Luch-5X / Olymp-K-2 (NORAD 55841); by October 2023 it is tracked trailing Western satellites, repeating the pattern.', prob: 'Successor Luch-5X on station' },
-      { date: 'Oct 2025 – 31 Jan 2026', crit: true, txt: 'The original Olymp (NORAD 40258) is moved to a graveyard orbit above GEO — then on 31 January 2026 it is completely destroyed in a collision with space debris. The interference platform was itself killed by the debris environment.', prob: 'Olymp destroyed by a debris strike' }
+      { date: 'Oct 2025 – 30 Jan 2026', crit: true, txt: 'The original Olymp (NORAD 40258) is decommissioned and moved to a graveyard orbit above GEO in October 2025 — then on 30 January 2026 at 06:09 UTC it fragments there, observed by Swiss SSA firm s2A systems. Analysts assess an impact by untracked debris as the most likely cause, though incomplete passivation has not been excluded.', prob: 'Olymp fragments · suspected debris strike' }
     ],
-    caption: '<strong>Article IX due regard, without collision.</strong> Luch/Olymp proves that "harmful interference" under Article IX need not involve any physical contact: years of eavesdropping proximity operations against allied satellites drew emergency notifications and a ministerial "espionage" charge, but never a formal Article IX consultation. And in a closing irony, the platform that spent a decade exploiting the shared orbital environment was ultimately destroyed by that same environment\'s debris.',
+    caption: '<strong>Article IX due regard, without collision.</strong> Luch/Olymp proves that "harmful interference" under Article IX need not involve any physical contact: years of eavesdropping proximity operations against allied satellites drew emergency notifications and a ministerial "espionage" charge, but never a formal Article IX consultation. And in a closing irony, the platform that spent a decade exploiting the shared orbital environment ended fragmented in its graveyard orbit — most plausibly struck by that same environment\'s untracked debris.',
     viz: { mode: 'geo', norad: 55841, noradColor: 0xff6b6b, ownerCode: 'ITSO', ownerColor: 0x4fd1e0 }
   }
 ];
+
+const IS_TOUCH = window.matchMedia('(pointer: coarse)').matches;
 
 let scenActiveIdx = 0;
 let scenIndex = -1, scenTimer = null;
@@ -1089,6 +1099,10 @@ function buildScenario() {
         ${s.prob ? `<div class="tl-prob">${s.prob}</div>` : ''}
       </div>
     </div>`).join('');
+  el.querySelectorAll('.tl-step').forEach(st => st.addEventListener('click', () => {
+    if (scenTimer) { clearInterval(scenTimer); scenTimer = null; $('#scenPlay').textContent = '▶ Replay sequence'; }
+    scenStep(parseInt(st.dataset.i, 10));
+  }));
   scenIndex = -1;
   $('#scenProg').style.width = '0%';
   if (scenTimer) { clearInterval(scenTimer); scenTimer = null; $('#scenPlay').textContent = '▶ Replay sequence'; }
@@ -1097,21 +1111,31 @@ function buildScenario() {
 function scenStep(i) {
   scenIndex = i;
   const n = curScen().steps.length;
-  $$('#scenTimeline .tl-step').forEach((el, k) => el.classList.toggle('on', k <= i));
-  $('#scenProg').style.width = ((i+1) / n * 100) + '%';
+  $$('#scenTimeline .tl-step').forEach((el, k) => {
+    el.classList.toggle('on', k <= i);
+    el.classList.toggle('cur', k === i);
+  });
+  $('#scenProg').style.width = (Math.max(0, i + 1) / n * 100) + '%';
+  const cur = $('#scenTimeline .tl-step.cur');
+  if (cur && scenTimer) cur.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
 }
 
 function scenPlay() {
   const n = curScen().steps.length;
-  if (scenTimer) { clearInterval(scenTimer); scenTimer = null; $('#scenPlay').textContent = '▶ Replay sequence'; }
-  scenStep(-1);
-  let i = 0;
+  if (scenTimer) { // second press = pause
+    clearInterval(scenTimer); scenTimer = null;
+    $('#scenPlay').textContent = '▶ Resume';
+    return;
+  }
+  let i = (scenIndex >= 0 && scenIndex < n - 1) ? scenIndex : -1;
   $('#scenPlay').textContent = '⏸ Playing…';
-  scenTimer = setInterval(() => {
-    scenStep(i);
+  const advance = () => {
     i++;
-    if (i >= n) { clearInterval(scenTimer); scenTimer = null; $('#scenPlay').textContent = '↻ Replay sequence'; }
-  }, 1400);
+    scenStep(i);
+    if (i >= n - 1) { clearInterval(scenTimer); scenTimer = null; $('#scenPlay').textContent = '↻ Replay sequence'; }
+  };
+  advance(); // first step immediately — no dead delay
+  scenTimer = setInterval(advance, 2200);
 }
 
 function updateScenVizButton() {
@@ -1131,7 +1155,9 @@ function toggleScenViz() {
     isolateScenario(true);
     note.innerHTML = built.note;
     note.style.display = 'block';
-    closeDrawer();
+    // Keep the timeline readable beside the 3D view on desktop; on small
+    // screens the drawer covers the scene, so close it there.
+    if (window.matchMedia('(max-width: 820px)').matches) closeDrawer();
     controls.target.set(0, 0, 0);
     camera.position.set(built.cam[0], built.cam[1], built.cam[2]);
     if (built.orbitPair) requestScenarioOrbits(built.orbitPair);
@@ -1232,8 +1258,12 @@ function isolateScenario(on) {
       } else { ca[i*3]=0; ca[i*3+1]=0; ca[i*3+2]=0; sa[i]=0; }
     }
     colorAttr.needsUpdate = true; sizeAttr.needsUpdate = true;
+    const vc = $('#visibleCount');
+    if (vc) vc.textContent = colorByIdx.size.toLocaleString() + ' scenario objects isolated';
   } else {
     updateColors();
+    const vc = $('#visibleCount');
+    if (vc) vc.textContent = visibleCount.toLocaleString() + ' / ' + state.N.toLocaleString() + ' objects shown';
   }
 }
 
@@ -1508,7 +1538,20 @@ function searchCatalogue(q) {
 function wireSearch() {
   const inp = $('#satSearch'), box = $('#searchResults');
   if (!inp || !box) return;
-  const close = () => { box.classList.remove('open'); box.innerHTML = ''; };
+  const wrap = inp.closest('.search');
+  const mq = window.matchMedia('(max-width: 820px)');
+  const close = () => {
+    box.classList.remove('open'); box.innerHTML = '';
+    if (wrap) { wrap.classList.remove('mopen'); }
+  };
+  // On small screens the search collapses to an icon — tapping it expands a
+  // full-width overlay with a finger-sized input.
+  if (wrap) wrap.addEventListener('click', () => {
+    if (mq.matches && !wrap.classList.contains('mopen')) {
+      wrap.classList.add('mopen');
+      inp.focus();
+    }
+  });
   const run = () => {
     const hits = searchCatalogue(inp.value);
     if (!hits.length) { close(); return; }
