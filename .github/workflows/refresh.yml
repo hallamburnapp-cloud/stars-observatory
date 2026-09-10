@@ -26,12 +26,10 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Refresh dataset (skip on plain push)
-        if: github.event_name != 'push'
+      - name: Refresh dataset
         run: python pipeline/refresh.py
 
       - name: Commit registration lag ledger
-        if: github.event_name != 'push'
         run: |
           git config user.name "stars-observatory-bot"
           git config user.email "actions@github.com"
