@@ -82,6 +82,8 @@ The **concept DOI** [10.5281/zenodo.22662848](https://doi.org/10.5281/zenodo.226
 
 A BibTeX entry with the same metadata is available in the live site's Provenance & citation panel.
 
+**How the citation stays resolvable.** The version DOI resolves permanently to the archived software release on Zenodo. The data snapshot date identifies the day's generated dataset behind every figure — and each day's dataset is preserved as `snapshot-YYYY-MM-DD.tar.gz` in the companion [daily data archive](https://github.com/hallamburnapp-cloud/stars-observatory-data/releases/tag/data-archive), so a cited snapshot remains retrievable after the live site refreshes.
+
 ## License
 
 © 2026 Hallam Burnapp. All rights reserved.

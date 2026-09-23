@@ -60,6 +60,10 @@ jobs:
       - name: QA gate (citation integrity, full pickability sweep, controls)
         run: node tests/run_qa.mjs
 
+      # Daily dataset snapshots are archived by the companion repository
+      # stars-observatory-data (its own scheduled workflow pulls the deployed
+      # data at 06:30 UTC). Kept out of this repo so the rolling data-archive
+      # release never touches the Zenodo webhook that mints software DOIs here.
       - name: Upload site artifact
         uses: actions/upload-pages-artifact@v3
         with:

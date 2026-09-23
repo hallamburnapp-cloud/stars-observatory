@@ -680,7 +680,7 @@ function onPointerMove(e) {
   const pa = posAttr.array;
   let hit = false;
   for (let i = 0; i < state.N; i++) {
-    if (!state.lastAlive[i] || !passesFilter(i)) continue;
+    if (!state.lastAlive[i]) continue; // dimmed (filtered-out) dots are pickable too
     _pv.set(pa[i*3], pa[i*3+1], pa[i*3+2]).project(camera);
     if (_pv.z > 1) continue;
     const px = (_pv.x * 0.5 + 0.5) * window.innerWidth;
@@ -690,7 +690,14 @@ function onPointerMove(e) {
   renderer.domElement.style.cursor = hit ? 'pointer' : '';
 }
 let downXY = null;
-function onPointerDown(e) { downXY = { x: e.clientX, y: e.clientY, t: performance.now() }; }
+let downPosSnap = null; // positions at pointerdown — dots move while the sim plays,
+// so the pick also tests where each dot was when the user began the click.
+let downSnapT = 0;
+function onPointerDown(e) {
+  downXY = { x: e.clientX, y: e.clientY, t: performance.now() };
+  downPosSnap = (posAttr && posAttr.array) ? posAttr.array.slice() : null;
+  downSnapT = performance.now();
+}
 renderPickBind();
 function renderPickBind() {
   document.addEventListener('pointerup', (e) => {
@@ -730,22 +737,42 @@ function pickAt() {
   const sx = (pointer.x * 0.5 + 0.5) * window.innerWidth;
   const sy = (-pointer.y * 0.5 + 0.5) * window.innerHeight;
   const pa = posAttr.array;
+  // The pointerdown snapshot is only trusted for the click it belongs to:
+  // it must be fresh (a click's down→up span) and is consumed after use, so
+  // a stale snapshot can never pull the pick toward long-outdated positions.
+  const snap = (downPosSnap && downPosSnap.length === pa.length && (performance.now() - downSnapT) < 1500) ? downPosSnap : null;
+  downPosSnap = null;
   const N = state.N;
   const RADIUS = IS_TOUCH ? 26 : 14; // px — wider hit area for fingers
   hidePickChooser();
   const cands = [];
   for (let i = 0; i < N; i++) {
-    if (!state.lastAlive[i] || !passesFilter(i)) continue;
+    if (!state.lastAlive[i]) continue;
+    // Every rendered dot is pickable — including dots dimmed by an active
+    // filter. A visible dot that ignores clicks reads as broken; the detail
+    // card is evidence regardless of the current filter view.
     const wx = pa[i*3], wy = pa[i*3+1], wz = pa[i*3+2];
     _pv.set(wx, wy, wz).project(camera);
     if (_pv.z > 1) continue; // behind camera / clipped
     const px = (_pv.x * 0.5 + 0.5) * window.innerWidth;
     const py = (-_pv.y * 0.5 + 0.5) * window.innerHeight;
-    const d = Math.hypot(px - sx, py - sy);
+    let d = Math.hypot(px - sx, py - sy);
+    // While playing, a dot may have drifted between aim and click — also
+    // accept a hit on the dot's position captured at pointerdown.
+    if (snap && d > 2) {
+      _pv.set(snap[i*3], snap[i*3+1], snap[i*3+2]).project(camera);
+      if (_pv.z <= 1) {
+        const dx0 = (_pv.x * 0.5 + 0.5) * window.innerWidth - sx;
+        const dy0 = (-_pv.y * 0.5 + 0.5) * window.innerHeight - sy;
+        const d0 = Math.hypot(dx0, dy0);
+        if (d0 < d) d = d0;
+      }
+    }
     if (d > RADIUS) continue;
     if (earthOccluded(wx, wy, wz)) continue; // hidden behind the Earth
-    // prefer closest-to-cursor, strongly favouring nearer-camera (front) objects
-    cands.push({ i, d, s: d + _pv.z * 30 });
+    // prefer closest-to-cursor, strongly favouring nearer-camera (front)
+    // objects; dots dimmed by an active filter rank slightly behind.
+    cands.push({ i, d, s: d + _pv.z * 30 + (passesFilter(i) ? 0 : 3), f: passesFilter(i) });
   }
   if (!cands.length) return;
   cands.sort((a, b) => a.s - b.s);
@@ -764,7 +791,7 @@ function showPickChooser(cands, sx, sy, total) {
   pickEl.innerHTML = `<div class="pc-h">${total || cands.length} objects here — select one${more > 0 ? ` <span style=\"opacity:.55\">(${more} more — zoom in to separate)</span>` : ''}</div>` + cands.map(c => `
     <button class="sr" data-i="${c.i}">
       <span class="sr-name">${state.name[c.i]}</span>
-      <span class="sr-meta">${state.norad[c.i]} · ${fullType(state.objType[c.i])} · ${state.ownerCode[c.i]}</span>
+      <span class="sr-meta">${state.norad[c.i]} · ${fullType(state.objType[c.i])} · ${state.ownerCode[c.i]}${c.f === false ? ' · <em>filtered out</em>' : ''}</span>
     </button>`).join('');
   document.body.appendChild(pickEl);
   const W = pickEl.offsetWidth, H = pickEl.offsetHeight;
@@ -871,7 +898,7 @@ function showDetail(i) {
       <div class="vlinks">
         <a href="https://celestrak.org/satcat/table-satcat.php?CATNR=${state.norad[i]}" target="_blank" rel="noopener">CelesTrak SATCAT</a>
         <a href="https://www.n2yo.com/satellite/?s=${state.norad[i]}" target="_blank" rel="noopener">N2YO live track</a>
-        <a href="https://www.unoosa.org/oosa/osoindex/search-ng.jspx" target="_blank" rel="noopener">UNOOSA registry</a>
+        <a href="https://www.unoosa.org/oosa/osoindex/index.jspx" target="_blank" rel="noopener">UNOOSA Online Index</a>
       </div>
       <button class="dcopy" id="dCopy">Copy link to this object</button>
     </div>`;
@@ -926,20 +953,24 @@ function renderLegend() {
     footnote = `\u2020 ${noGPRB.toLocaleString('en-GB')} of the ${catalogRB.toLocaleString('en-GB')} cataloged rocket bodies lack public GP element sets and are not propagated here; they are included in the catalog statistics panels.`;
   } else if (m === 'state') {
     const codes = ['US','CIS','PRC','UK','JPN','FR','IND','ESA'];
-    rows = codes.map(c => [state.stats.owner_names[c] || c, STATE_COLORS[c], countActive(c)]);
-    rows.push(['Other States', STATE_COLORS.OTHER, null]);
+    let listed = 0;
+    rows = codes.map(c => { const n = count(i => state.ownerCode[i] === c); listed += n;
+      return [state.stats.owner_names[c] || c, STATE_COLORS[c], n]; });
+    rows.push(['Other States', STATE_COLORS.OTHER, state.N - listed]);
+    footnote = 'Counts are propagated objects per SATCAT owner attribution — an evidentiary proxy for the Article VI “appropriate State”, not a legal determination. Catalog-wide payload figures are in the Art VI panel.';
   } else if (m === 'reg') {
-    rows = [['Registered (payload)', REG_COLORS.reg, null],
-            ['No UN record (payload)', REG_COLORS.unreg, null],
-            ['N/A · non-payload', REG_COLORS.na, null]];
+    rows = [['Registered (payload)', REG_COLORS.reg, count(i => state.objType[i] === 'PAY' && state.registered[i])],
+            ['No UN record (payload)', REG_COLORS.unreg, count(i => state.objType[i] === 'PAY' && !state.registered[i])],
+            ['N/A · non-payload', REG_COLORS.na, count(i => state.objType[i] !== 'PAY')]];
+    footnote = 'Registration status is shown for propagated payloads, cross-referenced against GCAT. Submissions lag launch — “no UN record” includes filings still pending.';
   } else if (m === 'const') {
     rows = [['Starlink', CONST_COLORS.Starlink, count(i=>constKey(state.constLabel[i])==='Starlink')],
             ['OneWeb', CONST_COLORS.OneWeb, count(i=>constKey(state.constLabel[i])==='OneWeb')],
             ['Qianfan/G60', CONST_COLORS.Qianfan, count(i=>constKey(state.constLabel[i])==='Qianfan')],
             ['Guowang', CONST_COLORS.Guowang, count(i=>constKey(state.constLabel[i])==='Guowang')],
             ['Kuiper', CONST_COLORS.Kuiper, count(i=>constKey(state.constLabel[i])==='Kuiper')],
-            ['Other constellation', CONST_COLORS.other, null],
-            ['Not in constellation', CONST_COLORS.none, null]];
+            ['Other constellation', CONST_COLORS.other, count(i=>state.constLabel[i] !== '' && constKey(state.constLabel[i])==='other')],
+            ['Not in constellation', CONST_COLORS.none, count(i=>state.constLabel[i] === '')]];
   }
   el.innerHTML = rows.map(([lbl, col, ct]) =>
     `<div class="legend-row"><span class="sw" style="background:${hex(col)};color:${hex(col)}"></span>${lbl}${ct!=null?`<span class="ct">${ct.toLocaleString()}</span>`:''}</div>`
@@ -953,11 +984,11 @@ function countActive(code) { return state.stats.by_owner_active[code] || 0; }
 // ============================================================
 function populateFilters() {
   const fState = $('#fState');
-  // owners sorted by payload count desc, that exist in dataset
-  const present = new Set(state.ownerCode);
-  const owners = Object.entries(state.stats.by_owner_payloads)
-    .filter(([c]) => present.has(c))
-    .sort((a,b) => b[1]-a[1]);
+  // Owner counts = propagated objects of every type per owner, so the number
+  // beside each option equals exactly what the filter shows when selected.
+  const ownerCount = {};
+  for (let i = 0; i < state.N; i++) ownerCount[state.ownerCode[i]] = (ownerCount[state.ownerCode[i]] || 0) + 1;
+  const owners = Object.entries(ownerCount).sort((a,b) => b[1]-a[1]);
   for (const [code, n] of owners) {
     const name = state.stats.owner_names[code] || code;
     const o = document.createElement('option');
@@ -2207,12 +2238,13 @@ function fillCitations() {
   try { citeForm = sessionStorage.getItem('citeForm') === 'bib' ? 'bib' : 'foot'; } catch (e) { citeForm = 'foot'; }
   renderCiteForm();
   if (bib) bib.textContent = f.bibtex;
-  if (g) g.textContent = 'Footnote form for footnotes; bibliography form (surname first, no trailing full stop) for the bibliography. Selecting a form also copies it.';
+  if (g) g.textContent = 'Footnote form for footnotes; bibliography form (surname first, no trailing full stop) for the bibliography. Selecting a form also copies it. How it works in practice: the version pins the archived software release — its DOI resolves permanently to that release on Zenodo — while the data snapshot date pins the day\u2019s dataset behind every figure you cite. Each day\u2019s dataset is preserved in the repository\u2019s data archive, so a cited snapshot remains retrievable after the live site refreshes.';
   if (db) db.innerHTML =
     `Version DOI <a href="https://doi.org/${c.version_doi}" target="_blank" rel="noopener">${c.version_doi}</a>` +
     `${c.version_doi_version ? ` (archives ${c.version_doi_version})` : ''} — cites the exact archived release · ` +
     `Concept DOI <a href="https://doi.org/${c.concept_doi}" target="_blank" rel="noopener">${c.concept_doi}</a> — always resolves to the latest archived version · ` +
-    `<a href="https://github.com/hallamburnapp-cloud/stars-observatory" target="_blank" rel="noopener">source &amp; data pipeline</a>`;
+    `<a href="https://github.com/hallamburnapp-cloud/stars-observatory" target="_blank" rel="noopener">source &amp; data pipeline</a> · ` +
+    `<a href="https://github.com/hallamburnapp-cloud/stars-observatory-data/releases/tag/data-archive" target="_blank" rel="noopener">daily data archive</a> — every cited snapshot stays retrievable`;
   const fdv = $('#footDoiVal'); if (fdv) fdv.textContent = c.version_doi;
   const fda = $('#footDoi'); if (fda) fda.href = 'https://doi.org/' + c.version_doi;
   // If the dataset the browser loaded disagrees with the deployed manifest
@@ -2523,6 +2555,52 @@ window.__QA = {
     return out;
   },
   norad(i) { return String(state.norad[i]); },
+  // Aim the camera at object idx along its radial (never Earth-occluded) and
+  // return its CSS-pixel screen position plus a crowding count — for QA tests
+  // that drive REAL page.mouse.click events instead of the synthetic pick path.
+  aimAt(idx, distFactor) {
+    const pa = posAttr.array;
+    const p = new THREE.Vector3(pa[idx*3], pa[idx*3+1], pa[idx*3+2]);
+    if (p.lengthSq() < 0.01) return null;
+    const sep = Math.min(Math.max(p.length() * Math.abs((distFactor || 1.35) - 1), 1.5), 30);
+    camera.position.copy(p).add(p.clone().normalize().multiplyScalar(sep));
+    camera.lookAt(p.x, p.y, p.z);
+    camera.updateMatrixWorld(true);
+    const s = this.screenOf(idx);
+    let crowd = 0;
+    for (let i = 0; i < state.N; i++) {
+      if (i === idx || !state.lastAlive || !state.lastAlive[i]) continue;
+      if (pa[i*3]*pa[i*3] + pa[i*3+1]*pa[i*3+1] + pa[i*3+2]*pa[i*3+2] < 0.01) continue;
+      const q = this.screenOf(i);
+      if (q.z <= 1 && Math.hypot(q.x - s.x, q.y - s.y) < 6) crowd++;
+    }
+    return { x: s.x, y: s.y, z: s.z, crowd };
+  },
+  // Alive + positioned regardless of filters — the dimmed dots included.
+  aliveAll() {
+    const out = []; const pa = posAttr.array;
+    for (let i = 0; i < state.N; i++) {
+      if (!state.lastAlive || !state.lastAlive[i]) continue;
+      if (pa[i*3]*pa[i*3] + pa[i*3+1]*pa[i*3+1] + pa[i*3+2]*pa[i*3+2] < 0.01) continue;
+      out.push(i);
+    }
+    return out;
+  },
+  datasetCounts() {
+    const byType = {}, byOwner = {};
+    for (let i = 0; i < state.N; i++) {
+      byType[state.objType[i]] = (byType[state.objType[i]] || 0) + 1;
+      byOwner[state.ownerCode[i]] = (byOwner[state.ownerCode[i]] || 0) + 1;
+    }
+    return { N: state.N, byType, byOwner };
+  },
+  vis() { return visibleCount; },
+  stateOption(code) { const o = document.querySelector(`#fState option[value="${code}"]`); return o ? o.textContent : null; },
+  legendRows() { return [...document.querySelectorAll('#legend .legend-row')].map(r => r.textContent.trim()); },
+  filteredOut(i) { return !passesFilter(i); },
+  detailNorad() { const d = $('#detail'); return (d && d.classList.contains('show') && $('#dRows')) ? $('#dRows').textContent : ''; },
+  chooserOpen() { return !!pickEl; },
+  chooserPick(idx) { const b = pickEl && pickEl.querySelector(`.sr[data-i="${idx}"]`); if (b) { b.click(); return true; } return false; },
   // Dense-cluster chooser test: find two rendered objects that project within
   // a few pixels of each other, click between them, and assert the chooser
   // appears, lists both, and resolves to the requested object.

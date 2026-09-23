@@ -186,6 +186,88 @@ for (let attempt = 0; attempt < 5 && !chooser.ok; attempt++) {
 }
 check(chooser.ok, `dense-cluster chooser opens, lists the pair, and resolves the pick (${chooser.rows || 0} rows)`, chooser.why || '');
 
+// ---------- 4b. real pointer events & filter pickability ----------
+// The sweep above uses the synthetic pick path; this section drives REAL
+// mouse events end-to-end, including the case a user actually hit: with a
+// filter active, the dimmed (filtered-out) dots must still open their card.
+console.log('[4b] Real pointer events & filters');
+await page.evaluate(() => __QA.pause());
+async function realClick(idx) {
+  const s = await page.evaluate(i => __QA.aimAt(i, 1.02), idx);
+  if (!s || s.z > 1) return { ok: false, why: 'offscreen' };
+  await page.mouse.click(s.x, s.y);
+  await page.waitForTimeout(130);
+  if (await page.evaluate(() => __QA.chooserOpen())) {
+    if (!(await page.evaluate(i => __QA.chooserPick(i), idx))) return { ok: false, why: 'chooser-missing' };
+    await page.waitForTimeout(80);
+  }
+  const rows = await page.evaluate(() => __QA.detailNorad());
+  const norad = await page.evaluate(i => __QA.norad(i), idx);
+  return rows.includes(norad) ? { ok: true } : { ok: false, why: 'card-mismatch' };
+}
+// (a) unfiltered: isolated rendered objects must respond to real clicks
+// (dense clusters are covered by the dedicated chooser test above).
+const rcPool = await page.evaluate(() => {
+  const el = __QA.eligible(); const out = [];
+  for (let k = 0; k < 150; k++) out.push(el[Math.floor(Math.random() * el.length)]);
+  return out;
+});
+let rcPass = 0, rcTried = 0; const rcFails = [];
+for (const idx of rcPool) {
+  if (rcTried >= 8) break;
+  const s = await page.evaluate(i => __QA.aimAt(i, 1.02), idx);
+  if (!s || s.crowd > 0) continue;
+  rcTried++;
+  const r = await realClick(idx);
+  if (r.ok) rcPass++; else rcFails.push(`${await page.evaluate(i => __QA.norad(i), idx)}(${r.why})`);
+}
+check(rcTried >= 4 && rcPass === rcTried, `real mouse clicks select isolated objects (${rcPass}/${rcTried})`, rcFails.join(', '));
+// (b) with the Debris type filter active, dimmed payloads/rocket bodies must STILL be clickable
+await page.selectOption('#fType', 'DEB');
+await page.waitForTimeout(250);
+const dimPool = await page.evaluate(() => {
+  const out = [];
+  for (const i of __QA.aliveAll()) if (__QA.filteredOut(i)) out.push(i);
+  const step = Math.max(1, Math.floor(out.length / 150));
+  return out.filter((_, k) => k % step === 0).slice(0, 150);
+});
+let dimPass = 0, dimTried = 0; const dimFails = [];
+for (const idx of dimPool) {
+  if (dimTried >= 6) break;
+  const s = await page.evaluate(i => __QA.aimAt(i, 1.02), idx);
+  if (!s || s.crowd > 0) continue;
+  dimTried++;
+  const r = await realClick(idx);
+  if (r.ok) dimPass++; else dimFails.push(`${await page.evaluate(i => __QA.norad(i), idx)}(${r.why})`);
+}
+check(dimTried >= 3 && dimPass === dimTried, `dimmed filtered-out objects stay clickable while a filter is active (${dimPass}/${dimTried})`, dimFails.join(', '));
+// (c) count consistency: the number beside every filter option / legend swatch
+// must equal the propagated population it selects.
+await page.selectOption('#fType', '');
+await page.waitForTimeout(150);
+const cc = await page.evaluate(() => {
+  const d = __QA.datasetCounts();
+  const top = Object.entries(d.byOwner).sort((a, b) => b[1] - a[1]).slice(0, 5);
+  return { N: d.N, byType: d.byType, top, opts: top.map(([c]) => __QA.stateOption(c)), legend: __QA.legendRows() };
+});
+for (let k = 0; k < cc.top.length; k++) {
+  const [code, n] = cc.top[k];
+  const num = ((cc.opts[k] || '').match(/([\d,]+)\s*$/) || [])[1];
+  check(num === n.toLocaleString('en-GB'), `state filter option ${code} shows its propagated count`, `option says ${num}, dataset has ${n.toLocaleString('en-GB')}`);
+}
+const payRow = cc.legend.find(r => r.startsWith('Payload')) || '';
+const payNum = (payRow.match(/([\d,]+)/) || [])[1];
+check(payNum === cc.byType['PAY'].toLocaleString('en-GB'), 'legend Payload count equals propagated payloads', `legend says ${payNum}, dataset has ${cc.byType['PAY'].toLocaleString('en-GB')}`);
+// Selecting the top owner: the "objects shown" line must match its option's
+// count (small tolerance: objects that decayed between the snapshot epoch and
+// the run's wall-clock time render as absent).
+await page.selectOption('#fState', cc.top[0][0]);
+await page.waitForTimeout(250);
+const shownVis = await page.evaluate(() => __QA.vis());
+check(Math.abs(shownVis - cc.top[0][1]) / cc.top[0][1] < 0.04, `selecting ${cc.top[0][0]} shows its labelled count (±4% decay tolerance)`, `shown ${shownVis}, labelled ${cc.top[0][1]}`);
+await page.selectOption('#fState', '');
+await page.waitForTimeout(150);
+
 // ---------- 5. permalinks ----------
 console.log('[5] Permalinks');
 const alive = await page.evaluate(() => __QA.eligible().map(i => __QA.norad(i)));
