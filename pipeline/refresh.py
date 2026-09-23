@@ -3,7 +3,7 @@
 Safe by design: a download only replaces the previous raw file if it parses as valid data.
 Stages the rebuilt sats.json / stats.json / lag.json into site/data/ ready for deployment.
 """
-import json, subprocess, sys, shutil, urllib.request, os
+import json, re, subprocess, sys, shutil, urllib.request, os
 from pathlib import Path
 
 _ROOT = Path(__file__).resolve().parents[1]
@@ -59,6 +59,29 @@ def main():
 
     for f in ("sats.json", "stats.json", "lag.json"):
         shutil.copy(f"{OUT}/{f}", f"{SITE}/{f}")
+
+    # Regenerate the citation manifest (version from CITATION.cff, DOI from Zenodo,
+    # snapshot date from the dataset manifest). Hard-fails the refresh if the
+    # citation cannot be built truthfully — a deploy without a correct citation
+    # is worse than no deploy.
+    r = subprocess.run([sys.executable, str(_ROOT / "pipeline" / "build_citation.py")],
+                       capture_output=True, text=True)
+    print(r.stdout.strip())
+    if r.returncode != 0:
+        print("CITATION BUILD FAILED\n", r.stderr[-2000:]); sys.exit(1)
+
+    # Stamp asset cache-busters from the single version source (CITATION.cff).
+    # Idempotent: only rewrites ?v=... tokens; a stale literal version anywhere
+    # in index.html is treated as a bug and overwritten.
+    ver = re.search(r'^version:\s*"?([0-9]+\.[0-9]+\.[0-9]+)"?\s*$',
+                    (_ROOT / "CITATION.cff").read_text(), re.M)
+    if not ver:
+        print("CITATION.cff has no version — refusing to stamp assets"); sys.exit(1)
+    idx = _ROOT / "site" / "index.html"
+    html = idx.read_text()
+    stamped = re.sub(r'\?v=[0-9A-Za-z.\-]+', f'?v={ver.group(1)}', html)
+    if stamped != html:
+        idx.write_text(stamped); print(f"stamped asset versions -> ?v={ver.group(1)}")
 
     print("updated:", updated)
     print("kept previous (not updated):", skipped)

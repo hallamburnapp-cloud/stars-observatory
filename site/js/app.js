@@ -68,18 +68,58 @@ const state = {
 const $ = (s) => document.querySelector(s);
 const $$ = (s) => Array.from(document.querySelectorAll(s));
 
+// Release version for asset cache-busting — read at runtime from the citation
+// manifest (single source of truth: CITATION.cff via pipeline/build_citation.py).
+// Never hardcode a version literal in this file.
+function appVersion() { return (state.citation && state.citation.version) || 'dev'; }
+
+// ---- Play/pause & speed: single source of truth --------------------------
+// Every change to the main clock's play state or multiplier goes through these
+// so the icon, aria state and chip highlight can never desynchronise.
+const ICON_PLAY = 'M8 5v14l11-7z';
+const ICON_PAUSE = 'M6 4h4v16H6zM14 4h4v16h-4z';
+function setPlaying(v) {
+  state.playing = !!v;
+  const pp = $('#playPath'); if (pp) pp.setAttribute('d', state.playing ? ICON_PAUSE : ICON_PLAY);
+  const b = $('#tPlay'); if (b) b.setAttribute('aria-pressed', String(state.playing));
+}
+function setSpeed(v) {
+  state.speed = v;
+  $$('.timebar [data-speed]').forEach(b => b.classList.toggle('active', parseInt(b.dataset.speed, 10) === v));
+}
+
+// Clipboard with a fallback for browsers/contexts where the async Clipboard
+// API is unavailable (e.g. non-secure contexts, older WebKit).
+function copyText(txt) {
+  if (navigator.clipboard && window.isSecureContext) {
+    return navigator.clipboard.writeText(txt).then(() => true).catch(() => _legacyCopy(txt));
+  }
+  return Promise.resolve(_legacyCopy(txt));
+}
+function _legacyCopy(txt) {
+  try {
+    const ta = document.createElement('textarea');
+    ta.value = txt; ta.setAttribute('readonly', '');
+    ta.style.cssText = 'position:fixed;top:-9999px;opacity:0';
+    document.body.appendChild(ta); ta.select();
+    const ok = document.execCommand('copy'); ta.remove(); return ok;
+  } catch (e) { return false; }
+}
+
 // ============================================================
 // 1. Load data
 // ============================================================
 async function loadData() {
   setLoad('Loading orbital catalog…', 10);
-  const [sats, stats, lag, natlaw] = await Promise.all([
+  const [sats, stats, lag, natlaw, citation] = await Promise.all([
     fetch('./data/sats.json', { cache: 'no-cache' }).then(r => r.json()),
     fetch('./data/stats.json', { cache: 'no-cache' }).then(r => r.json()),
     fetch('./data/lag.json', { cache: 'no-cache' }).then(r => r.json()).catch(() => null),
-    fetch('./data/national_law.json', { cache: 'no-cache' }).then(r => r.json()).catch(() => null)
+    fetch('./data/national_law.json', { cache: 'no-cache' }).then(r => r.json()).catch(() => null),
+    fetch('./data/citation.json', { cache: 'no-cache' }).then(r => r.json()).catch(() => null)
   ]);
   state.data = sats; state.stats = stats; state.lag = lag; state.natlaw = natlaw;
+  state.citation = citation;
   const arr = sats.sats;
   const N = arr.length;
   state.N = N;
@@ -170,7 +210,7 @@ function setLoad(msg, pct, sub) {
 let worker;
 function startWorker(tle1, tle2) {
   return new Promise((resolve) => {
-    worker = new Worker('./js/worker.js?v=1.4.1');
+    worker = new Worker('./js/worker.js?v=' + appVersion());
     worker.onmessage = (e) => {
       const m = e.data;
       if (m.type === 'ready') {
@@ -711,7 +751,7 @@ function pickAt() {
   cands.sort((a, b) => a.s - b.s);
   // Unambiguous click: dead-on hit, single hit, or the nearest is clearly separated.
   if (cands[0].d <= 4 || cands.length === 1 || cands[1].d - cands[0].d >= 6) { selectObject(cands[0].i); return; }
-  showPickChooser(cands.slice(0, 9), sx, sy, cands.length);
+  showPickChooser(cands.slice(0, 40), sx, sy, cands.length);
 }
 
 // Disambiguation chooser — in dense clusters every object stays reachable.
@@ -838,10 +878,12 @@ function showDetail(i) {
   const cp = $('#dCopy');
   if (cp) cp.addEventListener('click', () => {
     const url = location.origin + location.pathname + '?sat=' + state.norad[i];
-    navigator.clipboard.writeText(url).then(() => {
-      cp.textContent = 'Link copied ✓';
-      setTimeout(() => { cp.textContent = 'Copy link to this object'; }, 1600);
-    }).catch(() => { cp.textContent = url; });
+    copyText(url).then(ok => {
+      if (ok) {
+        cp.textContent = 'Link copied ✓';
+        setTimeout(() => { cp.textContent = 'Copy link to this object'; }, 1600);
+      } else { cp.textContent = url; }
+    });
   });
   el.classList.add('show');
 }
@@ -878,7 +920,10 @@ function renderLegend() {
     rows = [['Payload', COL_TYPE['PAY'], count(i => state.objType[i]==='PAY')],
             ['R/B & other\u2020', COL_TYPE['R/B'], count(i => state.objType[i]==='R/B' || state.objType[i]==='UNK')],
             ['Debris', COL_TYPE['DEB'], count(i => state.objType[i]==='DEB')]];
-    footnote = '\u2020 Most of the 2,279 cataloged rocket bodies lack public GP element sets and are not propagated here; they are included in the catalog statistics panels.';
+    const catalogRB = (state.stats.by_type && state.stats.by_type['R/B']) || 0;
+    const renderedRB = count(i => state.objType[i] === 'R/B');
+    const noGPRB = Math.max(0, catalogRB - renderedRB);
+    footnote = `\u2020 ${noGPRB.toLocaleString('en-GB')} of the ${catalogRB.toLocaleString('en-GB')} cataloged rocket bodies lack public GP element sets and are not propagated here; they are included in the catalog statistics panels.`;
   } else if (m === 'state') {
     const codes = ['US','CIS','PRC','UK','JPN','FR','IND','ESA'];
     rows = codes.map(c => [state.stats.owner_names[c] || c, STATE_COLORS[c], countActive(c)]);
@@ -1290,10 +1335,7 @@ function toggleScenViz() {
   if (scenVizOn) {
     // Isolation views are read at close range — a leftover 600×/3600× clock
     // makes the pair whirl unwatchably, so settle back to real time.
-    if (state.speed > 60) {
-      state.speed = 1;
-      $$('.timebar [data-speed]').forEach(b => b.classList.toggle('active', b.dataset.speed === '1'));
-    }
+    if (state.speed > 60) setSpeed(1); // multiplier only — play state untouched
     const built = buildScenIsolation(curScen().viz);
     state._scenGroups = built.groups;
     state._scenIsolate = built.all;      // kept for compatibility / QA
@@ -1467,13 +1509,13 @@ function loadSatLib() {
   if (self.satellite) return Promise.resolve();
   if (!_satLibP) _satLibP = new Promise((res, rej) => {
     const s = document.createElement('script');
-    s.src = './js/satellite.min.js?v=1.4.1'; s.onload = res; s.onerror = rej;
+    s.src = './js/satellite.min.js?v=' + appVersion(); s.onload = res; s.onerror = rej;
     document.head.appendChild(s);
   });
   return _satLibP;
 }
 async function loadHistData() {
-  if (!histData) histData = await (await fetch('./data/histevents.json?v=1.4.1')).json();
+  if (!histData) histData = await (await fetch('./data/histevents.json?v=' + appVersion())).json();
   return histData;
 }
 
@@ -1687,6 +1729,9 @@ function histStart(evId) {
     ms: (ev.milestones || []).map(m => ({ t: Date.parse(m.t), step: m.step })).sort((a, b) => a.t - b.t),
     msIdx: 0, lastHud: 0, userCam: false, flash: null,
     trailMax: ev.kind === 'rpo' ? 1600 : 800, camDist: 0, camDir: null };
+  // A replay always begins playing — reflect that on the shared play control
+  // (without touching state.playing, which is restored on exit).
+  { const pp = $('#playPath'); if (pp) pp.setAttribute('d', ICON_PAUSE); }
   // Chapters: when the pre-event window would need a >2500× continuous
   // time-lapse (Earth strobing several revolutions), replay it instead as calm
   // dwells at each milestone (≈48×) with clean cuts between them.
@@ -1866,7 +1911,9 @@ function histExit() {
   if (H.flash) { scene.remove(H.flash.spr); H.flash.spr.material.dispose(); }
   if (H.debris) for (const C of H.debris) { scene.remove(C.pts); C.pts.geometry.dispose(); C.pts.material.dispose(); }
   if (points) points.visible = true;
-  state.speed = H.saved.speed; state.playing = true;
+  // Restore exactly the play state and multiplier the viewer had before the
+  // replay — a paused clock stays paused — and resync the icon and chips.
+  setSpeed(H.saved.speed); setPlaying(H.saved.playing);
   state.simTime = Date.now();
   document.body.classList.remove('hist-run');
   $('#histHud').style.display = 'none';
@@ -2036,23 +2083,22 @@ function wireUI() {
     state.filters.regime = btn.dataset.r; refreshFilters();
   }));
 
-  // time
+  // time — play state changes ONLY via setPlaying/setSpeed so the icon can
+  // never invert, and changing the multiplier never starts playback.
   $('#tPlay').addEventListener('click', () => {
     if (histMode) { // during a replay, play/pause controls the replay itself
       histMode.paused = !histMode.paused;
-      $('#playPath').setAttribute('d', !histMode.paused ? 'M6 4h4v16H6zM14 4h4v16h-4z' : 'M8 5v14l11-7z');
+      $('#playPath').setAttribute('d', !histMode.paused ? ICON_PAUSE : ICON_PLAY);
       return;
     }
-    state.playing = !state.playing;
-    $('#playPath').setAttribute('d', state.playing ? 'M6 4h4v16H6zM14 4h4v16h-4z' : 'M8 5v14l11-7z');
+    setPlaying(!state.playing);
   });
   $('#tNow').addEventListener('click', () => { if (histMode) histExit(); state.simTime = Date.now(); });
   $$('.timebar [data-speed]').forEach(btn => btn.addEventListener('click', () => {
     if (histMode) return; // replay owns the clock
-    $$('.timebar [data-speed]').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    state.speed = parseInt(btn.dataset.speed);
+    setSpeed(parseInt(btn.dataset.speed, 10)); // multiplier only — never touches play state
   }));
+  setPlaying(state.playing); // sync icon/aria with the actual boot state
 
   // historical replay
   const hbBtn = $('#scenHist');
@@ -2087,21 +2133,95 @@ function wireUI() {
   wireUITail();
 }
 
-// Citation formats — filled at runtime so the accessed date is always current.
+// ---- Citations -----------------------------------------------------------
+// Every value is read at runtime from site/data/citation.json (generated at
+// deploy time from CITATION.cff + Zenodo) and from the dataset the browser
+// ACTUALLY loaded. A literal version, DOI or date in this file is a bug.
+// OSCOLA (5th edn) s 3.7: with a DOI there is no URL and no access date.
+function oscolaDate(iso) {
+  const d = new Date(iso + 'T00:00:00Z');
+  return isNaN(d) ? iso : d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
+}
+function citeForms() {
+  const c = state.citation;
+  if (!c || !c.version || !c.version_doi) return null;
+  // Snapshot date = the dataset actually loaded in this session (falls back to
+  // the manifest's snapshot only if the dataset carried no date).
+  const loaded = ((state.data && state.data.generated) || '').substring(0, 10);
+  const snapISO = loaded || c.snapshot_date;
+  const D = oscolaDate(snapISO), V = c.version, Y = c.publisher_year, DOI = c.version_doi;
+  return {
+    foot: `Hallam Burnapp, 'STARS Observatory' (version ${V}, data snapshot ${D}, University of Aberdeen ${Y}) DOI: ${DOI}.`,
+    bib: `Burnapp H, 'STARS Observatory' (version ${V}, data snapshot ${D}, University of Aberdeen ${Y}) DOI: ${DOI}`,
+    bibtex: `@software{burnapp_stars_${Y},
+  author        = {Burnapp, Hallam},
+  title         = {STARS Observatory},
+  version       = {${V}},
+  date-released = {${c.date_released}},
+  year          = {${Y}},
+  organization  = {University of Aberdeen},
+  license       = {MIT},
+  note          = {Data: CelesTrak GP/SATCAT and McDowell GCAT; data snapshot of ${snapISO}},
+  url           = {https://starsobservatory.org},
+  doi           = {${DOI}}
+}`,
+    snapLoaded: loaded, snapManifest: c.snapshot_date
+  };
+}
+
+let citeForm = 'foot'; // remembered per tab-session; a fresh visit starts on footnote
+function renderCiteForm() {
+  const f = citeForms(); if (!f) return;
+  const os = $('#citeOscola'); if (os) os.textContent = citeForm === 'bib' ? f.bib : f.foot;
+  const bf = $('#csFoot'), bb = $('#csBib');
+  if (bf) { bf.classList.toggle('active', citeForm === 'foot'); bf.setAttribute('aria-pressed', String(citeForm === 'foot')); }
+  if (bb) { bb.classList.toggle('active', citeForm === 'bib'); bb.setAttribute('aria-pressed', String(citeForm === 'bib')); }
+}
+function citeConfirm(msg) {
+  const cc = $('#citeConfirm'); if (!cc) return;
+  cc.textContent = msg; cc.classList.add('show');
+  clearTimeout(cc._t); cc._t = setTimeout(() => cc.classList.remove('show'), 2400);
+}
+function setCiteForm(form) {
+  citeForm = form === 'bib' ? 'bib' : 'foot';
+  try { sessionStorage.setItem('citeForm', citeForm); } catch (e) { /* private browsing */ }
+  renderCiteForm();
+  const os = $('#citeOscola');
+  const label = citeForm === 'bib' ? 'bibliography' : 'footnote';
+  if (os) copyText(os.textContent).then(ok => {
+    citeConfirm(ok ? `Copied — ${label} form` : `Showing ${label} form — copy failed, select the text above`);
+  });
+}
+
 function fillCitations() {
-  const APP_VERSION = '1.4.1';
-  const acc = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
-  const os = $('#citeOscola'), bib = $('#citeBibtex');
-  if (os) os.textContent = `Hallam Burnapp, 'STARS Observatory' (v${APP_VERSION}, University of Aberdeen 2026) <https://starsobservatory.org> accessed ${acc}. DOI: 10.5281/zenodo.22662849.`;
-  if (bib) bib.textContent = `@software{burnapp_stars_2026,
-  author  = {Burnapp, Hallam},
-  title   = {STARS Observatory},
-  version = {${APP_VERSION}},
-  year    = {2026},
-  organization = {University of Aberdeen},
-  url     = {https://starsobservatory.org},
-  doi     = {10.5281/zenodo.22662849}
-}`;
+  const os = $('#citeOscola'), bib = $('#citeBibtex'), db = $('#doiBlock'), g = $('#citeGuide');
+  const c = state.citation, f = citeForms();
+  if (!f) {
+    // Honest failure — never render a guessed or stale citation.
+    const msg = 'Citation unavailable — the citation manifest (data/citation.json) did not load. Citation data is maintained in CITATION.cff in the source repository.';
+    if (os) os.textContent = msg;
+    if (bib) bib.textContent = msg;
+    if (db) db.innerHTML = '<a href="https://github.com/hallamburnapp-cloud/stars-observatory" target="_blank" rel="noopener">source &amp; data pipeline</a>';
+    return;
+  }
+  try { citeForm = sessionStorage.getItem('citeForm') === 'bib' ? 'bib' : 'foot'; } catch (e) { citeForm = 'foot'; }
+  renderCiteForm();
+  if (bib) bib.textContent = f.bibtex;
+  if (g) g.textContent = 'Footnote form for footnotes; bibliography form (surname first, no trailing full stop) for the bibliography. Selecting a form also copies it.';
+  if (db) db.innerHTML =
+    `Version DOI <a href="https://doi.org/${c.version_doi}" target="_blank" rel="noopener">${c.version_doi}</a>` +
+    `${c.version_doi_version ? ` (archives ${c.version_doi_version})` : ''} — cites the exact archived release · ` +
+    `Concept DOI <a href="https://doi.org/${c.concept_doi}" target="_blank" rel="noopener">${c.concept_doi}</a> — always resolves to the latest archived version · ` +
+    `<a href="https://github.com/hallamburnapp-cloud/stars-observatory" target="_blank" rel="noopener">source &amp; data pipeline</a>`;
+  const fdv = $('#footDoiVal'); if (fdv) fdv.textContent = c.version_doi;
+  const fda = $('#footDoi'); if (fda) fda.href = 'https://doi.org/' + c.version_doi;
+  // If the dataset the browser loaded disagrees with the deployed manifest
+  // (e.g. a stale cache), say so — the citation always follows the loaded data.
+  const w = $('#citeWarn');
+  if (w && f.snapLoaded && f.snapManifest && f.snapLoaded !== f.snapManifest) {
+    w.style.display = '';
+    w.textContent = `Note: the dataset loaded in this session is dated ${oscolaDate(f.snapLoaded)}, but the current deployment expects ${oscolaDate(f.snapManifest)} — your browser may have cached an older dataset. The citation above cites the data you are actually viewing; reload to fetch the current snapshot.`;
+  }
 }
 
 function wireUITail() {
@@ -2119,10 +2239,16 @@ function wireUITail() {
     }, 350);
   });
   fillCitations();
+  // Citation form switch — selecting a form renders AND copies it.
+  const csF = $('#csFoot'), csB = $('#csBib');
+  if (csF) csF.addEventListener('click', () => setCiteForm('foot'));
+  if (csB) csB.addEventListener('click', () => setCiteForm('bib'));
   $$('.copybtn').forEach(b => b.addEventListener('click', () => {
     const src = $('#' + b.dataset.copy);
-    navigator.clipboard.writeText(src.textContent).then(() => {
-      const t = b.textContent; b.textContent = 'Copied ✓';
+    if (!src) return;
+    copyText(src.textContent).then(ok => {
+      const t = 'Copy'; b.textContent = ok ? 'Copied ✓' : 'Copy failed';
+      if (ok && b.dataset.copy === 'citeOscola') citeConfirm(`Copied — ${citeForm === 'bib' ? 'bibliography' : 'footnote'} form`);
       setTimeout(() => { b.textContent = t; }, 1400);
     });
   }));
@@ -2325,5 +2451,135 @@ window.__QA = {
     raycaster.setFromCamera(pointer, camera);
     const hits = raycaster.intersectObject(points);
     return { count: hits.length, first: hits[0] ? { index: hits[0].index, dist: hits[0].distanceToRay } : null };
-  }
+  },
+  // Full pick simulation for automated QA: aims the camera down the object's
+  // radial (so it cannot be Earth-occluded), projects it, and runs the REAL
+  // production pick path — including the dense-cluster chooser — then reports
+  // whether the object ended up selected with a matching detail card.
+  pickTest(idx, distFactor, tiltDeg, pxOff) {
+    if (!state.lastAlive || !state.lastAlive[idx]) return { ok: false, why: 'not-alive' };
+    if (!passesFilter(idx)) return { ok: false, why: 'filtered' };
+    const pa = posAttr.array;
+    const p = new THREE.Vector3(pa[idx*3], pa[idx*3+1], pa[idx*3+2]);
+    if (p.lengthSq() < 0.01) return { ok: false, why: 'no-position' };
+    // Camera sits above the object along its radial (never Earth-occluded),
+    // at a separation derived from distFactor but clamped so that even GEO
+    // objects can be approached closely — mirroring what a user does by
+    // zooming in. A tilt angle swings the camera around the object, changing
+    // the line of sight for retries when a neighbour sits exactly in front.
+    const len = p.length();
+    const sep = Math.min(Math.max(len * Math.abs((distFactor || 1.35) - 1), 1.5), 30);
+    const u = p.clone().normalize();
+    let offset = u.clone().multiplyScalar(sep);
+    if (tiltDeg) {
+      const ref = Math.abs(u.y) < 0.95 ? new THREE.Vector3(0, 1, 0) : new THREE.Vector3(1, 0, 0);
+      const axis = ref.cross(u).normalize();
+      offset = offset.applyAxisAngle(axis, tiltDeg * Math.PI / 180);
+    }
+    camera.position.copy(p).add(offset);
+    camera.lookAt(p.x, p.y, p.z);
+    camera.updateMatrixWorld(true);
+    const s = this.screenOf(idx);
+    if (!(s.x >= 2 && s.x <= window.innerWidth - 2 && s.y >= 2 && s.y <= window.innerHeight - 2) || s.z > 1) {
+      return { ok: false, why: 'offscreen', s };
+    }
+    // A pointer offset forces the chooser path: clicking dead-on an object
+    // that has a nearly co-located twin always direct-selects the nearer of
+    // the two, so the only way a user reaches the other one is a click a few
+    // pixels off — which opens the disambiguation chooser.
+    pointer.x = ((s.x + (pxOff || 0)) / window.innerWidth) * 2 - 1;
+    pointer.y = -((s.y + (pxOff || 0) * 0.4) / window.innerHeight) * 2 + 1;
+    hidePickChooser();
+    selectedIndex = -1;
+    pickAt();
+    let mode = 'direct';
+    if (pickEl) { // dense cluster — the chooser must list the object
+      mode = 'chooser';
+      const b = pickEl.querySelector(`.sr[data-i="${idx}"]`);
+      if (!b) {
+        const listed = pickEl.querySelectorAll('.sr').length;
+        hidePickChooser();
+        return { ok: false, why: 'chooser-missing', listed };
+      }
+      b.click();
+    }
+    if (selectedIndex !== idx) return { ok: false, why: 'wrong-selection', mode, got: selectedIndex };
+    const cardNorad = ($('#dRows') && $('#dRows').textContent.includes(String(state.norad[idx])));
+    const cardName = ($('#dName') && $('#dName').textContent.trim().length > 0);
+    const shown = $('#detail') && $('#detail').classList.contains('show');
+    return { ok: !!(cardNorad && cardName && shown), mode,
+             why: (cardNorad && cardName && shown) ? undefined : 'card-mismatch' };
+  },
+  // Indices that are rendered right now (alive, unfiltered, positioned) — the
+  // exact population the pick test must cover.
+  eligible() {
+    const out = []; const pa = posAttr.array;
+    for (let i = 0; i < state.N; i++) {
+      if (!state.lastAlive || !state.lastAlive[i]) continue;
+      if (!passesFilter(i)) continue;
+      if (pa[i*3]*pa[i*3] + pa[i*3+1]*pa[i*3+1] + pa[i*3+2]*pa[i*3+2] < 0.01) continue;
+      out.push(i);
+    }
+    return out;
+  },
+  norad(i) { return String(state.norad[i]); },
+  // Dense-cluster chooser test: find two rendered objects that project within
+  // a few pixels of each other, click between them, and assert the chooser
+  // appears, lists both, and resolves to the requested object.
+  chooserTest(seed) {
+    const s0 = seed || 0; // vary the viewpoint between attempts
+    camera.position.set(s0 * 25, 70 + s0 * 20, 200 - s0 * 15);
+    camera.lookAt(0, 0, 0);
+    camera.updateMatrixWorld(true);
+    const el = this.eligible();
+    const pa = posAttr.array;
+    const grid = new Map();
+    const pairs = [];
+    for (const i of el) {
+      if (earthOccluded(pa[i*3], pa[i*3+1], pa[i*3+2])) continue;
+      const s = this.screenOf(i);
+      if (s.z > 1 || s.x < 30 || s.x > window.innerWidth - 30 || s.y < 30 || s.y > window.innerHeight - 30) continue;
+      const key = `${Math.round(s.x / 3)}:${Math.round(s.y / 3)}`;
+      if (grid.has(key)) {
+        const j = grid.get(key); const sj = this.screenOf(j.i);
+        if (Math.hypot(s.x - sj.x, s.y - sj.y) < 4) {
+          pairs.push([j.i, i, (s.x + sj.x) / 2, (s.y + sj.y) / 2]);
+          if (pairs.length >= 60) break;
+        }
+      }
+      grid.set(key, { i });
+    }
+    if (!pairs.length) return { ok: false, why: 'no-pair-found' };
+    // Click ~8px off each pair: near enough that both are candidates, far
+    // enough that neither wins the dead-on direct-select rule. Some pairs
+    // still resolve directly (a third object dominates) — try the next pair.
+    let tried = 0;
+    for (const [a, b, mx, my] of pairs) {
+      tried++;
+      pointer.x = ((mx + 8) / window.innerWidth) * 2 - 1;
+      pointer.y = -((my + 3) / window.innerHeight) * 2 + 1;
+      hidePickChooser();
+      selectedIndex = -1;
+      pickAt();
+      if (!pickEl) continue;
+      const rows = pickEl.querySelectorAll('.sr').length;
+      const btn = pickEl.querySelector(`.sr[data-i="${a}"]`) || pickEl.querySelector(`.sr[data-i="${b}"]`);
+      if (!btn) { hidePickChooser(); return { ok: false, why: 'pair-not-listed', rows, tried }; }
+      const want = parseInt(btn.dataset.i, 10);
+      btn.click();
+      const card = $('#dRows') && $('#dRows').textContent.includes(String(state.norad[want]));
+      return { ok: selectedIndex === want && !!card, rows, tried,
+               why: (selectedIndex === want && card) ? undefined : 'chooser-pick-mismatch' };
+    }
+    return { ok: false, why: 'direct-instead', tried };
+  },
+  // Mirrors renderLegend's type-mode footnote arithmetic exactly.
+  legendRB() {
+    const catalogRB = (state.stats.by_type && state.stats.by_type['R/B']) || 0;
+    let renderedRB = 0;
+    for (let i = 0; i < state.N; i++) if (state.objType[i] === 'R/B') renderedRB++;
+    return { catalogRB, renderedRB, noGP: Math.max(0, catalogRB - renderedRB) };
+  },
+  playing() { return !!state.playing; },
+  pause() { setPlaying(false); }
 };

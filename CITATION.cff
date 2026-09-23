@@ -1,3 +1,5 @@
+# STARS Observatory — © 2026 Hallam Burnapp. All rights reserved.
+# Code is licensed under MIT; generated datasets under CC-BY 4.0 (see LICENSE and README).
 cff-version: 1.2.0
 message: "If you use STARS Observatory in academic work, please cite it as below."
 title: "STARS Observatory"
@@ -20,6 +22,8 @@ keywords:
   - space debris
   - SGP4
   - space governance
-doi: 10.5281/zenodo.22662849
-version: 1.4.1
-date-released: 2026-09-08
+# Concept DOI — resolves to the latest archived version. Version DOIs for specific
+# releases are resolved from this concept record at build time (pipeline/build_citation.py).
+doi: 10.5281/zenodo.22662848
+version: 1.5.0
+date-released: 2026-09-23

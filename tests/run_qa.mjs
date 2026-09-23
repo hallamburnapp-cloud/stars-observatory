@@ -1,0 +1,214 @@
+#!/usr/bin/env node
+// ============================================================
+// STARS Observatory — automated QA gate.
+//
+// Runs in CI (refresh.yml) after the data pipeline and BEFORE the
+// Pages artifact is uploaded: a failure here blocks the deploy.
+//
+// Checks:
+//   1. Citation integrity — the rendered OSCOLA footnote and
+//      bibliography forms must match the canonical templates
+//      character-for-character, built ONLY from CITATION.cff,
+//      site/data/citation.json and the loaded dataset. No URL and
+//      no access date may appear in either form.
+//   2. Pickability — every rendered object must be selectable via
+//      the real pointer pick path (incl. the dense-cluster chooser)
+//      and must produce a detail card with its NORAD number.
+//   3. Legend footnote — the rocket-body exclusion count shown in
+//      the legend must equal catalog R/B minus rendered R/B.
+//   4. Time controls — speed changes must never start playback.
+//   5. Permalinks — random ?sat= deep links must select the object.
+//   6. Console hygiene — no page errors during the run.
+//
+// Usage: node tests/run_qa.mjs [--quick]
+//   --quick samples ~500 objects instead of the full catalog
+//           (local smoke runs; CI always runs the full sweep).
+// ============================================================
+import { chromium } from 'playwright';
+import { createServer } from 'node:http';
+import { readFileSync, existsSync, statSync } from 'node:fs';
+import { join, extname, normalize } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const ROOT = join(fileURLToPath(new URL('.', import.meta.url)), '..');
+const SITE = join(ROOT, 'site');
+const QUICK = process.argv.includes('--quick');
+const PORT = 8931;
+
+let failures = [];
+let passes = 0;
+function check(ok, label, detail = '') {
+  if (ok) { passes++; console.log(`  ✓ ${label}`); }
+  else { failures.push(`${label}${detail ? ' — ' + detail : ''}`); console.error(`  ✗ ${label}${detail ? ' — ' + detail : ''}`); }
+}
+
+// ---------- static file server (no deps) ----------
+const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.png': 'image/png', '.jpg': 'image/jpeg', '.svg': 'image/svg+xml', '.ico': 'image/x-icon', '.webp': 'image/webp' };
+const server = createServer((req, res) => {
+  let p = decodeURIComponent(new URL(req.url, 'http://x').pathname);
+  if (p.endsWith('/')) p += 'index.html';
+  const f = normalize(join(SITE, p));
+  if (!f.startsWith(SITE) || !existsSync(f) || !statSync(f).isFile()) { res.writeHead(404); res.end('nf'); return; }
+  res.writeHead(200, { 'content-type': MIME[extname(f)] || 'application/octet-stream' });
+  res.end(readFileSync(f));
+});
+await new Promise(r => server.listen(PORT, r));
+
+// ---------- canonical expectations, computed in Node ----------
+const cff = readFileSync(join(ROOT, 'CITATION.cff'), 'utf8');
+const cffVersion = (cff.match(/^version:\s*["']?([0-9A-Za-z.\-]+)/m) || [])[1];
+if (!cffVersion) { console.error('FATAL: no version in CITATION.cff'); process.exit(1); }
+const citation = JSON.parse(readFileSync(join(SITE, 'data', 'citation.json'), 'utf8'));
+const sats = JSON.parse(readFileSync(join(SITE, 'data', 'sats.json'), 'utf8'));
+const loadedSnapshotISO = String(sats.generated).slice(0, 10);
+
+function oscolaDate(iso) {
+  const d = new Date(iso + 'T00:00:00Z');
+  return new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' }).format(d);
+}
+// Templates from the spec — the single source of truth for this test.
+const expFoot = `Hallam Burnapp, 'STARS Observatory' (version ${citation.version}, data snapshot ${oscolaDate(loadedSnapshotISO)}, University of Aberdeen ${citation.publisher_year}) DOI: ${citation.version_doi}.`;
+const expBib = `Burnapp H, 'STARS Observatory' (version ${citation.version}, data snapshot ${oscolaDate(loadedSnapshotISO)}, University of Aberdeen ${citation.publisher_year}) DOI: ${citation.version_doi}`;
+
+console.log(`\nQA gate — version ${cffVersion}, snapshot ${loadedSnapshotISO}${QUICK ? ' (quick mode)' : ''}\n`);
+
+// ---------- browser ----------
+const browser = await chromium.launch({ args: ['--enable-unsafe-swiftshader', '--use-angle=swiftshader', '--disable-dev-shm-usage'] });
+const page = await browser.newPage({ viewport: { width: 1360, height: 900 } });
+const pageErrors = [];
+page.on('pageerror', e => pageErrors.push(String(e)));
+page.on('console', m => { if (m.type() === 'error') pageErrors.push(m.text()); });
+
+async function loadApp(url) {
+  await page.goto(url, { timeout: 120000, waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(() => {
+    const l = document.querySelector('#loader');
+    return l && getComputedStyle(l).display === 'none';
+  }, { timeout: 180000 });
+}
+await loadApp(`http://127.0.0.1:${PORT}/`);
+await page.waitForFunction(() => window.__QA && __QA.eligible().length > 0, { timeout: 60000 });
+
+// ---------- 1. citation integrity ----------
+console.log('[1] Citation integrity');
+await page.click('.tabbar button[data-panel="prov"]'); // open Panel 04 so the block is interactable
+await page.waitForSelector('#citeOscola', { state: 'visible', timeout: 15000 });
+check(citation.version === cffVersion, 'citation.json version equals CITATION.cff version', `${citation.version} vs ${cffVersion}`);
+const gotFoot = (await page.textContent('#citeOscola')).trim();
+check(gotFoot === expFoot, 'default rendered form is the footnote template, character-for-character', `\n    expected: ${expFoot}\n    got:      ${gotFoot}`);
+await page.click('#csBib');
+const gotBib = (await page.textContent('#citeOscola')).trim();
+check(gotBib === expBib, 'bibliography form matches template, character-for-character', `\n    expected: ${expBib}\n    got:      ${gotBib}`);
+check(!gotBib.endsWith('.'), 'bibliography form has no trailing full stop');
+for (const [name, s] of [['footnote', gotFoot], ['bibliography', gotBib]]) {
+  check(!/https?:\/\/|<http|\baccessed\b/i.test(s), `${name} form contains no URL and no access date`);
+  check(s.includes(`data snapshot ${oscolaDate(loadedSnapshotISO)}`), `${name} snapshot date equals the loaded dataset date`);
+}
+await page.click('#csFoot'); // restore default
+const bibtex = (await page.textContent('#citeBibtex')).trim();
+await page.click('#drawerClose').catch(() => page.keyboard.press('Escape'));
+check(bibtex.includes(`version   = {${citation.version}}`) || bibtex.includes(`version = {${citation.version}}`) || bibtex.includes(`version={${citation.version}}`) || new RegExp(`version\\s*=\\s*\\{${citation.version.replace(/\./g, '\\.')}\\}`).test(bibtex), 'BibTeX carries the CITATION.cff version');
+check(new RegExp(`date-released\\s*=\\s*\\{${citation.date_released}\\}`).test(bibtex), 'BibTeX date-released is the CITATION.cff ISO date');
+check(/license\s*=\s*\{MIT\}/.test(bibtex), 'BibTeX license is MIT');
+check(bibtex.includes(citation.version_doi), 'BibTeX DOI is the version DOI');
+check(bibtex.includes(loadedSnapshotISO), 'BibTeX note carries the loaded snapshot date');
+const footDoi = (await page.textContent('#footDoiVal')).trim();
+check(footDoi === citation.version_doi, 'footer shows the version DOI', footDoi);
+const footCopy = (await page.textContent('#foot')).trim();
+check(footCopy.includes('© 2026 Hallam Burnapp. All rights reserved.'), 'footer carries the copyright line');
+const warnHidden = await page.$eval('#citeWarn', el => el.hidden || getComputedStyle(el).display === 'none');
+check(citation.snapshot_date === loadedSnapshotISO ? warnHidden : !warnHidden, 'snapshot mismatch warning correctly ' + (citation.snapshot_date === loadedSnapshotISO ? 'hidden' : 'shown'));
+
+// ---------- 2. time controls ----------
+console.log('[2] Time controls');
+const playingAtLoad = await page.evaluate(() => __QA.playing());
+await page.evaluate(() => __QA.pause());
+await page.click('.timebar [data-speed="600"]');
+check(!(await page.evaluate(() => __QA.playing())), 'speed change while paused stays paused');
+const pressed = await page.getAttribute('#tPlay', 'aria-pressed');
+check(pressed === 'false', 'play button reflects paused state after speed change', `aria-pressed=${pressed}`);
+await page.click('.timebar [data-speed="60"]');
+check(!(await page.evaluate(() => __QA.playing())), 'second speed change still does not start playback');
+check(playingAtLoad === true, 'app starts in playing state (baseline)');
+
+// ---------- 3. legend footnote ----------
+console.log('[3] Legend exclusion footnote');
+const rb = await page.evaluate(() => __QA.legendRB());
+const note = (await page.textContent('.legend-note').catch(() => '')) || '';
+const noteNums = (note.match(/[\d,]+/g) || []).map(s => parseInt(s.replace(/,/g, ''), 10));
+check(noteNums[0] === rb.noGP && noteNums[1] === rb.catalogRB, 'legend footnote figures equal catalog R/B minus rendered R/B', `note says ${noteNums[0]}/${noteNums[1]}, computed ${rb.noGP}/${rb.catalogRB}`);
+
+// ---------- 4. pick every rendered object ----------
+console.log('[4] Pickability sweep');
+const eligible = await page.evaluate(() => __QA.eligible());
+const idxs = QUICK ? eligible.filter((_, k) => k % Math.ceil(eligible.length / 500) === 0) : eligible;
+console.log(`  rendered objects: ${eligible.length}${QUICK ? `, sampling ${idxs.length}` : ''}`);
+let chooserCount = 0, direct = 0;
+const failedPicks = [];
+const BATCH = 1500;
+for (let off = 0; off < idxs.length; off += BATCH) {
+  const batch = idxs.slice(off, off + BATCH);
+  const res = await page.evaluate((list) => {
+    // Retries vary distance AND viewing angle: a co-radial neighbour can sit
+    // exactly in front of the target from one angle but not another — exactly
+    // what a human does by rotating the globe.
+    // low df = zoomed close; non-zero off = click a few px away (chooser path).
+    // Offset attempts vary direction and angle because a third object can sit
+    // on any single offset point — some catalog entries are EXACT duplicates
+    // (two NORAD ids propagating to the same position), reachable only via
+    // the chooser.
+    const ATTEMPTS = [[1.35, 0, 0], [1.15, 4, 0], [1.02, 0, 0], [1.02, 9, 0], [1.8, -7, 0],
+                      [1.35, 0, 8], [1.02, 0, 8], [1.02, 0, -8], [1.35, 21, -8],
+                      [1.02, 45, 10], [1.6, -18, 8], [1.02, 63, -11]];
+    const out = [];
+    for (const i of list) {
+      let r;
+      for (const [df, tilt, off] of ATTEMPTS) { r = __QA.pickTest(i, df, tilt, off); if (r.ok) break; }
+      out.push({ i, ok: r.ok, mode: r.mode, why: r.why, norad: __QA.norad(i) });
+    }
+    return out;
+  }, batch);
+  for (const r of res) {
+    if (r.ok) { if (r.mode === 'chooser') chooserCount++; else direct++; }
+    else failedPicks.push(r);
+  }
+  process.stdout.write(`  …${Math.min(off + BATCH, idxs.length)}/${idxs.length} (direct ${direct}, chooser ${chooserCount}, failed ${failedPicks.length})\r`);
+}
+console.log('');
+check(failedPicks.length === 0, `every rendered object is pickable with a matching detail card (${direct + chooserCount}/${idxs.length})`,
+  failedPicks.length ? `unpickable NORAD IDs: ${failedPicks.slice(0, 25).map(f => `${f.norad}(${f.why})`).join(', ')}${failedPicks.length > 25 ? ` …and ${failedPicks.length - 25} more` : ''}` : '');
+if (chooserCount > 0) console.log(`  (${chooserCount} sweep picks resolved via the chooser)`);
+// Dedicated dense-cluster chooser test: click between two overlapping objects,
+// assert the chooser opens, lists them, and resolves the pick correctly.
+let chooser = { ok: false, why: 'not-run' };
+for (let attempt = 0; attempt < 5 && !chooser.ok; attempt++) {
+  chooser = await page.evaluate((s) => __QA.chooserTest(s), attempt);
+}
+check(chooser.ok, `dense-cluster chooser opens, lists the pair, and resolves the pick (${chooser.rows || 0} rows)`, chooser.why || '');
+
+// ---------- 5. permalinks ----------
+console.log('[5] Permalinks');
+const alive = await page.evaluate(() => __QA.eligible().map(i => __QA.norad(i)));
+for (let k = 0; k < 3; k++) {
+  const norad = alive[Math.floor(Math.random() * alive.length)];
+  await loadApp(`http://127.0.0.1:${PORT}/?sat=${norad}`);
+  await page.waitForFunction(() => document.querySelector('#detail')?.classList.contains('show'), { timeout: 30000 }).catch(() => {});
+  const shown = await page.$eval('#detail', el => el.classList.contains('show')).catch(() => false);
+  const hasNorad = shown && (await page.textContent('#dRows')).includes(norad);
+  check(shown && hasNorad, `?sat=${norad} permalink selects the object and shows its card`);
+}
+
+// ---------- 6. console hygiene ----------
+console.log('[6] Console hygiene');
+const realErrors = pageErrors.filter(e => !/favicon|swiftshader|GPU stall|WebGL.*fallback|Automatic fallback/i.test(e));
+check(realErrors.length === 0, 'no page errors or console errors', realErrors.slice(0, 5).join(' | '));
+
+await browser.close();
+server.close();
+
+console.log(`\n${passes} checks passed, ${failures.length} failed.`);
+if (failures.length) {
+  console.error('\nQA GATE FAILED:\n' + failures.map(f => ' - ' + f).join('\n'));
+  process.exit(1);
+}
+console.log('QA gate passed — deploy may proceed.');

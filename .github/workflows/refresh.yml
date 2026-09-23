@@ -33,9 +33,31 @@ jobs:
         run: |
           git config user.name "stars-observatory-bot"
           git config user.email "actions@github.com"
-          git add data/ledger.json
+          # ledger = daily longitudinal record; zenodo_cache = DOI fallback (changes on releases).
+          # Generated site/data/*.json stay uncommitted by design — the Pages artifact carries them.
+          git add data/ledger.json data/zenodo_cache.json
           git diff --cached --quiet || git commit -m "Ledger update: $(date -u +%F)"
+          git pull --rebase origin main
           git push
+
+      # ---- QA gate: a failure here blocks the Pages deploy ----
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-chromium-${{ runner.os }}-1.59.0
+
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright@1.59.0
+          npx playwright install --with-deps chromium
+
+      - name: QA gate (citation integrity, full pickability sweep, controls)
+        run: node tests/run_qa.mjs
 
       - name: Upload site artifact
         uses: actions/upload-pages-artifact@v3

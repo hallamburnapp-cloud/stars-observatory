@@ -1,7 +1,7 @@
 # STARS Observatory
 
 [![Daily data refresh](https://github.com/hallamburnapp-cloud/stars-observatory/actions/workflows/refresh.yml/badge.svg)](https://github.com/hallamburnapp-cloud/stars-observatory/actions/workflows/refresh.yml)
-[![DOI](https://zenodo.org/badge/1355854787.svg)](https://zenodo.org/badge/latestdoi/1355854787)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.22662848.svg)](https://doi.org/10.5281/zenodo.22662848)
 [![License: MIT](https://img.shields.io/badge/code-MIT-blue.svg)](LICENSE)
 
 **A demonstrative evidence instrument for State obligations under Articles VI & IX of the Outer Space Treaty.**
@@ -66,8 +66,24 @@ Built and maintained by **Hallam Burnapp**, PhD researcher in international spac
 
 ## Citation
 
-If you use the instrument or the lag ledger dataset in academic work, please cite it via the archived release DOI [10.5281/zenodo.22662849](https://doi.org/10.5281/zenodo.22662849) (see `CITATION.cff`) together with the underlying sources above.
+The instrument generates its own citation at build time — open the **Provenance & citation** panel on the live site for a ready-to-copy OSCOLA citation carrying the exact version, data snapshot date and version DOI of the release you consulted. The OSCOLA templates are:
+
+**Footnote:**
+
+> Hallam Burnapp, 'STARS Observatory' (version \<VERSION\>, data snapshot \<SNAPSHOT DATE\>, University of Aberdeen 2026) DOI: \<VERSION DOI\>.
+
+**Bibliography** (surname first, no trailing full stop):
+
+> Burnapp H, 'STARS Observatory' (version \<VERSION\>, data snapshot \<SNAPSHOT DATE\>, University of Aberdeen 2026) DOI: \<VERSION DOI\>
+
+where `<VERSION>` and `<VERSION DOI>` identify the archived release you used (the site fills these in automatically) and `<SNAPSHOT DATE>` is the date of the dataset you consulted, e.g. `13 September 2026`.
+
+The **concept DOI** [10.5281/zenodo.22662848](https://doi.org/10.5281/zenodo.22662848) always resolves to the latest archived release; each release additionally receives its own **version DOI**, which is what the citation should carry (see `CITATION.cff`). Please also credit the underlying data sources listed above.
+
+A BibTeX entry with the same metadata is available in the live site's Provenance & citation panel.
 
 ## License
+
+© 2026 Hallam Burnapp. All rights reserved.
 
 Code: MIT (see LICENSE). Generated datasets: CC-BY 4.0, inheriting GCAT's attribution requirement.
