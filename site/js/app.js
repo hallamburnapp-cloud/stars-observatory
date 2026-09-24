@@ -2116,13 +2116,13 @@ function buildLagIndex() {
   } else {
     const rows = lag.recent_flips.slice(0, 12).map(f => `
       <tr><td>${f.name || f.norad || '—'}</td><td>${f.owner || ''}</td>
-      <td class="num">${f.launch || '—'}</td><td class="num">${f.registered || '—'}</td>
+      <td class="num">${f.launch || '—'}</td><td class="num">${f.registered_on || f.registered || '—'}</td>
       <td class="num hl">${f.lag_days != null ? f.lag_days.toLocaleString('en-GB') : '—'}</td></tr>`).join('');
     flipsEl.innerHTML = `<div class="lag-scroll"><table class="dt"><thead><tr>
-      <th>Object</th><th>Owner</th><th>Launched</th><th>Registered</th><th class="num">Lag (days)</th>
+      <th>Object</th><th>Owner</th><th>Launched</th><th title="Date the UN registration first appeared in GCAT on a daily refresh">Registration observed</th><th class="num">Lag (days)</th>
       </tr></thead><tbody>${rows}</tbody></table></div>`;
   }
-  methodEl.innerHTML = `<strong>Method.</strong> Each daily refresh compares the tracked payload catalog against UNOOSA registration records. When a previously unregistered payload gains a registration record, the instrument records the elapsed days from launch and updates the running median. Figures update automatically — this panel measures what it observes from the day it began, not a retrospective estimate.`;
+  methodEl.innerHTML = `<strong>Method.</strong> Each daily refresh reads the UN registration field (UNReg) that McDowell's GCAT records for every tracked payload. When a payload that had no UN registration record gains one, the instrument logs the days from launch to the refresh on which the registration first became visible, and updates the running median. The lag is therefore an upper bound, precise to the refresh cadence and to GCAT's own update lag. Figures update automatically: this panel measures what it has observed since it began, not a retrospective estimate.`;
 }
 
 // ============================================================
@@ -2705,6 +2705,34 @@ function dossierCitation(name) {
   const f = citeForms(); if (!f) return { foot: '', bib: '' };
   return { foot: f.footPin(`State dossier: ${name}`), bib: f.bib };
 }
+// Full legal framework of a State: every relevant instrument with its status,
+// functions (authorisation, registration, liability …) and relevance to the
+// Article VI/VII/VIII/IX machinery STARS measures; pending bills and items
+// judged not relevant are listed separately so the reader sees the reasoning.
+const FN_LABEL = { 'authorisation': 'authorisation', 'continuing-supervision': 'supervision', 'registration': 'registration',
+  'liability-insurance': 'liability / insurance', 'launch-reentry': 'launch / re-entry', 'remote-sensing': 'remote sensing',
+  'spectrum-space-stations': 'spectrum / space stations', 'debris-safety': 'debris / safety', 'space-resources': 'space resources',
+  'institutional': 'institutional', 'security-foreign-ownership': 'security / foreign ownership' };
+function renderInstruments(L) {
+  const list = Array.isArray(L.instruments) ? L.instruments : [];
+  if (!list.length) return '';
+  const item = (x) => {
+    const link = x.source_url ? ` <a href="${escapeHTML(x.source_url)}" target="_blank" rel="noopener">source ↗</a>` : '';
+    const fns = (x.functions || []).map(f => `<span class="ins-fn">${escapeHTML(FN_LABEL[f] || f)}</span>`).join('');
+    const status = x.status && x.status !== 'in force' ? `<span class="ins-st">${escapeHTML(x.status)}</span>` : '';
+    return `<li class="ins"><div class="ins-n">${escapeHTML(x.name)}${link}</div>
+      <div class="ins-m">${status}${fns}</div>${x.note ? `<div class="ins-note">${escapeHTML(x.note)}</div>` : ''}</li>`;
+  };
+  const live = list.filter(x => !/pending|lapsed|repealed/.test(x.status || ''));
+  const pend = list.filter(x => /pending/.test(x.status || ''));
+  const core = live.filter(x => x.relevance === 'core'), sup = live.filter(x => x.relevance !== 'core');
+  const nr = Array.isArray(L.considered_not_relevant) ? L.considered_not_relevant : [];
+  return `
+    ${core.length ? `<h4 class="ins-h">Core instruments (authorisation, supervision, registration, liability)</h4><ul class="ins-list">${core.map(item).join('')}</ul>` : ''}
+    ${sup.length ? `<h4 class="ins-h">Supporting instruments</h4><ul class="ins-list">${sup.map(item).join('')}</ul>` : ''}
+    ${pend.length ? `<h4 class="ins-h">Pending legislation (not in force)</h4><ul class="ins-list">${pend.map(item).join('')}</ul>` : ''}
+    ${nr.length ? `<details class="ins-nr"><summary>Considered and judged not relevant (${nr.length})</summary><ul>${nr.map(x => `<li><strong>${escapeHTML(x.name)}</strong> — ${escapeHTML(x.reason)}</li>`).join('')}</ul></details>` : ''}`;
+}
 function renderDossier() {
   const el = $('#dosBody'); if (!el || !dossierCode) return;
   const code = dossierCode, F = dossierFacts(code);
@@ -2739,7 +2767,9 @@ function renderDossier() {
       <span class="k">National space legislation</span><span class="v">${L ? lawTxt[L.law] || escapeHTML(L.law) : '—'}</span>
     </div>
     ${L && L.verified ? `<p class="dos-note" style="margin:-4px 0 10px">Legal status last verified ${escapeHTML(oscolaDate(L.verified))} against official sources.</p>` : ''}
-    ${L && L.instrument ? `<div class="dos-kv stack"><span class="k">Instrument</span><span class="v">${escapeHTML(L.instrument)}${L.year && !String(L.instrument).includes(String(L.year)) ? ' (' + L.year + ')' : ''} ${lawSrc}</span></div>` : ''}
+    ${L && L.instrument ? `<div class="dos-kv stack"><span class="k">Principal instrument</span><span class="v">${escapeHTML(L.instrument)}${L.year && !String(L.instrument).includes(String(L.year)) ? ' (' + L.year + ')' : ''} ${lawSrc}</span></div>` : ''}
+    ${L && L.borderline ? `<p class="dos-note"><strong>Classification note.</strong> ${escapeHTML(L.borderline)}</p>` : ''}
+    ${L ? renderInstruments(L) : ''}
     ${F.consts.length ? `<h3 class="section">Constellations (propagated payloads)</h3><div class="dos-kv">${F.consts.slice(0, 8).map(([l, n]) => `<span class="k">${escapeHTML(l)}</span><span class="v">${fmt(n)}</span>`).join('')}</div>` : ''}
     <h3 class="section">Cite this dossier</h3>
     <div class="dos-note" style="margin:0 0 4px">Footnote (OSCOLA 5, pinpointed to this dossier)</div>

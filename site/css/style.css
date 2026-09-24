@@ -552,6 +552,19 @@ footer#foot a:hover, footer#foot .lnk:hover { color: var(--txt); border-bottom-c
 .dos-kv.stack { grid-template-columns: 1fr; gap: 2px; margin-bottom: 10px; }
 .dos-kv.stack .v { font-family: inherit; text-align: left; }
 .dos-kv a, .dos-note a { color: var(--accent); }
+.ins-h { font-family: var(--mono); font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--txt-faint); margin: 14px 0 6px; font-weight: 500; }
+.ins-list { list-style: none; padding: 0; margin: 0 0 6px; }
+.ins { border-left: 2px solid var(--line-strong); padding: 6px 0 6px 10px; margin-bottom: 6px; }
+.ins-n { font-size: 12.5px; color: var(--txt); line-height: 1.4; }
+.ins-n a { color: var(--accent); white-space: nowrap; }
+.ins-m { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+.ins-fn, .ins-st { font-family: var(--mono); font-size: 9.5px; padding: 1px 6px; border-radius: 3px; border: 1px solid var(--line); color: var(--txt-dim); }
+.ins-st { border-color: rgba(255,180,84,0.5); color: var(--accent-amber, #ffb454); }
+.ins-note { font-size: 11.5px; color: var(--txt-dim); line-height: 1.45; margin-top: 4px; }
+.ins-nr { margin: 8px 0 4px; font-size: 11.5px; color: var(--txt-dim); }
+.ins-nr summary { cursor: pointer; color: var(--txt-dim); }
+.ins-nr ul { margin: 6px 0 0 16px; padding: 0; }
+.ins-nr li { margin-bottom: 4px; line-height: 1.45; }
 .dos-note { font-size: 11.5px; color: var(--txt-faint); line-height: 1.5; margin: 6px 0 0; }
 .dos-cite { font-family: var(--mono); font-size: 11px; color: var(--txt); background: rgba(120,160,210,0.06); border: 1px solid var(--line); border-radius: 5px; padding: 10px 12px; line-height: 1.5; user-select: all; }
 .dos-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
