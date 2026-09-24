@@ -74,21 +74,30 @@ def main():
     version, released = read_cff()
     zen, src = zenodo_latest()
     snap = snapshot_date()
+    # Never pair "version X" with the DOI of a different archived release. Between
+    # bumping CITATION.cff and Zenodo minting the new version's DOI, cite the
+    # concept DOI (it always resolves to the latest archived release) instead.
+    archived = (zen.get("version_doi_version") or "").lstrip("vV")
+    doi = zen["version_doi"]
+    if archived != version:
+        print(f"WARN: latest Zenodo archive is {archived or 'unknown'}, CITATION.cff says {version}; "
+              f"citing the concept DOI {zen['concept_doi']} until {version} is archived")
+        doi = zen["concept_doi"]
     manifest = {
         "generated": datetime.now(timezone.utc).isoformat(),
         "version": version,
         "date_released": released,
         "publisher_year": int(released[:4]),
         "concept_doi": zen["concept_doi"],
-        "version_doi": zen["version_doi"],
+        "version_doi": doi,
         "version_doi_version": zen["version_doi_version"],
         "doi_source": src,
         "snapshot_date": snap,
     }
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
-    print(f"citation.json: version {version} · snapshot {snap} · version DOI {zen['version_doi']} "
-          f"(archives {zen['version_doi_version'] or 'unknown'}) · concept DOI {zen['concept_doi']} [{src}]")
+    print(f"citation.json: version {version} · snapshot {snap} · "
+          f"(latest archive {zen['version_doi_version'] or 'unknown'}) · cited DOI {doi} · concept DOI {zen['concept_doi']} [{src}]")
 
 
 if __name__ == "__main__":

@@ -2309,8 +2309,12 @@ function citeForms() {
   const loaded = ((state.data && state.data.generated) || '').substring(0, 10);
   const snapISO = loaded || c.snapshot_date;
   const D = oscolaDate(snapISO), V = c.version, Y = c.publisher_year, DOI = c.version_doi;
+  // OSCOLA 5 §3.7.1 / §3.1.3: a pinpoint comes at the end of the citation and
+  // before the DOI, after the closing bracket with no comma.
+  const footPin = (pin) => `Hallam Burnapp, 'STARS Observatory' (version ${V}, data snapshot ${D}, University of Aberdeen ${Y})${pin ? ' ' + pin : ''} DOI: ${DOI}.`;
   return {
-    foot: `Hallam Burnapp, 'STARS Observatory' (version ${V}, data snapshot ${D}, University of Aberdeen ${Y}) DOI: ${DOI}.`,
+    foot: footPin(''),
+    footPin,
     bib: `Burnapp H, 'STARS Observatory' (version ${V}, data snapshot ${D}, University of Aberdeen ${Y}) DOI: ${DOI}`,
     bibtex: `@software{burnapp_stars_${Y},
   author        = {Burnapp, Hallam},
@@ -2694,10 +2698,12 @@ function dossierFacts(code) {
     active: (st.by_owner_active || {})[code] || 0, reg, unreg, worldUnregPct: (wr + wu) ? wu / (wr + wu) * 100 : 0,
     lagO, law, consts: Object.entries(consts).sort((a, b) => b[1] - a[1]), prop };
 }
+// Footnote pinpoints the dossier (OSCOLA 5 §3.7.1: pinpoint before the DOI);
+// a bibliography lists the instrument as a whole, so it carries no pinpoint
+// and no final full stop (OSCOLA 5 §1.7).
 function dossierCitation(name) {
-  const f = citeForms(); if (!f) return '';
-  // Pinpoint the dossier after the DOI, as with a paragraph pinpoint.
-  return f.foot.replace(/\.$/, '') + `, State dossier: ${name}.`;
+  const f = citeForms(); if (!f) return { foot: '', bib: '' };
+  return { foot: f.footPin(`State dossier: ${name}`), bib: f.bib };
 }
 function renderDossier() {
   const el = $('#dosBody'); if (!el || !dossierCode) return;
@@ -2735,15 +2741,18 @@ function renderDossier() {
     ${L && L.instrument ? `<div class="dos-kv stack"><span class="k">Instrument</span><span class="v">${escapeHTML(L.instrument)}${L.year ? ' (' + L.year + ')' : ''} ${lawSrc}</span></div>` : ''}
     ${F.consts.length ? `<h3 class="section">Constellations (propagated payloads)</h3><div class="dos-kv">${F.consts.slice(0, 8).map(([l, n]) => `<span class="k">${escapeHTML(l)}</span><span class="v">${fmt(n)}</span>`).join('')}</div>` : ''}
     <h3 class="section">Cite this dossier</h3>
-    <div class="dos-cite" id="dosCite">${escapeHTML(dossierCitation(F.name))}</div>
+    <div class="dos-note" style="margin:0 0 4px">Footnote (OSCOLA 5, pinpointed to this dossier)</div>
+    <div class="dos-cite" id="dosCite">${escapeHTML(dossierCitation(F.name).foot)}</div>
+    <div class="dos-note" style="margin:10px 0 4px">Bibliography (the instrument as a whole — no pinpoint)</div>
+    <div class="dos-cite" id="dosCiteBib">${escapeHTML(dossierCitation(F.name).bib)}</div>
     <div class="dos-actions">
-      <button class="dcopy" id="dosCopyCite">Copy citation</button>
+      <button class="dcopy" id="dosCopyCite">Copy footnote</button>
       <button class="dcopy" id="dosCopyLink">Copy link to this dossier</button>
       <button class="dcopy" id="dosShow">Show on globe (${fmt(F.prop)})</button>
       <button class="dcopy" id="dosCsv">Download objects (CSV)</button>
     </div>
     <p class="dos-note">Attribution follows the 18 SDS/CelesTrak owner convention — an evidentiary proxy for the Article VI "appropriate State", not a legal determination. Catalogue-wide counts include objects without public element sets; the globe and CSV cover propagated objects only.</p>`;
-  $('#dosCopyCite').addEventListener('click', e => copyText($('#dosCite').textContent).then(ok => flashButton(e.target, ok ? 'Citation copied ✓' : 'Select the text above', 'Copy citation')));
+  $('#dosCopyCite').addEventListener('click', e => copyText($('#dosCite').textContent).then(ok => flashButton(e.target, ok ? 'Footnote copied ✓' : 'Select the text above', 'Copy footnote')));
   $('#dosCopyLink').addEventListener('click', e => {
     const u = location.origin + location.pathname + '?dossier=' + encodeURIComponent(code);
     copyText(u).then(ok => flashButton(e.target, ok ? 'Link copied ✓' : u, 'Copy link to this dossier'));
