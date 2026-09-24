@@ -66,6 +66,15 @@ def main():
             note = open(tmp, errors="replace").read(120).replace("\n", " ")
             os.remove(tmp); skipped.append((fname, note))
 
+    print("updated:", updated)
+    print("kept previous (not updated):", skipped)
+    missing = [f for f, _, _ in FETCHES if not os.path.exists(f"{RAW}/{f}")]
+    if missing:
+        reasons = {f: why for f, why in skipped}
+        for f in missing:
+            print(f"MISSING SOURCE {f}: not downloadable now and no previous copy — {reasons.get(f, 'unknown')}")
+        sys.exit(1)
+
     r = subprocess.run([sys.executable, str(_ROOT / "pipeline" / "build_dataset.py")],
                        capture_output=True, text=True)
     if r.returncode != 0:
@@ -116,8 +125,6 @@ def main():
     if stamped != html:
         idx.write_text(stamped); print(f"stamped asset versions -> ?v={ver.group(1)}")
 
-    print("updated:", updated)
-    print("kept previous (not updated):", skipped)
     print("OK — site/data refreshed")
 
 if __name__ == "__main__":
