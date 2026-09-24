@@ -394,10 +394,14 @@ console.log('[4d] View links, CSV export, State dossier');
   await loadApp(`http://127.0.0.1:${PORT}/?dossier=CIS`);
   await page.waitForSelector('#panel-dossier.active .dos-h', { timeout: 15000 });
   const d = await page.evaluate(() => ({ h: document.querySelector('.dos-h').textContent, cite: document.querySelector('#dosCite').textContent,
+    bib: document.querySelector('#dosCiteBib').textContent,
     open: document.querySelector('#drawer').classList.contains('open'), search: location.search,
     pay: [...document.querySelectorAll('#dosBody .dos-kv')][0].textContent }));
   check(d.open && d.h.length > 0, 'dossier link opens the State dossier', d.h);
-  check(d.cite.startsWith(expFoot.replace(/\.$/, '')) && d.cite.endsWith(`State dossier: ${d.h}.`), 'dossier citation extends the canonical footnote with a pinpoint', d.cite);
+  // OSCOLA 5 §3.7.1: pinpoint after the closing bracket, before the DOI, no comma.
+  const expDosFoot = expFoot.replace(/\) DOI: /, `) State dossier: ${d.h} DOI: `);
+  check(d.cite === expDosFoot, 'dossier footnote = canonical footnote with the pinpoint before the DOI (OSCOLA 5 §3.7.1)', `\n    expected: ${expDosFoot}\n    got:      ${d.cite}`);
+  check(d.bib === expBib, 'dossier bibliography = canonical bibliography entry, no pinpoint (OSCOLA 5 §1.7)', d.bib);
   const cisPay = JSON.parse(readFileSync(join(SITE, 'data', 'stats.json'), 'utf8')).by_owner_payloads.CIS;
   check(d.pay.includes(cisPay.toLocaleString('en-GB')), `dossier payload count equals stats.json (${cisPay})`);
   check(/dossier=CIS/.test(d.search), 'address bar keeps the open dossier', d.search);
