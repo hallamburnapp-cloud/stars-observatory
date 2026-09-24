@@ -122,7 +122,7 @@ await page.click('#csFoot'); // restore default
 const bibtex = (await page.textContent('#citeBibtex')).trim();
 await page.click('#drawerClose').catch(() => page.keyboard.press('Escape'));
 check(bibtex.includes(`version   = {${citation.version}}`) || bibtex.includes(`version = {${citation.version}}`) || bibtex.includes(`version={${citation.version}}`) || new RegExp(`version\\s*=\\s*\\{${citation.version.replace(/\./g, '\\.')}\\}`).test(bibtex), 'BibTeX carries the CITATION.cff version');
-check(new RegExp(`date-released\\s*=\\s*\\{${citation.date_released}\\}`).test(bibtex), 'BibTeX date-released is the CITATION.cff ISO date');
+check(new RegExp(`\\bdate\\s*=\\s*\\{${citation.date_released}\\}`).test(bibtex), 'BibTeX date (biblatex) is the CITATION.cff ISO release date');
 check(/license\s*=\s*\{MIT\}/.test(bibtex), 'BibTeX license is MIT');
 check(bibtex.includes(citation.version_doi), 'BibTeX DOI is the version DOI');
 check(bibtex.includes(loadedSnapshotISO), 'BibTeX note carries the loaded snapshot date');

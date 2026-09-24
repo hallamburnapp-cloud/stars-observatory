@@ -8,7 +8,7 @@
 
 **Live instrument → [starsobservatory.org](https://starsobservatory.org/)**
 
-STARS Observatory fuses the public orbital catalog with the legal layer that governs it. Every tracked payload carries its Article VI responsible State and its UN registration status; the instrument propagates ~18,600 objects with SGP4 in the browser and turns treaty obligations into measurable quantities:
+STARS Observatory fuses the public orbital catalog with the legal layer that governs it. Every tracked payload carries its Article VI responsible State and its UN registration status; the instrument propagates ~19,000 objects (CelesTrak's active-satellite set plus four historical debris clouds) with SGP4 in the browser and turns treaty obligations into measurable quantities:
 
 - **Article VI supervision burden** — payloads per responsible State, and the concentration of supervisory responsibility in a single licensing State.
 - **Registration gap & lag** — payloads with no matching UN registration record, cross-referenced against GCAT, plus a live **Registration Lag Index**: a longitudinal ledger that observes payloads flipping from unregistered to registered and accrues per-State launch→registration latency distributions (running daily since 2026-07-11).
@@ -82,7 +82,7 @@ Built and maintained by **Hallam Burnapp**, PhD researcher in international spac
 
 ## Citation
 
-The instrument generates its own citation at build time — open the **Provenance & citation** panel on the live site for a ready-to-copy OSCOLA citation carrying the exact version, data snapshot date and version DOI of the release you consulted. The OSCOLA templates are:
+The instrument generates its own citation at build time — open the **Provenance & limitations** panel on the live site for a ready-to-copy OSCOLA citation carrying the exact version, data snapshot date and version DOI of the release you consulted. The OSCOLA templates are:
 
 **Footnote:**
 

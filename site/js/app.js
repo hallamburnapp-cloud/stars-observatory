@@ -110,7 +110,7 @@ function _legacyCopy(txt) {
 // 1. Load data
 // ============================================================
 async function loadData() {
-  setLoad('Loading orbital catalog…', 10);
+  setLoad('Loading orbital catalogue…', 10);
   const [sats, stats, lag, natlaw, citation] = await Promise.all([
     loadCatalog(),
     fetch('./data/stats.json', { cache: 'no-cache' }).then(r => r.json()),
@@ -1003,12 +1003,12 @@ function showDetail(i) {
   $('#dType').textContent = fullType(state.objType[i]);
   const rows = $('#dRows');
   const regBadge = state.objType[i] !== 'PAY'
-    ? '<span class="badge na">N/A · non-payload</span>'
+    ? '<span class="badge na">Not assessed · non-payload</span>'
     : (state.registered[i] ? '<span class="badge reg">Registered</span>' : '<span class="badge unreg">No UN record</span>');
   rows.innerHTML = `
     <div class="drow"><span class="k">NORAD ID</span><span class="v">${state.norad[i]}</span></div>
     <div class="drow"><span class="k">Intl designator</span><span class="v">${state.intl[i]}</span></div>
-    <div class="drow"><span class="k">Responsible State</span><span class="v"><button class="dlink" id="dDossier" title="Open the State dossier">${state.ownerName[i]} (${state.ownerCode[i]})</button></span></div>
+    <div class="drow"><span class="k">Attributed State / owner</span><span class="v"><button class="dlink" id="dDossier" title="Open the State dossier">${state.ownerName[i]} (${state.ownerCode[i]})</button></span></div>
     <div class="drow"><span class="k">Constellation</span><span class="v">${state.constLabel[i] || '—'}</span></div>
     <div class="drow"><span class="k">UN registration</span><span class="v">${regBadge}</span></div>
     <div class="drow"><span class="k">Launch year</span><span class="v">${state.launchYear[i] || '—'}</span></div>
@@ -1075,19 +1075,19 @@ function renderLegend() {
     const catalogRB = (state.stats.by_type && state.stats.by_type['R/B']) || 0;
     const renderedRB = count(i => state.objType[i] === 'R/B');
     const noGPRB = Math.max(0, catalogRB - renderedRB);
-    footnote = `\u2020 ${noGPRB.toLocaleString('en-GB')} of the ${catalogRB.toLocaleString('en-GB')} cataloged rocket bodies lack public GP element sets and are not propagated here; they are included in the catalog statistics panels.`;
+    footnote = `\u2020 ${noGPRB.toLocaleString('en-GB')} of the ${catalogRB.toLocaleString('en-GB')} catalogued rocket bodies are not propagated here (only CelesTrak’s active set and four debris clouds are loaded); they are included in the catalogue statistics panels.`;
   } else if (m === 'state') {
     const codes = ['US','CIS','PRC','UK','JPN','FR','IND','ESA'];
     let listed = 0;
     rows = codes.map(c => { const n = count(i => state.ownerCode[i] === c); listed += n;
       return [state.stats.owner_names[c] || c, STATE_COLORS[c], n]; });
     rows.push(['Other States', STATE_COLORS.OTHER, state.N - listed]);
-    footnote = 'Counts are propagated objects per SATCAT owner attribution — an evidentiary proxy for the Article VI “appropriate State”, not a legal determination. Catalog-wide payload figures are in the Art VI panel.';
+    footnote = 'Counts are propagated objects per SATCAT owner attribution — an evidentiary proxy for the Article VI ‘appropriate State’, not a legal determination. Catalogue-wide payload figures are in the Art VI panel.';
   } else if (m === 'reg') {
     rows = [['Registered (payload)', REG_COLORS.reg, count(i => state.objType[i] === 'PAY' && state.registered[i])],
             ['No UN record (payload)', REG_COLORS.unreg, count(i => state.objType[i] === 'PAY' && !state.registered[i])],
-            ['N/A · non-payload', REG_COLORS.na, count(i => state.objType[i] !== 'PAY')]];
-    footnote = 'Registration status is shown for propagated payloads, cross-referenced against GCAT. Submissions lag launch — “no UN record” includes filings still pending.';
+            ['Not assessed · non-payload', REG_COLORS.na, count(i => state.objType[i] !== 'PAY')]];
+    footnote = 'Registration status is shown for propagated payloads, cross-referenced against GCAT. Submissions lag launch — ‘no UN record’ includes filings still pending.';
   } else if (m === 'const') {
     rows = [['Starlink', CONST_COLORS.Starlink, count(i=>constKey(state.constLabel[i])==='Starlink')],
             ['OneWeb', CONST_COLORS.OneWeb, count(i=>constKey(state.constLabel[i])==='OneWeb')],
@@ -1150,7 +1150,7 @@ function populateFilters() {
   for (let i = 0; i < state.N; i++) if (state.objType[i] === 'PAY') (state.registered[i] ? reg++ : unreg++);
   $$('#fReg option').forEach(o => {
     if (o.value === '1') o.textContent = `Registered · ${reg.toLocaleString('en-GB')}`;
-    if (o.value === '0') o.textContent = `Unregistered · ${unreg.toLocaleString('en-GB')}`;
+    if (o.value === '0') o.textContent = `No UN record · ${unreg.toLocaleString('en-GB')}`;
   });
 }
 
@@ -1224,46 +1224,46 @@ function buildRegGap() {
 const SCENARIOS = [
   {
     id: 'aeolus', title: 'Aeolus / Starlink-44', year: '2019',
-    tag: 'First dodge of a commercial mega-constellation sat',
-    intro: '<strong style="color:var(--accent-warn)">2 September 2019.</strong> ESA\'s Aeolus performed the agency\'s first-ever collision-avoidance manoeuvre against an active commercial constellation satellite — SpaceX Starlink-44 — half an orbit before closest approach.',
+    tag: 'ESA’s first manoeuvre against a large-constellation satellite',
+    intro: '<strong style="color:var(--accent-warn)">2 September 2019.</strong> ESA’s Aeolus performed the agency’s first collision-avoidance manoeuvre to protect one of its spacecraft from a satellite in a large constellation — SpaceX’s Starlink-44 — half an orbit before the predicted conjunction.',
     steps: [
-      { date: '24 Aug 2019', crit: false, txt: 'Starlink-44 (SpaceX) and Aeolus (ESA Earth-observation mission) are flagged on a converging track. Initial screening from US 18 SPCS conjunction data messages.', prob: null },
-      { date: '28 Aug 2019', crit: false, txt: 'Updated conjunction data messages show collision probability rising. ESA begins assessing a possible avoidance manoeuvre.', prob: 'Probability climbing toward threshold' },
-      { date: '28–29 Aug 2019', crit: true, txt: 'Collision probability reaches ~1 in 1,000 — ten times ESA\'s 1-in-10,000 action threshold. ESA emails SpaceX to coordinate.', prob: 'P ≈ 1/1,000 · 10× ESA threshold' },
-      { date: '29 Aug – 1 Sep 2019', crit: true, txt: 'SpaceX does not respond to ESA follow-ups. The silence is later attributed to a bug in SpaceX\'s on-call paging system. No inter-party coordination occurs.', prob: 'Coordination breakdown — no reply' },
-      { date: '2 Sep 2019', crit: true, txt: 'ESA commands Aeolus to fire its thrusters and raise its orbit — half an orbit before closest approach. First time ESA manoeuvred to dodge an active commercial constellation satellite.', prob: 'Manoeuvre executed · T-½ orbit' }
+      { date: 'c. 26–27 Aug 2019', crit: false, txt: 'Data from the US Air Force 18th Space Control Squadron flag a potential conjunction at 11:02 UTC on 2 September between Aeolus (ESA Earth-observation mission) and Starlink-44 (SpaceX) — ‘about a week’ before the event, according to ESA.', prob: null },
+      { date: '28 Aug 2019', crit: false, txt: 'With the probability rising but still below threshold (SpaceX puts it at about 1 in 50,000), ESA emails the Starlink team to discuss options. Within a day SpaceX replies that it has no plan to act at that point.', prob: 'P ≈ 1/50,000 · operators in contact' },
+      { date: '29 Aug 2019 (evening)', crit: true, txt: 'Collision probability exceeds ESA’s 1-in-10,000 manoeuvre threshold for the first time. ESA prepares a manoeuvre that would raise Aeolus by about 350 m and keeps monitoring.', prob: 'P > 1/10,000 · ESA threshold crossed' },
+      { date: '29 Aug – 1 Sep 2019', crit: true, txt: 'US data show the probability still rising (SpaceX later cites 1.69 × 10⁻³). A bug in SpaceX’s on-call paging system means the Starlink operator never sees ESA’s follow-up emails. On Sunday 1 September, with P ≈ 1 in 1,000 (ten times ESA’s threshold), ESA decides to manoeuvre alone, relying on SpaceX’s earlier statement that Starlink-44 would not move.', prob: 'P ≈ 1/1,000 · follow-ups unseen' },
+      { date: '2 Sep 2019 · 10:14 UTC', crit: true, txt: 'Aeolus fires its thrusters at 10:14, 10:17 and 10:18 UTC, half an orbit before the predicted 11:02 UTC conjunction, raising its altitude by about 350 m — ESA’s first collision-avoidance manoeuvre to protect one of its spacecraft from a satellite in a large constellation.', prob: 'Manoeuvre executed · T-½ orbit' }
     ],
-    caption: '<strong>Article IX OST.</strong> States shall conduct activities with "due regard to the corresponding interests of all other States" and, where an activity "would cause potentially harmful interference," undertake "appropriate international consultations." The Aeolus / Starlink-44 event exposes the mismatch: the operational decision resolved in hours between an inter-governmental agency and a private operator\'s on-call engineers (a paging-system bug delayed SpaceX\'s reply), while the treaty\'s inter-State consultation mechanism had — and has — no operative timeline capable of engaging at that tempo.',
+    caption: '<strong>Article IX OST.</strong> States Parties must conduct all their activities ‘with due regard to the corresponding interests of all other States Parties to the Treaty’, and a State that ‘has reason to believe that an activity or experiment planned by it or its nationals … would cause potentially harmful interference’ must ‘undertake appropriate international consultations before proceeding’. The Aeolus / Starlink-44 event exposes the mismatch: the operational decision was made over five days by email between an intergovernmental agency (ESA, within OST art XIII) and a private operator whose activity is a US national activity under art VI, and the decisive final 48 hours were lost to a paging-system bug that hid ESA’s follow-ups from SpaceX — while the treaty’s inter-State consultation mechanism had, and has, no operative timeline capable of engaging at that tempo.',
     viz: { mode: 'pair' }
   },
   {
     id: 'iridium', title: 'Iridium 33 / Cosmos 2251', year: '2009',
     tag: 'First accidental collision of two intact satellites',
-    intro: '<strong style="color:var(--accent-warn)">10 February 2009, 16:56 UTC.</strong> An active Iridium commercial satellite and a defunct Russian Cosmos 2251 collided at 11.6 km/s over Siberia — the first accidental hypervelocity collision between two intact catalogued satellites. The debris clouds shown in the 3D view are still on orbit seventeen years later.',
+    intro: '<strong style="color:var(--accent-warn)">10 February 2009, 16:56 UTC.</strong> An active Iridium commercial satellite and a defunct Russian Cosmos 2251 collided at 11.6 km/s over Siberia — the first accidental hypervelocity collision between two intact catalogued satellites. The debris clouds shown in the 3D view are still on orbit today.',
     steps: [
-      { date: '1993', crit: false, txt: 'Cosmos 2251, a Russian Strela-2M military comms satellite, is launched; it ceases operating in 1995 and becomes derelict, uncontrolled debris.', prob: null },
-      { date: '28 Sep 1997', crit: false, txt: 'Iridium 33, an active US commercial mobile-comms satellite (Iridium LLC), is launched into the Iridium constellation.', prob: null },
-      { date: '10 Feb 2009 · 15:02 UTC', crit: false, txt: 'CelesTrak\'s SOCRATES tool predicts a 584 m close approach — but it is not flagged as an actionable, high-risk conjunction, and no formal warning reaches either operator in time.', prob: 'Predicted miss: 584 m · not escalated' },
-      { date: '10 Feb 2009 · 16:55:59 UTC', crit: true, txt: 'Collision at 778.6 km altitude, relative velocity 11.647 km/s, destroying both satellites. NASA later notes neither operator had requested a JSpOC conjunction assessment for these objects.', prob: 'Impact · 11.647 km/s · both destroyed' },
-      { date: '10 Jun 2010', crit: true, txt: 'Catalog update: Cosmos 2251 produced 1,267 cataloged fragments (1,212 on orbit); Iridium 33 produced 521 (498 on orbit).', prob: 'Cataloged fragments: 1,788' },
-      { date: 'To date', crit: true, txt: 'Neither the US nor Russia invoked the 1972 Liability Convention or requested Article IX consultations. The matter was never referred to diplomatic channels or a Claims Commission.', prob: 'No Art IX · no Liability Convention claim' }
+      { date: '1993', crit: false, txt: 'Cosmos 2251, a Russian Strela-2M military communications satellite, is launched; it ceases operating in 1995 and becomes derelict, uncontrolled debris.', prob: null },
+      { date: '14 Sep 1997', crit: false, txt: 'Iridium 33, a US commercial mobile-communications satellite (Iridium LLC), is launched on a Russian Proton from Baikonur into the Iridium constellation.', prob: null },
+      { date: '10 Feb 2009 · 15:02 UTC', crit: false, txt: 'CelesTrak’s public SOCRATES report predicts a 584 m close approach at 16:55:59 UTC — one of many sub-kilometre Iridium conjunctions that week; it never makes the Top Ten list and ranks 152nd at the time of the collision.', prob: 'Predicted miss: 584 m · not escalated' },
+      { date: '10 Feb 2009 · 16:55:59 UTC', crit: true, txt: 'Collision at 778.6 km altitude over northern Siberia (72.5°N 97.9°E), relative velocity 11.647 km/s, destroying both satellites. The US military’s high-accuracy catalogue was not shared with Iridium, and JSpOC did not know that Iridium 33 had manoeuvred for station-keeping hours earlier.', prob: 'Impact · 11.647 km/s · both destroyed' },
+      { date: '10 Jun 2010', crit: true, txt: 'Catalogue update: Cosmos 2251 produced 1,267 catalogued fragments (1,212 on orbit); Iridium 33 produced 521 (498 on orbit).', prob: 'Catalogued fragments: 1,788' },
+      { date: 'To date', crit: true, txt: 'No claim is publicly known to have been presented under the 1972 Liability Convention (which requires a State-to-State claim through diplomatic channels), and no Claims Commission was established. Neither State requested Article IX consultations.', prob: 'No public Liability Convention claim' }
     ],
-    caption: '<strong>Article IX & the Liability Convention.</strong> The first accidental destruction of two intact satellites produced no formal legal process whatsoever: no Article IX consultation, no Liability Convention claim. Fault was hard to assign (Cosmos 2251 was defunct and uncontrolled), and a private operator cannot itself invoke the state-to-state Convention. The case proves that even the clearest "harmful interference" event the treaty regime could imagine generated only silence — the mechanism was never engaged.',
+    caption: '<strong>Article IX & the Liability Convention.</strong> The first accidental collision of two intact satellites produced no publicly known formal legal process: no Liability Convention claim and no Article IX consultation. Article IX’s consultation duty attaches to a State’s planned activities that it has reason to believe would cause potentially harmful interference, so it is ill-suited to an unforeseen conjunction with a derelict. The Liability Convention requires fault for damage in space (art III), hard to establish when one object was defunct and uncontrolled; a private operator cannot itself invoke that State-to-State Convention; and Russia was itself a launching State of both objects (Iridium 33 flew on a Proton from Baikonur). The case shows a regime with no ex ante mechanism for conjunctions and only a fault-based, State-to-State ex post one.',
     viz: { mode: 'names', groups: [{ prefix: 'IRIDIUM 33 DEB', color: 0x4fd1e0, label: 'Iridium 33 debris' }, { prefix: 'COSMOS 2251 DEB', color: 0xff6b6b, label: 'Cosmos 2251 debris' }] }
   },
   {
     id: 'fengyun', title: 'Fengyun-1C ASAT test', year: '2007',
     tag: 'Largest debris-generating event on record',
-    intro: '<strong style="color:var(--accent-warn)">11 January 2007.</strong> China destroyed its own defunct Fengyun-1C weather satellite with a direct-ascent kinetic kill vehicle at ~865 km — the single largest debris-generating event in history. No advance notification was given to any state. The debris cloud in the 3D view is what remains.',
+    intro: '<strong style="color:var(--accent-warn)">11 January 2007.</strong> China destroyed its own defunct Fengyun-1C weather satellite with a direct-ascent kinetic kill vehicle at ~860 km — the single largest debris-generating event in history. No advance notification was given to any State. The debris cloud in the 3D view is what remains.',
     steps: [
-      { date: '10 May 1999', crit: false, txt: 'Fengyun-1C, a Chinese polar-orbiting weather satellite, is launched from Taiyuan; it stops producing usable imagery in late 2004.', prob: null },
-      { date: '11 Jan 2007 · 22:26 UTC', crit: true, txt: 'A direct-ascent SC-19 kinetic-kill vehicle strikes Fengyun-1C at ~863–865 km altitude at ~8–9 km/s, destroying the satellite. No advance notification is given to any other state.', prob: 'Impact · ~8–9 km/s · no notification' },
+      { date: '10 May 1999', crit: false, txt: 'Fengyun-1C, a ~960 kg Chinese sun-synchronous weather satellite, is launched from Taiyuan. It works ‘through at least 2005’; by January 2007 it still responds to controllers but no longer provides significant meteorological service.', prob: null },
+      { date: '11 Jan 2007 · 22:26 UTC', crit: true, txt: 'A direct-ascent SC-19 kinetic-kill vehicle strikes Fengyun-1C at ~860 km altitude at ~9 km/s, destroying the satellite. No advance notification is given to any other State.', prob: 'Impact · ~8–9 km/s · no notification' },
       { date: '17–18 Jan 2007', crit: false, txt: 'Aviation Week first reports the test; the US National Security Council publicly confirms it on 18 January.', prob: null },
-      { date: '19–22 Jan 2007', crit: true, txt: 'The US, Japan, Australia, Canada and others lodge formal diplomatic protests; China declines to confirm or deny for 12 days.', prob: 'Bilateral protests — not Art IX' },
-      { date: '23 Jan 2007', crit: false, txt: 'China confirms the test, stating it "was not directed at any country" and reiterating opposition to the weaponization of space.', prob: null },
-      { date: 'Ongoing', crit: true, txt: 'By 2010 the catalog held 3,037 fragments (97% on orbit). As of ~April 2025 nearly 2,500 remained on orbit — almost 19% of all tracked debris, still the single largest contributor of any event.', prob: '≈2,500 fragments still on orbit (2025)' }
+      { date: '19–22 Jan 2007', crit: true, txt: 'The US lodges a formal protest, and Japan, Australia, Canada, the UK and others publicly raise concerns; China declines to confirm or deny for 12 days.', prob: 'Bilateral protests — not Art IX' },
+      { date: '23 Jan 2007', crit: false, txt: 'China confirms the test, stating that it ‘was not directed at any country’ and reiterating opposition to the weaponisation of outer space.', prob: null },
+      { date: 'Ongoing', crit: true, txt: 'By mid-September 2010 the catalogue held 3,037 fragments (97% still on orbit). CSET (November 2025) reported nearly 2,500 still on orbit — almost 19% of all tracked debris, still the single largest contributor of any event.', prob: '≈2,500 fragments still on orbit (CSET, 2025)' }
     ],
-    caption: '<strong>Article IX due regard.</strong> A deliberate, unannounced destruction that will pollute the same orbital shells used by every other State for a century drew only bilateral protests — never a formal Article IX consultation. The case proves the "due regard" and "harmful interference" clauses impose no operative constraint on national-security space activity: the most consequential debris event on record triggered no treaty mechanism at all.',
+    caption: '<strong>Article IX due regard and prior consultation.</strong> A deliberate, unannounced destruction that left debris in long-lived orbits, with lifetimes ‘measured in decades and even centuries’ (NASA), is the paradigm case for Article IX’s duty to ‘undertake appropriate international consultations before proceeding’ with a planned activity likely to cause potentially harmful interference. China did not consult, and no State exercised its right to ‘request consultation’; the response was diplomatic protest. The case suggests that, absent enforcement or procedural machinery, the due-regard and consultation clauses exert little operative constraint on national-security space activity.',
     viz: { mode: 'names', groups: [{ prefix: 'FENGYUN 1C DEB', color: 0xffb347, label: 'Fengyun-1C debris' }] }
   },
   {
@@ -1271,29 +1271,29 @@ const SCENARIOS = [
     tag: 'Nudol test · ISS crew took shelter',
     intro: '<strong style="color:var(--accent-warn)">15 November 2021.</strong> Russia destroyed the defunct Cosmos 1408 with a PL-19 Nudol interceptor at ~480 km, forcing the seven-member ISS crew to shelter in their return capsules. Most of the debris was at low altitude and has since re-entered — a sharp contrast with the high-altitude Fengyun-1C cloud.',
     steps: [
-      { date: '1982', crit: false, txt: 'Cosmos 1408, a Soviet-era Tselina-D SIGINT satellite (~2,200 kg), is launched; it later becomes defunct and is used as an ASAT target.', prob: null },
-      { date: '15 Nov 2021 · 02:47 UTC', crit: true, txt: 'A PL-19 Nudol direct-ascent interceptor from Plesetsk strikes Cosmos 1408 at ~465–490 km altitude at ~4.6 km/s, destroying it — the first satellite killed by the Nudol system.', prob: 'Impact · ~4.6 km/s' },
+      { date: '16 Sep 1982', crit: false, txt: 'Cosmos 1408, a 1,750 kg Soviet Tselina-D electronic-intelligence satellite, is launched; derelict for decades, it has decayed to a 490 × 465 km orbit by 2021.', prob: null },
+      { date: '15 Nov 2021 · ~02:47–02:50 UTC', crit: true, txt: 'A Nudol (A-235; US designation PL-19) direct-ascent interceptor launched from Plesetsk strikes Cosmos 1408 in its 490 × 465 km orbit, destroying it — the first satellite destroyed by the Nudol system.', prob: 'Catastrophic breakup · ~480 km' },
       { date: '15 Nov 2021 (same day)', crit: true, txt: 'The seven-member ISS Expedition 66 crew don suits and shelter in their Soyuz and Crew Dragon capsules. The US State Department reports >1,500 trackable debris pieces and hundreds of thousands of smaller fragments.', prob: 'ISS crew sheltered · >1,500 pieces' },
-      { date: '7 Mar 2022', crit: false, txt: 'The US catalog has added 1,604 Cosmos 1408 fragments with unique orbital identifications; technical estimates later reach ~1,700–1,800.', prob: '1,604 catalogued fragments' },
-      { date: '7 Dec 2022', crit: false, txt: 'The UN General Assembly adopts Resolution 77/41 calling for a moratorium on destructive direct-ascent ASAT testing, 155–9. It is not legally binding.', prob: 'UNGA 77/41 · non-binding' },
+      { date: '7 Mar 2022', crit: false, txt: 'By 7 March 2022 the US catalogue has added 1,604 Cosmos 1408 fragments with unique identifications; the catalogue eventually lists 1,806.', prob: '1,604 catalogued fragments' },
+      { date: '7 Dec 2022', crit: false, txt: 'The UN General Assembly adopts Resolution 77/41, calling on States to commit not to conduct destructive direct-ascent ASAT missile tests, by 155 votes to 9 with 9 abstentions (Russia and China against; India abstaining). It is not legally binding.', prob: 'UNGA 77/41 · non-binding' },
       { date: 'By 2025', crit: true, txt: 'Because the intercept was at low altitude, atmospheric drag self-cleaned the cloud: only a handful of Cosmos 1408 fragments still have public element sets — most have re-entered. High-altitude debris (Fengyun-1C) does not clean itself this way.', prob: 'Low-altitude debris self-cleans' }
     ],
-    caption: '<strong>Article IX & the limits of soft law.</strong> The clearest modern case of "potentially harmful interference" — debris forcing astronauts into shelter — still produced no Article IX consultation, only a non-binding UNGA resolution the testing states voted against. The case proves the treaty\'s consultation duty does not engage even when human life is directly at risk, and that the altitude of an event, not the law, determines how long its harm persists.',
+    caption: '<strong>Article IX & the limits of soft law.</strong> The clearest modern case of ‘potentially harmful interference’ — debris forcing astronauts into shelter — still produced no Article IX consultation: Russia did not consult before the test, and no State requested consultation. The multilateral response was a non-binding UNGA resolution (77/41) calling on States not to conduct such tests, which Russia and China voted against and India abstained on. The case shows the treaty’s consultation duty going unperformed and unenforced even when human life is directly at risk, and that the altitude of an event, not the law, determines how long its harm persists.',
     viz: { mode: 'names', groups: [{ prefix: 'COSMOS 1408 DEB', color: 0xff6b6b, label: 'Cosmos 1408 debris' }] }
   },
   {
     id: 'luch', title: 'Luch / Olymp GEO proximity ops', year: '2014–26',
     tag: 'Espionage RPO in the GEO ring',
-    intro: '<strong style="color:var(--accent-warn)">2014–2026.</strong> Russia\'s Luch (Olymp-K) parked repeatedly within ~10 km of Western telecom satellites in geostationary orbit, listening to their traffic — an "act of espionage," France declared. It generated no debris from the manoeuvres themselves. The 3D view isolates its successor Luch-5X against the Intelsat (ITSO) GEO ring; the original Olymp is no longer on orbit.',
+    intro: '<strong style="color:var(--accent-warn)">2014–2026.</strong> Russia’s Olymp-K (often called Luch) repeatedly parked beside Western commercial and military satellites in geostationary orbit, at times within about 10 km; Western officials and analysts assess that it was intercepting their communications, and France called its approach to Athena-Fidus ‘an act of espionage’. The manoeuvres themselves generated no debris. The 3D view isolates its successor Luch-5X against the Intelsat (ITSO) GEO ring; the original Olymp, retired to a graveyard orbit and fragmented in January 2026, is not in the live element-set feed.',
     steps: [
-      { date: '28 Sep 2014', crit: false, txt: 'Russia launches Olymp-K (Luch, NORAD 40258), assessed as an FSB/MoD signals-intelligence platform, into geostationary orbit.', prob: null },
-      { date: '2015', crit: true, txt: 'Olymp-K parks at 18.1°W directly between Intelsat 901 and Intelsat 7, manoeuvring as close as ~10 km. Intelsat calls the behaviour "not normal"; its calls to the Russian operator go unanswered. US JFCC-Space sends emergency close-approach notifications — an operational notice, not an Article IX consultation.', prob: '~10 km approach · calls unanswered' },
-      { date: '26 Nov 2017', crit: true, txt: 'Luch approaches the Franco-Italian military satellite Athena-Fidus to within ~12.5 km.', prob: '~12.5 km to Athena-Fidus' },
-      { date: '7 Sep 2018', crit: true, txt: 'French Defence Minister Florence Parly publicly declares: "Trying to listen to your neighbours is not only unfriendly. It\'s an act of espionage." No treaty mechanism is invoked — the response is a diplomatic statement.', prob: '"An act of espionage" · no Art IX' },
-      { date: '12 Mar 2023', crit: false, txt: 'Russia launches a successor, Luch-5X / Olymp-K-2 (NORAD 55841); by October 2023 it is tracked trailing Western satellites, repeating the pattern.', prob: 'Successor Luch-5X on station' },
-      { date: 'Oct 2025 – 30 Jan 2026', crit: true, txt: 'The original Olymp (NORAD 40258) is decommissioned and moved to a graveyard orbit above GEO in October 2025 — then on 30 January 2026 at 06:09 UTC it fragments there, observed by Swiss SSA firm s2A systems. Analysts assess an impact by untracked debris as the most likely cause, though incomplete passivation has not been excluded.', prob: 'Olymp fragments · suspected debris strike' }
+      { date: '27 Sep 2014 · 20:23 UTC', crit: false, txt: 'Russia launches Olymp-K (often called Luch, NORAD 40258) on a Proton-M from Baikonur into geostationary orbit; it is assessed as an FSB/MoD signals-intelligence platform.', prob: null },
+      { date: '2015', crit: true, txt: 'From about 4 April, Olymp-K parks for five months at 18.1°W, directly between Intelsat 901 (18°W) and Intelsat 7 (18.2°W), at times within about 10 km of them. Intelsat General calls it ‘not normal behavior’; Intelsat’s attempts to reach the owner directly and through the US Defense Department go unanswered, and JFCC Space says the satellite has come within 5 km of another satellite three times since launch — operator and military contact, not an Article IX consultation request.', prob: '~10 km approach · calls unanswered' },
+      { date: '2017', crit: true, txt: 'Olymp-K approaches the Franco-Italian military communications satellite Athena-Fidus — ‘a bit too close’, France later says, ‘so close that one really could believe that it was trying to capture our communications’.', prob: 'Close approach to Athena-Fidus' },
+      { date: '7 Sep 2018', crit: true, txt: 'France’s Minister for the Armed Forces, Florence Parly, publicly declares: ‘Trying to listen to one’s neighbor is not only unfriendly. It’s called an act of espionage’ (Defense News translation). No treaty mechanism is invoked — the response is a diplomatic statement.', prob: '‘An act of espionage’ · no Art IX' },
+      { date: '12 Mar 2023', crit: false, txt: 'Russia launches a successor, Luch-5X / Olymp-K-2 (NORAD 55841), widely assessed as a signals-intelligence platform continuing the pattern.', prob: 'Successor Luch-5X on station' },
+      { date: 'Oct 2025 – 30 Jan 2026', crit: true, txt: 'The original Olymp (NORAD 40258) is decommissioned and moved to a graveyard orbit above GEO in October 2025 — then on 30 January 2026 at 06:09 UTC it fragments there, observed by Swiss SSA firm s2A systems. Analysts suggest an impact by untracked debris as a possible cause, since internal energy sources should have been vented at retirement; incomplete passivation has not been ruled out.', prob: 'Olymp fragments · suspected debris strike' }
     ],
-    caption: '<strong>Article IX due regard, without collision.</strong> Luch/Olymp proves that "harmful interference" under Article IX need not involve any physical contact: years of eavesdropping proximity operations against allied satellites drew emergency notifications and a ministerial "espionage" charge, but never a formal Article IX consultation. And in a closing irony, the platform that spent a decade exploiting the shared orbital environment ended fragmented in its graveyard orbit — most plausibly struck by that same environment\'s untracked debris.',
+    caption: '<strong>Article IX due regard, without collision.</strong> Luch/Olymp raises the question whether close-proximity signals collection — with no physical contact and no reported disruption of service — is ‘potentially harmful interference’ or a failure of ‘due regard’ under Article IX: years of such operations against allied satellites drew unanswered operator enquiries and a ministerial ‘espionage’ charge, but no State requested Article IX consultation. And in a closing irony, the platform that spent a decade exploiting the shared orbital environment ended fragmented in its graveyard orbit — possibly struck by that same environment’s untracked debris.',
     viz: { mode: 'geo', norad: 55841, noradColor: 0xff6b6b, ownerCode: 'ITSO', ownerColor: 0x4fd1e0 }
   }
 ];
@@ -1334,8 +1334,8 @@ function buildThreeClocks() {
     <div class="tclock diplo">
       <h4>Diplomatic clock (Art IX)</h4>
       <div class="cv">Undefined</div>
-      <div class="cd">"Appropriate international consultations" under Article IX have no trigger threshold and no timeline — and have never been formally invoked for an on-orbit conjunction in ~60 years.</div>
-      <div class="cx">No trigger · no timeline · never invoked</div>
+      <div class="cd">‘Appropriate international consultations’ under Article IX turn on a State’s own ‘reason to believe’ — no objective threshold and no timeline — and the consultation mechanism has never been formally invoked in almost 60 years.</div>
+      <div class="cx">Subjective trigger · no timeline · never invoked</div>
     </div>`;
   buildClockScale();
 }
@@ -1530,7 +1530,7 @@ function buildScenIsolation(viz) {
     if (pair[1] >= 0) groups.push({ indices: new Set([pair[1]]), color: 0xff6b6b });
     return {
       groups, all: pair, cam: [9, 7, 20], orbitPair: pair.length >= 2 ? pair : null,
-      note: '<strong>Illustrative.</strong> Starlink-44 has since decayed and Aeolus (NORAD 43600) was de-orbited in 2023, so neither is in the current catalog. The 3D view shows a representative present-day Starlink alongside a sun-synchronous Earth-observation payload to convey the crossing geometry. For the actual 2019 objects propagated from archival element sets, press “⏱ Replay the event”.'
+      note: '<strong>Illustrative.</strong> Starlink-44 (2019-029AV, NORAD 44278 — listed in today’s SATCAT as STARLINK-67) decayed in May 2020 and Aeolus (NORAD 43600) was de-orbited in July 2023, so neither is in the current catalogue. The 3D view shows a representative present-day Starlink alongside a sun-synchronous Earth-observation payload to convey the crossing geometry. For the actual 2019 objects propagated from archival element sets, press “⏱ Replay the event”.'
     };
   }
   if (viz.mode === 'names') {
@@ -1543,7 +1543,7 @@ function buildScenIsolation(viz) {
       const hex = '#' + g.color.toString(16).padStart(6, '0');
       parts.push(`<span style="color:${hex}">${set.size.toLocaleString('en-GB')}</span> ${g.label}`);
     }
-    let note = `<strong>Live catalog.</strong> Isolating ${parts.join(' and ')} — objects with public element sets still on orbit today. `;
+    let note = `<strong>Live catalogue.</strong> Isolating ${parts.join(' and ')} — objects with public element sets still on orbit today. `;
     if (viz.groups[0].prefix.startsWith('COSMOS 1408')) {
       note += 'Only a handful of Cosmos 1408 fragments still have public element sets: because the intercept was at low altitude (~480 km), atmospheric drag has re-entered nearly all of the cloud. High-altitude debris (e.g. Fengyun-1C) does not self-clean this way.';
     } else {
@@ -1566,7 +1566,7 @@ function buildScenIsolation(viz) {
     const luchHex = '#' + viz.noradColor.toString(16).padStart(6, '0');
     const itsoHex = '#' + viz.ownerColor.toString(16).padStart(6, '0');
     const luchName = luch.size ? 'Luch-5X (Olymp-K 2)' : 'the Luch successor';
-    const note = `<strong>Live catalog · GEO ring.</strong> <span style="color:${luchHex}">${luchName}</span> (NORAD ${viz.norad}) is isolated against the <span style="color:${itsoHex}">${itso.size} Intelsat (ITSO) GEO payloads</span> it and its predecessor shadowed. The original Olymp (NORAD 40258) is no longer intact — it was moved to a graveyard orbit in October 2025 and fragmented there on 30 January 2026, most plausibly struck by untracked debris, so it cannot be shown here.`;
+    const note = `<strong>Live catalogue · GEO ring.</strong> <span style="color:${luchHex}">${luchName}</span> (NORAD ${viz.norad}) is isolated against the <span style="color:${itsoHex}">${itso.size} Intelsat (ITSO) GEO payloads</span> it and its predecessor shadowed. The original Olymp (NORAD 40258) is no longer intact — it was moved to a graveyard orbit in October 2025 and fragmented there on 30 January 2026, possibly struck by untracked debris, and it is not in the live element-set feed, so it cannot be shown here.`;
     return { groups, all, cam: [0, 20, 55], orbitPair: null, note };
   }
   return { groups: [], all: [], cam: [9, 7, 20], orbitPair: null, note: '' };
@@ -2105,24 +2105,24 @@ function buildLagIndex() {
     <div class="stat-cell"><div class="n">${(lag.tracked_payloads||0).toLocaleString('en-GB')}</div><div class="l">Payloads tracked</div></div>
     <div class="stat-cell"><div class="n">${(lag.watching_unregistered||0).toLocaleString('en-GB')}</div><div class="l">With no registration record — under watch</div></div>
     <div class="stat-cell"><div class="n">${(lag.flips_observed||0).toLocaleString('en-GB')}</div><div class="l">Registrations observed since launch of this index</div></div>
-    <div class="stat-cell"><div class="n">${median}</div><div class="l">Median observed lag, launch → registration</div></div>`;
+    <div class="stat-cell"><div class="n">${median}</div><div class="l">Median observed lag, launch → registration first recorded in GCAT</div></div>`;
 
   const daysRunning = lag.days_running || 0;
   if (!lag.recent_flips || lag.recent_flips.length === 0) {
     flipsEl.innerHTML = `
       <div class="lag-empty"><span class="lag-dot"></span>
-        No registrations have flipped from "no record" to "registered" yet — longitudinal observation began ${lag.started}${daysRunning ? ` (day ${daysRunning})` : ''}. As objects are registered with UNOOSA, the lag from launch to registration will be measured and accumulated here on each daily refresh.
+        No registrations have flipped from "no record" to "registered" yet — longitudinal observation began ${oscolaDate(lag.started)}${daysRunning ? ` (day ${daysRunning})` : ''}. As registrations appear in GCAT, the interval from launch to recorded registration will be measured and accumulated here on each daily refresh.
       </div>`;
   } else {
     const rows = lag.recent_flips.slice(0, 12).map(f => `
       <tr><td>${f.name || f.norad || '—'}</td><td>${f.owner || ''}</td>
-      <td class="num">${f.launch || '—'}</td><td class="num">${f.registered || '—'}</td>
+      <td class="num">${f.launch || '—'}</td><td class="num">${f.registered_on || f.registered || '—'}</td>
       <td class="num hl">${f.lag_days != null ? f.lag_days.toLocaleString('en-GB') : '—'}</td></tr>`).join('');
     flipsEl.innerHTML = `<div class="lag-scroll"><table class="dt"><thead><tr>
-      <th>Object</th><th>Owner</th><th>Launched</th><th>Registered</th><th class="num">Lag (days)</th>
+      <th>Object</th><th>Owner</th><th>Launched</th><th title="Date the UN registration first appeared in GCAT on a daily refresh">Registration observed</th><th class="num">Lag (days)</th>
       </tr></thead><tbody>${rows}</tbody></table></div>`;
   }
-  methodEl.innerHTML = `<strong>Method.</strong> Each daily refresh compares the tracked payload catalog against UNOOSA registration records. When a previously unregistered payload gains a registration record, the instrument records the elapsed days from launch and updates the running median. Figures update automatically — this panel measures what it observes from the day it began, not a retrospective estimate.`;
+  methodEl.innerHTML = `<strong>Method.</strong> Each daily refresh reads the UN registration field (UNReg) that McDowell's GCAT records for every tracked payload. When a payload that had no UN registration record gains one, the instrument logs the days from launch to the refresh on which the registration first became visible, and updates the running median. The lag is therefore an upper bound, precise to the refresh cadence and to GCAT's own update lag. Figures update automatically: this panel measures what it has observed since it began, not a retrospective estimate.`;
 }
 
 // ============================================================
@@ -2160,7 +2160,7 @@ function buildSupervision() {
   const pct = (v) => total ? (v / total * 100) : 0;
   heroEl.innerHTML = `
     <div class="big">${Math.round(pct(cat.no)).toLocaleString('en-GB')}%</div>
-    <div class="cap" style="margin-top:6px">of catalogued payloads are supervised by a State that has <strong>no dedicated national space-law framework</strong> — the domestic machinery Article VI presumes for "authorization and continuing supervision." ${cat.no.toLocaleString('en-GB')} of ${total.toLocaleString('en-GB')} payloads.</div>`;
+    <div class="cap" style="margin-top:6px">of catalogued payloads are attributed to a State that has <strong>no authorisation regime in binding domestic law</strong> — the domestic machinery through which Article VI’s requirement of ‘authorization and continuing supervision’ is usually discharged. ${cat.no.toLocaleString('en-GB')} of ${total.toLocaleString('en-GB')} payloads.</div>`;
 
   const order = ['yes','consortium','unknown','no'];
   barEl.innerHTML = `<div class="stack-bar">${order.map(k =>
@@ -2182,7 +2182,7 @@ function buildSupervision() {
       <th>State (owner)</th><th class="num">Payloads</th><th>Statutory position</th>
       </tr></thead><tbody>${rows}</tbody></table></div>`;
   }
-  footEl.innerHTML = `<strong>Method.</strong> Payload populations from the live catalog are joined to the UNOOSA national space-law database by SATCAT owner code. "No dedicated space law" means the launching/supervising State has no comprehensive statutory authorization-and-supervision regime in force (registration-only or non-statutory policy regimes are counted as "no dedicated space law"). Consortium entries (e.g. Intelsat, Eutelsat, ESA) are supervised through delegated or member-State machinery rather than a single national act. Source: <a href="${nl.source_url}" target="_blank" rel="noopener">${nl.source}</a>.`;
+  footEl.innerHTML = `<strong>Method.</strong> Payload populations from the live catalogue are joined to the UNOOSA national space-law database by SATCAT owner code. ‘No dedicated space law’ means the attributed State has no authorisation regime for non-governmental space activities in binding domestic law — statute or binding regulation — in force; agency-creation, registration-only, telecoms-only and non-binding policy regimes are counted as ‘no dedicated space law’, while binding administrative regimes without a framework statute (eg China’s 2001–02 Measures) and remote-sensing-only regimes are counted as a regime and flagged in the dossier. Entries whose SATCAT owner is not a single State are shown separately: intergovernmental organisations (eg ESA, EUMETSAT, Arabsat), for which Article VI’s third sentence applies; commercial operators coded by company (eg Intelsat, Eutelsat, SES, Globalstar), whose activities are authorised by a licensing State named in each dossier; and joint multi-State programmes. Source: <a href="${nl.source_url}" target="_blank" rel="noopener">${nl.source}</a>.`;
 }
 
 // ============================================================
@@ -2193,27 +2193,54 @@ function buildProvenance() {
   const natEl = $('#provNatlaw'), ledEl = $('#provLedger'), casesEl = $('#provCases');
   if (natEl) {
     natEl.innerHTML = nl
-      ? `<div class="pc-h">National space law</div><a href="${nl.source_url}" target="_blank" rel="noopener">${nl.source}</a> — ${Object.keys(nl.states).length} States/entities classified by statutory position. Snapshot generated ${nl.generated}. Joined to live payload populations by SATCAT owner code.`
+      ? `<div class="pc-h">National space law</div><a href="${nl.source_url}" target="_blank" rel="noopener">${nl.source}</a> — ${Object.keys(nl.states).length} States/entities classified by statutory position. Snapshot generated ${oscolaDate(nl.generated)}. Joined to live payload populations by SATCAT owner code.`
       : `<div class="pc-h">National space law</div>Dataset unavailable.`;
   }
   if (ledEl) {
     const lag = state.lag;
     ledEl.innerHTML = lag
-      ? `<div class="pc-h">Registration Lag Index</div>Longitudinal ledger begun ${lag.started}; ${lag.days_running||0} day(s) of observation, ${(lag.flips_observed||0).toLocaleString('en-GB')} registration events recorded so far. Each daily refresh compares the tracked catalog against UNOOSA registration records and appends any launch→registration lag it observes. This is a forward-looking measurement, not a retrospective estimate.`
+      ? `<div class="pc-h">Registration Lag Index</div>Longitudinal ledger begun ${oscolaDate(lag.started)}; ${lag.days_running||0} day(s) of observation, ${(lag.flips_observed||0).toLocaleString('en-GB')} registration events recorded so far. Each daily refresh compares the catalogue against the UN registration references recorded in McDowell’s GCAT and appends any launch → first-recorded-registration interval it observes. This is a forward-looking measurement, not a retrospective estimate.`
       : `<div class="pc-h">Registration Lag Index</div>Dataset unavailable.`;
   }
   if (casesEl) {
+    // OSCOLA 5: websites and news §3.7.1, conference papers §3.7.5, journals §3.3,
+    // treaties §4.1, UN documents §4.2.2. Landing pages rather than PDFs where they exist.
+    const acc = ' accessed 24 September 2026';
     const cases = [
-      { t: 'Aeolus / Starlink-44 (2019)', links: [['ESA — spacecraft dodges a large constellation', 'https://www.esa.int/Safety_Security/Space_Debris/ESA_spacecraft_dodges_large_constellation']] },
-      { t: 'Iridium 33 / Cosmos 2251 (2009)', links: [['NASA NTRS technical analysis', 'https://ntrs.nasa.gov/api/citations/20100008433/downloads/20100008433.pdf'], ['Watson Farley & Williams — legal analysis', 'https://www.wfw.com/articles/collisions-in-space-may-the-force-of-law-be-with-you/']] },
-      { t: 'Fengyun-1C ASAT test (2007)', links: [['NASA Orbital Debris Program Office', 'https://ntrs.nasa.gov/api/citations/20070007324/downloads/20070007324.pdf'], ['CSET — Mapping Space Debris', 'https://cset.georgetown.edu/publication/mapping-space-debris/']] },
-      { t: 'Cosmos 1408 ASAT test (2021)', links: [['NASA ODPO Quarterly News Vol. 26-1', 'https://orbitaldebris.jsc.nasa.gov/quarterly-news/pdfs/ODQNv26i1.pdf'], ['Kosmos 1408 — overview', 'https://en.wikipedia.org/wiki/Kosmos_1408']] },
-      { t: 'Luch / Olymp GEO proximity ops (2014–26)', links: [['CSIS Satellite Dashboard analysis', 'https://satellitedashboard.org/analysis/luch-olymp-athena-fidus/'], ['Défense — Parly "act of espionage" (Defense News)', 'https://www.defensenews.com/space/2018/09/07/espionage-french-defense-head-charges-russia-of-dangerous-games-in-space/'], ['Luch destroyed by debris (Militarnyi)', 'https://militarnyi.com/en/news/russian-spy-satellite-luch-completely-destroyed-after-collision-with-space-debris/']] },
-      { t: 'Article IX never formally invoked', links: [['GCSP — In Focus (Schrogl)', 'https://www.gcsp.ch/sites/default/files/2026-02/In%20Focus_26_Schrogl.pdf']] },
-      { t: 'Starlink autonomous collision avoidance', links: [['Space.com — Starlink avoidance manoeuvres', 'https://www.space.com/spacex-starlink-50000-collision-avoidance-maneuvers-space-safety'], ['Six-month manoeuvre totals (FCC filing, via Gigazine)', 'https://gigazine.net/gsc_news/en/20260706-spacex-starlink-satelite']] }
+      { t: 'Aeolus / Starlink-44 (2019)', links: [
+        ['‘ESA Spacecraft Dodges Large Constellation’ (<i>European Space Agency</i>, 3 September 2019) <https://www.esa.int/Safety_Security/Space_Debris/ESA_spacecraft_dodges_large_constellation>' + acc, 'https://www.esa.int/Safety_Security/Space_Debris/ESA_spacecraft_dodges_large_constellation'],
+        ['Jeff Foust, ‘ESA Spacecraft Dodges Potential Collision with Starlink Satellite’ (<i>SpaceNews</i>, 2 September 2019)' + acc, 'https://spacenews.com/esa-spacecraft-dodges-potential-collision-with-starlink-satellite/'],
+        ['Mike Wall, ‘European Satellite Dodges Potential Collision with SpaceX Starlink Craft’ (<i>Space.com</i>, 3 September 2019)' + acc, 'https://www.space.com/spacex-starlink-esa-satellite-collision-avoidance.html']] },
+      { t: 'Iridium 33 / Cosmos 2251 (2009)', links: [
+        ['TS Kelso, ‘Analysis of the Iridium 33–Cosmos 2251 Collision’ (AAS/AIAA Astrodynamics Specialist Conference, Pittsburgh, August 2009) AAS 09-368', 'https://celestrak.org/publications/AAS/09-368/AAS-09-368.pdf'],
+        ['Phillip D Anz-Meador and J-C Liou, ‘Analysis and Consequences of the Iridium 33–Cosmos 2251 Collision’ (38th COSPAR Scientific Assembly, Bremen, July 2010)', 'https://ntrs.nasa.gov/citations/20100008433'],
+        ['‘Satellite Collision Leaves Significant Debris Clouds’ (2009) 13(2) <i>Orbital Debris Quarterly News</i> 1', 'https://orbitaldebris.jsc.nasa.gov/quarterly-news/pdfs/ODQNv13i2.pdf'],
+        ['Ryan Shepperd, ‘Subsequent Assessment of the Collision between Iridium 33 and COSMOS 2251’ (Advanced Maui Optical and Space Surveillance Technologies Conference, Maui, September 2023)', 'https://amostech.com/TechnicalPapers/2023/Conjunction-RPO/Shepperd.pdf'],
+        ['Convention on International Liability for Damage Caused by Space Objects (opened for signature 29 March 1972, entered into force 1 September 1972) 961 UNTS 187', 'https://www.unoosa.org/oosa/en/ourwork/spacelaw/treaties/liability-convention.html']] },
+      { t: 'Fengyun-1C ASAT test (2007)', links: [
+        ['Nicholas L Johnson and others, ‘The Characteristics and Consequences of the Break-up of the Fengyun-1C Spacecraft’ (58th International Astronautical Congress, Hyderabad, September 2007) IAC-07-A6.3.01', 'https://ntrs.nasa.gov/citations/20070007324'],
+        ['‘Chinese Anti-satellite Test Creates Most Severe Orbital Debris Cloud in History’ (2007) 11(2) <i>Orbital Debris Quarterly News</i> 2', 'https://orbitaldebris.jsc.nasa.gov/quarterly-news/pdfs/ODQNv11i2.pdf'],
+        ['(2010) 14(4) <i>Orbital Debris Quarterly News</i> 3 [Fengyun-1C catalogue tally, mid-September 2010]', 'https://orbitaldebris.jsc.nasa.gov/quarterly-news/pdfs/ODQNv14i4.pdf'],
+        ['‘Mapping Space Debris’ (<i>Center for Security and Emerging Technology</i>, 3 November 2025)' + acc, 'https://cset.georgetown.edu/publication/mapping-space-debris/']] },
+      { t: 'Cosmos 1408 ASAT test (2021)', links: [
+        ['‘The Intentional Destruction of Cosmos 1408’ (2022) 26(1) <i>Orbital Debris Quarterly News</i> 1', 'https://orbitaldebris.jsc.nasa.gov/quarterly-news/pdfs/ODQNv26i1.pdf'],
+        ['Antony J Blinken, ‘Russia Conducts Destructive Anti-Satellite Missile Test’ (<i>US Department of State</i>, 15 November 2021)' + acc, 'https://2021-2025.state.gov/russia-conducts-destructive-anti-satellite-missile-test/'],
+        ['UNGA Res 77/41 (7 December 2022) UN Doc A/RES/77/41', 'https://undocs.org/A/RES/77/41'],
+        ['UNGA Verbatim Record (7 December 2022) UN Doc A/77/PV.46', 'https://undocs.org/A/77/PV.46']] },
+      { t: 'Luch / Olymp GEO proximity operations (2014–26)', links: [
+        ['Mike Gruss, ‘Russian Satellite Maneuvers, Silence Worry Intelsat’ (<i>SpaceNews</i>, 9 October 2015)' + acc, 'https://spacenews.com/russian-satellite-maneuvers-silence-worry-intelsat/'],
+        ['John Leicester, Sylvie Corbet and Aaron Mehta, ‘“Espionage”: French Defense Head Charges Russia of Dangerous Games in Space’ (<i>Defense News</i>, 7 September 2018)' + acc, 'https://www.defensenews.com/space/2018/09/07/espionage-french-defense-head-charges-russia-of-dangerous-games-in-space/'],
+        ['Anatoly Zak, ‘Olymp-K’ (<i>RussianSpaceWeb</i>)' + acc, 'http://www.russianspaceweb.com/olymp.html'],
+        ['Andrew Jones, ‘Russian “Inspector” Satellite Appears to Break Apart in Orbit, Raising Debris Concerns’ (<i>Space.com</i>, 30 January 2026)' + acc, 'https://www.space.com/space-exploration/launches-spacecraft/russian-inspector-satellite-appears-to-break-apart-in-orbit-raising-debris-concerns']] },
+      { t: 'Article IX: text and practice', links: [
+        ['Treaty on Principles Governing the Activities of States in the Exploration and Use of Outer Space, including the Moon and Other Celestial Bodies (opened for signature 27 January 1967, entered into force 10 October 1967) 610 UNTS 205, art IX', 'https://www.unoosa.org/oosa/en/ourwork/spacelaw/treaties/outerspacetreaty.html'],
+        ['Kai-Uwe Schrogl, ‘“Due Regard” in Outer Space – a Lost Cause?’ (<i>Geneva Centre for Security Policy</i>, In Focus, 13 February 2026)' + acc, 'https://www.gcsp.ch/sites/default/files/2026-02/In%20Focus_26_Schrogl.pdf']] },
+      { t: 'Starlink autonomous collision avoidance', links: [
+        ['Tereza Pultarova, ‘SpaceX Starlink Satellites Made 50,000 Collision-Avoidance Maneuvers in the Past 6 Months’ (<i>Space.com</i>, 23 July 2024)' + acc, 'https://www.space.com/spacex-starlink-50000-collision-avoidance-maneuvers-space-safety'],
+        ['‘SpaceX Destroyed 260 Starlink Satellites in the Atmosphere within Six Months, According to Its Semi-annual Report Filed with the FCC’ (<i>Gigazine</i>, 6 July 2026) [reporting 65,137 and 142,015 manoeuvres by first- and second-generation satellites]' + acc, 'https://gigazine.net/gsc_news/en/20260706-spacex-starlink-satelite']] }
     ];
     casesEl.innerHTML = cases.map(c =>
-      `<div class="pc"><div class="pc-h">${c.t}</div>${c.links.map(([n,u]) => `<a href="${u}" target="_blank" rel="noopener">${n}</a>`).join(' · ')}</div>`).join('');
+      `<div class="pc"><div class="pc-h">${c.t}</div><ol class="pc-cites">${c.links.map(([n,u]) => `<li><a href="${u}" target="_blank" rel="noopener">${n.replace(/ <https?:[^>]+>/, '')}</a></li>`).join('')}</ol></div>`).join('');
   }
 }
 
@@ -2320,7 +2347,7 @@ function citeForms() {
   author        = {Burnapp, Hallam},
   title         = {STARS Observatory},
   version       = {${V}},
-  date-released = {${c.date_released}},
+  date          = {${c.date_released}},
   year          = {${Y}},
   organization  = {University of Aberdeen},
   license       = {MIT},
@@ -2645,7 +2672,7 @@ function exportCSV(indices, label) {
   for (const i of indices) {
     const rec = state.data.sats[i];
     rows.push([state.norad[i], state.name[i], state.intl[i], state.objType[i], state.ownerCode[i], state.ownerName[i],
-      state.constLabel[i], state.objType[i] === 'PAY' ? (state.registered[i] ? 'registered' : 'no UN record') : 'n/a',
+      state.constLabel[i], state.objType[i] === 'PAY' ? (state.registered[i] ? 'registered' : 'no UN record') : 'not assessed',
       state.launchYear[i], state.regime ? REGIME_NAMES[state.regime[i]] : '', rec[2], rec[3], snap].map(csvCell).join(','));
   }
   const blob = new Blob([rows.join('\r\n') + '\r\n'], { type: 'text/csv;charset=utf-8' });
@@ -2705,12 +2732,40 @@ function dossierCitation(name) {
   const f = citeForms(); if (!f) return { foot: '', bib: '' };
   return { foot: f.footPin(`State dossier: ${name}`), bib: f.bib };
 }
+// Full legal framework of a State: every relevant instrument with its status,
+// functions (authorisation, registration, liability …) and relevance to the
+// Article VI/VII/VIII/IX machinery STARS measures; pending bills and items
+// judged not relevant are listed separately so the reader sees the reasoning.
+const FN_LABEL = { 'authorisation': 'authorisation', 'continuing-supervision': 'supervision', 'registration': 'registration',
+  'liability-insurance': 'liability / insurance', 'launch-reentry': 'launch / re-entry', 'remote-sensing': 'remote sensing',
+  'spectrum-space-stations': 'spectrum / space stations', 'debris-safety': 'debris / safety', 'space-resources': 'space resources',
+  'institutional': 'institutional', 'security-foreign-ownership': 'security / foreign ownership' };
+function renderInstruments(L) {
+  const list = Array.isArray(L.instruments) ? L.instruments : [];
+  if (!list.length) return '';
+  const item = (x) => {
+    const link = x.source_url ? ` <a href="${escapeHTML(x.source_url)}" target="_blank" rel="noopener">source ↗</a>` : '';
+    const fns = (x.functions || []).map(f => `<span class="ins-fn">${escapeHTML(FN_LABEL[f] || f)}</span>`).join('');
+    const status = x.status && x.status !== 'in force' ? `<span class="ins-st">${escapeHTML(x.status)}</span>` : '';
+    return `<li class="ins"><div class="ins-n">${escapeHTML(x.name)}${link}</div>
+      <div class="ins-m">${status}${fns}</div>${x.note ? `<div class="ins-note">${escapeHTML(x.note)}</div>` : ''}</li>`;
+  };
+  const live = list.filter(x => !/pending|lapsed|repealed/.test(x.status || ''));
+  const pend = list.filter(x => /pending/.test(x.status || ''));
+  const core = live.filter(x => x.relevance === 'core'), sup = live.filter(x => x.relevance !== 'core');
+  const nr = Array.isArray(L.considered_not_relevant) ? L.considered_not_relevant : [];
+  return `
+    ${core.length ? `<h4 class="ins-h">Core instruments (authorisation, supervision, registration, liability)</h4><ul class="ins-list">${core.map(item).join('')}</ul>` : ''}
+    ${sup.length ? `<h4 class="ins-h">Supporting instruments</h4><ul class="ins-list">${sup.map(item).join('')}</ul>` : ''}
+    ${pend.length ? `<h4 class="ins-h">Pending legislation (not in force)</h4><ul class="ins-list">${pend.map(item).join('')}</ul>` : ''}
+    ${nr.length ? `<details class="ins-nr"><summary>Considered and judged not relevant (${nr.length})</summary><ul>${nr.map(x => `<li><strong>${escapeHTML(x.name)}</strong> — ${escapeHTML(x.reason)}</li>`).join('')}</ul></details>` : ''}`;
+}
 function renderDossier() {
   const el = $('#dosBody'); if (!el || !dossierCode) return;
   const code = dossierCode, F = dossierFacts(code);
   const fmt = n => Number(n).toLocaleString('en-GB');
   const pct = (a, b) => b ? (a / b * 100).toFixed(1) + '%' : '—';
-  const lawTxt = { yes: 'Dedicated national space legislation', no: 'No dedicated national space law', consortium: 'Intergovernmental / consortium owner', unknown: 'Not determined' };
+  const lawTxt = { yes: 'National authorisation regime in binding law (statute or regulation)', no: 'No dedicated national space law', consortium: 'Non-State or multi-State owner (IGO, company or joint programme) — see the supervising State(s) below', unknown: 'Not determined' };
   const L = F.law;
   const lawSrc = L && L.source_url ? `<a href="${escapeHTML(L.source_url)}" target="_blank" rel="noopener">source ↗</a>` : '';
   const regTot = F.reg + F.unreg;
@@ -2721,11 +2776,11 @@ function renderDossier() {
     <div class="dos-kv">
       <span class="k">Payloads on orbit</span><span class="v">${fmt(F.payN)}</span>
       <span class="k">Share of all payloads on orbit</span><span class="v">${pct(F.payN, F.payTotal)}</span>
-      <span class="k">Rank among responsible States</span><span class="v">${F.rank > 0 ? '#' + F.rank : '—'}</span>
+      <span class="k">Rank among attributed owners</span><span class="v">${F.rank > 0 ? '#' + F.rank : '—'}</span>
       <span class="k">Active payloads</span><span class="v">${fmt(F.active)}</span>
       <span class="k">All catalogued objects (incl. debris, rocket bodies)</span><span class="v">${fmt(F.all)}</span>
     </div>
-    <h3 class="section">Registration (Registration Convention, Art II)</h3>
+    <h3 class="section">UN registration (Registration Convention, art IV; UNGA Res 1721 B (XVI))</h3>
     <div class="dos-kv">
       <span class="k">Payloads with a UN registration record</span><span class="v">${fmt(F.reg)}</span>
       <span class="k">Payloads with no UN record</span><span class="v">${fmt(F.unreg)} (${pct(F.unreg, regTot)})</span>
@@ -2733,14 +2788,16 @@ function renderDossier() {
       <span class="k">Registrations observed by the lag ledger</span><span class="v">${F.lagO ? fmt(F.lagO.flips) : '0'}</span>
       <span class="k">Median launch → registration lag</span><span class="v">${F.lagO && F.lagO.median_lag_days != null ? fmt(Math.round(F.lagO.median_lag_days)) + ' days' : '—'}</span>
     </div>
-    <p class="dos-note">Lag ledger running since ${escapeHTML((state.lag && state.lag.started) || '—')}; a median needs observed registrations, so States with few flips have wide uncertainty.</p>
+    <p class="dos-note">Lag ledger running since ${escapeHTML(state.lag && state.lag.started ? oscolaDate(state.lag.started) : '—')}; a median needs observed registrations, so States with few flips have wide uncertainty.</p>
     <h3 class="section">Supervisory machinery</h3>
     <div class="dos-kv stack">
       <span class="k">National space legislation</span><span class="v">${L ? lawTxt[L.law] || escapeHTML(L.law) : '—'}</span>
     </div>
     ${L && L.verified ? `<p class="dos-note" style="margin:-4px 0 10px">Legal status last verified ${escapeHTML(oscolaDate(L.verified))} against official sources.</p>` : ''}
-    ${L && L.instrument ? `<div class="dos-kv stack"><span class="k">Instrument</span><span class="v">${escapeHTML(L.instrument)}${L.year && !String(L.instrument).includes(String(L.year)) ? ' (' + L.year + ')' : ''} ${lawSrc}</span></div>` : ''}
-    ${F.consts.length ? `<h3 class="section">Constellations (propagated payloads)</h3><div class="dos-kv">${F.consts.slice(0, 8).map(([l, n]) => `<span class="k">${escapeHTML(l)}</span><span class="v">${fmt(n)}</span>`).join('')}</div>` : ''}
+    ${L && L.instrument ? `<div class="dos-kv stack"><span class="k">Principal instrument</span><span class="v">${escapeHTML(L.instrument)}${L.year && !String(L.instrument).includes(String(L.year)) ? ' (' + L.year + ')' : ''} ${lawSrc}</span></div>` : ''}
+    ${L && L.borderline ? `<p class="dos-note"><strong>Classification note.</strong> ${escapeHTML(L.borderline)}</p>` : ''}
+    ${L ? renderInstruments(L) : ''}
+    ${F.consts.length ? `<h3 class="section">Constellations (propagated objects)</h3><div class="dos-kv">${F.consts.slice(0, 8).map(([l, n]) => `<span class="k">${escapeHTML(l)}</span><span class="v">${fmt(n)}</span>`).join('')}</div>` : ''}
     <h3 class="section">Cite this dossier</h3>
     <div class="dos-note" style="margin:0 0 4px">Footnote (OSCOLA 5, pinpointed to this dossier)</div>
     <div class="dos-cite" id="dosCite">${escapeHTML(dossierCitation(F.name).foot)}</div>
@@ -2752,7 +2809,7 @@ function renderDossier() {
       <button class="dcopy" id="dosShow">Show on globe (${fmt(F.prop)})</button>
       <button class="dcopy" id="dosCsv">Download objects (CSV)</button>
     </div>
-    <p class="dos-note">Attribution follows the 18 SDS/CelesTrak owner convention — an evidentiary proxy for the Article VI "appropriate State", not a legal determination. Catalogue-wide counts include objects without public element sets; the globe and CSV cover propagated objects only.</p>`;
+    <p class="dos-note">Attribution follows the 18 SDS/CelesTrak owner convention — an evidentiary proxy for the Article VI ‘appropriate State’, not a legal determination. Catalogue-wide counts include every on-orbit object in the SATCAT; the globe and CSV cover only the propagated set (CelesTrak’s active satellites and four debris clouds).</p>`;
   $('#dosCopyCite').addEventListener('click', e => copyText($('#dosCite').textContent).then(ok => flashButton(e.target, ok ? 'Footnote copied ✓' : 'Select the text above', 'Copy footnote')));
   $('#dosCopyLink').addEventListener('click', e => {
     const u = location.origin + location.pathname + '?dossier=' + encodeURIComponent(code);
@@ -2775,7 +2832,7 @@ function showFirstHint() {
   try { seen = localStorage.getItem(HINT_KEY) === '1'; } catch (e) { /* storage blocked */ }
   if (seen || INITIAL_QUERY.has('sat')) return;
   const el = $('#firstHint'); if (!el) return;
-  if (IS_TOUCH) $('#firstHintText').innerHTML = 'Tap any dot to open its legal record · drag to rotate · pinch to zoom';
+  if (IS_TOUCH) $('#firstHintText').innerHTML = 'Tap any dot to open its catalogue and legal-attribution record · drag to rotate · pinch to zoom';
   el.hidden = false;
   $('#firstHintClose').addEventListener('click', dismissFirstHint);
 }
