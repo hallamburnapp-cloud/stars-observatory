@@ -89,6 +89,20 @@ async function loadApp(url) {
 await loadApp(`http://127.0.0.1:${PORT}/`);
 await page.waitForFunction(() => window.__QA && __QA.eligible().length > 0, { timeout: 60000 });
 
+// ---------- 0. packed catalog is lossless ----------
+// The app loads sats.pack.json (compact transport copy); it must decode to
+// exactly the records of the canonical, archived sats.json.
+console.log('[0] Packed catalog');
+const pk = await page.evaluate(async () => {
+  const canon = await (await fetch('./data/sats.json', { cache: 'no-store' })).json();
+  const got = __OBS.data;
+  return { source: __OBS.catalogSource, same: JSON.stringify(canon.sats) === JSON.stringify(got.sats)
+    && canon.generated === got.generated && JSON.stringify(canon.owners) === JSON.stringify(got.owners)
+    && JSON.stringify(canon.constellations) === JSON.stringify(got.constellations), n: got.sats.length };
+});
+check(pk.source === 'pack', 'app loaded the packed catalog (not the sats.json fallback)', `source=${pk.source}`);
+check(pk.same, `packed catalog decodes to exactly the records of sats.json (${pk.n})`);
+
 // ---------- 1. citation integrity ----------
 console.log('[1] Citation integrity');
 await page.click('.tabbar button[data-panel="prov"]'); // open Panel 04 so the block is interactable

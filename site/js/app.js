@@ -112,7 +112,7 @@ function _legacyCopy(txt) {
 async function loadData() {
   setLoad('Loading orbital catalog…', 10);
   const [sats, stats, lag, natlaw, citation] = await Promise.all([
-    fetch('./data/sats.json', { cache: 'no-cache' }).then(r => r.json()),
+    loadCatalog(),
     fetch('./data/stats.json', { cache: 'no-cache' }).then(r => r.json()),
     fetch('./data/lag.json', { cache: 'no-cache' }).then(r => r.json()).catch(() => null),
     fetch('./data/national_law.json', { cache: 'no-cache' }).then(r => r.json()).catch(() => null),
@@ -156,6 +156,57 @@ async function loadData() {
   setLoad('Parsing element sets…', 30);
   fillStats();
   return { tle1, tle2 };
+}
+
+// The catalog ships twice: sats.json (canonical, archived daily as the citable
+// snapshot) and sats.pack.json, a lossless column-wise packing of the same
+// records that is ~32% smaller over the wire (see pipeline/pack_sats.py).
+// The page preloads the pack; sats.json is the fallback.
+async function loadCatalog() {
+  try {
+    const r = await fetch('./data/sats.pack.json'); // default cache mode: matches the <link rel=preload>
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const p = await r.json();
+    if (p.format !== 1) throw new Error('unknown pack format ' + p.format);
+    state.catalogSource = 'pack';
+    return unpackSats(p);
+  } catch (e) {
+    console.warn('sats.pack.json unavailable, loading sats.json:', e.message);
+    state.catalogSource = 'json';
+    return fetch('./data/sats.json', { cache: 'no-cache' }).then(r => r.json());
+  }
+}
+// Mirrors unpack() in pipeline/pack_sats.py — keep the two in step.
+const PACK_L1 = [62, 51, 36, 16, 1], PACK_L2 = [62, 52, 43, 35, 26, 17, 6, 1];
+const PACK_TYPES = { P: 'PAY', D: 'DEB', R: 'R/B', U: 'UNK' };
+function tleChecksum(line) {
+  let sum = 0;
+  for (let k = 0; k < line.length; k++) {
+    const c = line.charCodeAt(k);
+    if (c >= 48 && c <= 57) sum += c - 48; else if (c === 45) sum += 1;
+  }
+  return String(sum % 10);
+}
+function unpackSats(p) {
+  const widths = b => b.slice(0, -1).map((a, k) => a - b[k + 1]);
+  const w1 = widths(PACK_L1), w2 = widths(PACK_L2);
+  const cols = (arr, w, i) => { let t = ''; for (let c = 0; c < arr.length; c++) t += arr[c].substr(i * w[c], w[c]); return t; };
+  const sats = new Array(p.n);
+  let norad = 0;
+  for (let i = 0; i < p.n; i++) {
+    norad += p.noradDelta[i];
+    let l1, l2;
+    const raw = p.raw[i];
+    if (raw) { l1 = raw[0]; l2 = raw[1]; }
+    else {
+      const sat = String(norad).padStart(+p.satw[i], '0');
+      l1 = '1 ' + sat + cols(p.l1, w1, i); l1 += tleChecksum(l1);
+      l2 = '2 ' + sat + cols(p.l2, w2, i); l2 += tleChecksum(l2);
+    }
+    const y = p.year.substr(i * 4, 4);
+    sats[i] = [norad, p.name[i], l1, l2, PACK_TYPES[p.type[i]], p.owner[i], p.const[i], +p.reg[i], y === '    ' ? '' : y];
+  }
+  return { generated: p.generated, owners: p.owners, constellations: p.constellations, sats };
 }
 
 // Fill all [data-stat] elements from live data so the page stays
@@ -207,13 +258,21 @@ function setLoad(msg, pct, sub) {
 // ============================================================
 // 2. Worker
 // ============================================================
-let worker;
+let worker, workerReady = false; // worker exists from boot; usable once 'ready'
+// Spawned at the very start of boot so worker.js + satellite.js download and
+// compile while the catalog is still in flight, not after it.
+function spawnWorker() {
+  // version from app.js's own (pipeline-stamped) URL: citation.json isn't loaded yet
+  const v = new URL(import.meta.url).searchParams.get('v') || 'dev';
+  if (!worker) worker = new Worker('./js/worker.js?v=' + v);
+}
 function startWorker(tle1, tle2) {
   return new Promise((resolve) => {
-    worker = new Worker('./js/worker.js?v=' + appVersion());
+    spawnWorker();
     worker.onmessage = (e) => {
       const m = e.data;
       if (m.type === 'ready') {
+        workerReady = true;
         state.regime = new Uint8Array(m.regimes);
         state.ok = new Uint8Array(m.ok);
         setLoad('Propagating positions (SGP4)…', 70);
@@ -239,7 +298,7 @@ function startWorker(tle1, tle2) {
 
 let propInFlight = false;
 function requestPropagation(t) {
-  if (!worker) return;
+  if (!workerReady) return;
   worker.postMessage({ type: 'propagate', time: t });
 }
 
@@ -282,10 +341,12 @@ function initThree() {
   // Earth
   earthGroup = new THREE.Group();
   scene.add(earthGroup);
-  const tex = new THREE.TextureLoader().load('./assets/earth_day.jpg', () => { render(); });
+  // 2K day texture for everyone (preloaded by index.html); large, fine-pointer
+  // screens swap in the 4K texture once the page is live.
+  const tex = new THREE.TextureLoader().load('./assets/earth_day_2k.webp', () => { render(); });
   tex.colorSpace = THREE.SRGBColorSpace;
   tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
-  const nightTex = new THREE.TextureLoader().load('./assets/earth_night.jpg', () => { render(); });
+  const nightTex = new THREE.TextureLoader().load('./assets/earth_night.webp', () => { render(); });
   nightTex.colorSpace = THREE.SRGBColorSpace;
   nightTex.anisotropy = renderer.capabilities.getMaxAnisotropy();
   const earthGeo = new THREE.SphereGeometry(RE_SCENE, 96, 96);
@@ -623,7 +684,7 @@ function animate() {
   }
 
   // request new propagation ~10Hz (or when speed high, each frame-ish)
-  if (!histMode && worker && now - lastPropReq > (IS_TOUCH ? 240 : 90)) {
+  if (!histMode && workerReady && now - lastPropReq > (IS_TOUCH ? 240 : 90)) {
     requestPropagation(state.simTime);
     lastPropReq = now;
   }
@@ -882,7 +943,7 @@ function selectObject(i, fly) {
 // worker in the ECI frame (the render frame), so the path is exact.
 function requestSelOrbit(i) {
   clearSelOrbit();
-  if (!worker) return;
+  if (!workerReady) return;
   const tle2 = state.data.sats[i][3];
   const mm = parseFloat(tle2.substring(52, 63)); // rev/day
   const periodMs = (mm > 0 ? 1440 / mm : 95) * 60 * 1000;
@@ -1551,7 +1612,7 @@ function isolateScenario(on) {
 let scenOrbitLines = [];
 let _scenPairForOrbit = null;
 function requestScenarioOrbits(pair) {
-  if (!worker || pair.length < 2) return;
+  if (!workerReady || pair.length < 2) return;
   _scenPairForOrbit = pair;
   const t0 = state.simTime;
   const times = [];
@@ -2481,6 +2542,7 @@ function closeDrawer() { $('#drawer').classList.remove('open'); }
 // ============================================================
 async function boot() {
   try {
+    spawnWorker();
     const { tle1, tle2 } = await loadData();
     initThree();
     buildPointCloud();
@@ -2506,6 +2568,7 @@ async function boot() {
         applyPositions();
         applyPermalink();
         setTimeout(() => { const l = $('#loader'); if (l) l.style.display = 'none'; }, 350);
+        upgradeEarthTexture();
       }
     }, 80);
     animate();
@@ -2513,6 +2576,22 @@ async function boot() {
     console.error(err);
     const st = $('#loadStatus'); if (st) { st.textContent = 'Error: ' + err.message; st.style.color = '#ff6b6b'; }
   }
+}
+
+// After first render, give large desktop screens the 4K day texture.
+function upgradeEarthTexture() {
+  const px = Math.max(window.innerWidth, window.innerHeight) * Math.min(window.devicePixelRatio || 1, 2);
+  if (IS_TOUCH || px < 1600 || renderer.capabilities.maxTextureSize < 4096) return;
+  const conn = navigator.connection;
+  if (conn && (conn.saveData || /2g/.test(conn.effectiveType || ''))) return;
+  new THREE.TextureLoader().load('./assets/earth_day_4k.webp', (t4) => {
+    t4.colorSpace = THREE.SRGBColorSpace;
+    t4.anisotropy = renderer.capabilities.getMaxAnisotropy();
+    const old = earthMaterial.uniforms.dayTex.value;
+    earthMaterial.uniforms.dayTex.value = t4;
+    old.dispose();
+    render();
+  });
 }
 
 boot();

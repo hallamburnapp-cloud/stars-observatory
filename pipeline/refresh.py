@@ -33,6 +33,21 @@ def valid(path, kind):
     except Exception:
         return False
 
+STALE_DAYS = 3.0
+
+def median_epoch_age_days(sats_path):
+    from datetime import datetime, timedelta, timezone
+    from statistics import median
+    now = datetime.now(timezone.utc)
+    ages = []
+    for rec in json.load(open(sats_path))["sats"]:
+        l1 = rec[2]
+        e = l1[len(l1) - 51:len(l1) - 37]  # epoch YYDDD.DDDDDDDD (end-relative: 5/6-digit catnums)
+        yy, doy = int(e[:2]), float(e[2:])
+        t = datetime(2000 + yy if yy < 57 else 1900 + yy, 1, 1, tzinfo=timezone.utc) + timedelta(days=doy - 1)
+        ages.append((now - t).total_seconds() / 86400)
+    return median(ages)
+
 def main():
     os.makedirs(RAW, exist_ok=True)
     updated, skipped = [], []
@@ -59,6 +74,24 @@ def main():
 
     for f in ("sats.json", "stats.json", "lag.json"):
         shutil.copy(f"{OUT}/{f}", f"{SITE}/{f}")
+
+    # Lossless compact transport copy of sats.json for the app's first load.
+    # pack_sats.py verifies the round trip and hard-fails on any mismatch.
+    r = subprocess.run([sys.executable, str(_ROOT / "pipeline" / "pack_sats.py"), SITE],
+                       capture_output=True, text=True)
+    print(r.stdout.strip())
+    if r.returncode != 0:
+        print("PACK FAILED\n", r.stdout[-2000:], r.stderr[-2000:]); sys.exit(1)
+
+    # Staleness guard: if CelesTrak keeps serving old element sets (or a fetch
+    # silently fell back to a previous file) the median element-set epoch
+    # drifts back in time. Healthy data sits at ~0.5 days; fail loudly past
+    # STALE_DAYS so the deploy stops and the failure alert fires, instead of
+    # publishing yesterday's sky under today's date.
+    median_age = median_epoch_age_days(f"{SITE}/sats.json")
+    print(f"median element-set epoch age: {median_age:.2f} days")
+    if median_age > STALE_DAYS:
+        print(f"STALE SOURCE DATA: median epoch age {median_age:.1f} d > {STALE_DAYS} d"); sys.exit(1)
 
     # Regenerate the citation manifest (version from CITATION.cff, DOI from Zenodo,
     # snapshot date from the dataset manifest). Hard-fails the refresh if the
