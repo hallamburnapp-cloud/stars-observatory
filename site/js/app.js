@@ -2712,7 +2712,13 @@ window.__QA = {
       if (!pickEl) continue;
       const rows = pickEl.querySelectorAll('.sr').length;
       const btn = pickEl.querySelector(`.sr[data-i="${a}"]`) || pickEl.querySelector(`.sr[data-i="${b}"]`);
-      if (!btn) { hidePickChooser(); return { ok: false, why: 'pair-not-listed', rows, tried }; }
+      if (!btn) {
+        hidePickChooser();
+        // A full list means 40+ objects sit even closer to the click than the
+        // pair (the chooser then says "zoom in to separate") — try another pair.
+        if (rows >= 40) continue;
+        return { ok: false, why: 'pair-not-listed', rows, tried };
+      }
       const want = parseInt(btn.dataset.i, 10);
       btn.click();
       const card = $('#dRows') && $('#dRows').textContent.includes(String(state.norad[want]));

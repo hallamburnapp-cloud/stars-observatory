@@ -278,7 +278,7 @@ await page.waitForTimeout(150);
 console.log('[4c] Ground truth: real clicks on drawn dots');
 async function groundTruth(pg, { touch = false, n = 10, cam = null, label = '' } = {}) {
   const vp = pg.viewportSize();
-  await pg.evaluate(() => __QA.pause());
+  await pg.evaluate(() => { __QA.pause(); const c = document.querySelector('#dClose'); if (c) c.click(); });
   await pg.evaluate(c => __QA.setCam(...c), cam || [6, 10, 36]); // default view unless given
   await pg.addStyleTag({ content: 'body.qa-gt *:not(html):not(body):not(#app):not(main):not(#scene){visibility:hidden!important;transition:none!important;animation:none!important}' });
   await pg.waitForTimeout(300);
@@ -291,8 +291,11 @@ async function groundTruth(pg, { touch = false, n = 10, cam = null, label = '' }
       const c = new OffscreenCanvas(bm.width, bm.height), x = c.getContext('2d'); x.drawImage(bm, 0, 0); return x.getImageData(0, 0, bm.width, bm.height); };
     const A = await load(a), B = await load(b); let sx = 0, sy = 0, n = 0;
     for (let i = 0; i < A.data.length; i += 4) {
-      const d = Math.abs(A.data[i] - B.data[i]) + Math.abs(A.data[i+1] - B.data[i+1]) + Math.abs(A.data[i+2] - B.data[i+2]);
-      if (d > 40) { const p = i / 4; sx += p % A.width; sy += Math.floor(p / A.width); n++; }
+      // count only pixels that turned towards the flash colour (magenta:
+      // +R, -G, +B) so an unrelated change on the canvas (e.g. a late orbit
+      // trail from an earlier selection) cannot pull the measurement
+      const dr = B.data[i] - A.data[i], dg = B.data[i+1] - A.data[i+1], db = B.data[i+2] - A.data[i+2];
+      if (dr - dg > 30 && db - dg > 30) { const p = i / 4; sx += p % A.width; sy += Math.floor(p / A.width); n++; }
     }
     return n ? { x: sx / n, y: sy / n, n } : null;
   }, [a, b]);
