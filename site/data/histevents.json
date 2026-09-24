@@ -13,10 +13,10 @@
     66.5,
     45.0
    ],
-   "aeolus_tle_space_min_sep_km_2sep": 247.5,
+   "aeolus_tle_space_min_sep_km_2sep": 2.9,
    "luch_is901_min_sep_km": 36.0
   },
-  "built": "2026-09-10T15:26:47Z"
+  "built": "2026-09-24T20:57:31Z"
  },
  "events": {
   "aeolus": {
@@ -26,7 +26,7 @@
     "2019-09-02T11:10:00Z"
    ],
    "keyTime": "2019-09-02T11:02:00Z",
-   "keyLabel": "Documented closest approach (ESA) \u2014 Aeolus had already manoeuvred",
+   "keyLabel": "Predicted conjunction 11:02 UTC (ESA) \u2014 Aeolus had already manoeuvred",
    "slowFinalMin": 90,
    "durationSec": 40,
    "objects": [
@@ -95,57 +95,57 @@
      "fragments": 0
     },
     {
-     "norad": 44244,
+     "norad": 44278,
      "name": "Starlink-44 (SpaceX)",
      "color": "#ff6b6b",
      "tles": [
       [
-       "1 44244U 19029K   19235.00824791  .00000911  00000+0  81866-4 0  9993",
-       "2 44244  53.0019 123.9395 0001422  83.7248 276.3902 15.05475190999992"
+       "1 44278U 19029AV  19235.04982368  .00024296  00000+0  12591-3 0  9999",
+       "2 44278  52.9997  91.5457 0025918 235.1225 124.7358 15.80450096999997"
       ],
       [
-       "1 44244U 19029K   19235.93766923  .00000644  00000+0  63552-4 0  9992",
-       "2 44244  53.0019 119.7681 0001484  80.7201 279.3954 15.05476957999999"
+       "1 44278U 19029AV  19235.87187932  .00019815  00000+0  10332-3 0  9996",
+       "2 44278  52.9999  87.4128 0025879 238.0558 121.7945 15.80475933999991"
       ],
       [
-       "1 44244U 19029K   19236.86708911  .00000647  00000+0  63706-4 0  9992",
-       "2 44244  53.0019 115.5966 0001529  82.1207 277.9955 15.05478861999992"
+       "1 44278U 19029AV  19236.82039089  .00016543  00000+0  86828-4 0  9990",
+       "2 44278  53.0001  82.6433 0025806 241.3342 118.5083 15.80501199999992"
       ],
       [
-       "1 44244U 19029K   19237.86289536  .00000662  00000+0  64742-4 0  9998",
-       "2 44244  53.0019 111.1271 0001574  82.6355 277.4811 15.05480782999993"
+       "1 44278U 19029AV  19237.83212142  .00014199  00000+0  75001-4 0  9991",
+       "2 44278  52.9997  77.5573 0025838 244.8399 114.9941 15.80523364999998"
       ],
       [
-       "1 44244U 19029K   19238.85869417  .00000160  00000+0  30186-4 0  9998",
-       "2 44244  53.0015 106.6571 0001801  90.6275 269.4919 15.05516333999996"
+       "1 44278U 19029AV  19238.78060360  .00013575  00000+0  71800-4 0  9999",
+       "2 44278  52.9997  72.7889 0025785 248.1467 111.6811 15.80547555999997"
       ],
       [
-       "1 44244U 19029K   19239.85447550  .00000220  00000+0  34325-4 0  9995",
-       "2 44244  53.0019 102.1876 0001798  84.3939 275.7254 15.05518505999996"
+       "1 44278U 19029AV  19239.53937727  .00015899  00000+0  83340-4 0  9996",
+       "2 44278  52.9993  68.9739 0025732 251.0111 108.8121 15.80572294999995"
       ],
       [
-       "1 44244U 19029K   19240.85026639  .00001270  00000+0  10658-3 0  9996",
-       "2 44244  53.0022  97.7182 0002050  91.5160 268.6063 15.05485708999994"
+       "1 44278U 19029AV  19240.48782715  .00016751  00000+0  87472-4 0  9995",
+       "2 44278  52.9992  64.2047 0025698 254.6148 105.2033 15.80604555999994"
       ],
       [
-       "1 44244U 19029K   19241.97884073  .00001295  00000+0  10830-3 0  9993",
-       "2 44244  53.0022  92.6524 0002034  90.3403 269.7818 15.05489782999993"
+       "1 44278U 19029AV  19241.49948566  .00013720  00000+0  72250-4 0  9996",
+       "2 44278  52.9992  59.1173 0025672 258.3460 101.4679 15.80635422999998"
       ],
       [
-       "1 44244U 19029K   19242.90825306  .00001319  00000+0  10996-3 0  9991",
-       "2 44244  53.0023  88.4809 0002041  94.0543 266.0678 15.05492080999996"
+       "1 44278U 19029AV  19242.51112525  .00014707  00000+0  77057-4 0  9994",
+       "2 44278  52.9995  54.0298 0025664 262.0752  97.7356 15.80666817999991"
       ],
       [
-       "1 44244U 19029K   19243.83766570  .00002280  00000+0  17599-3 0  9995",
-       "2 44244  53.0014  84.3093 0002105  95.3150 264.8078 15.05493162999997"
+       "1 44278U 19029AV  19243.45951895  .00020298  00000+0  10468-3 0  9993",
+       "2 44278  52.9997  49.2600 0025696 265.3371  94.4715 15.80702830999993"
       ],
       [
-       "1 44244U 19029K   19244.83345890  .00001904  00000+0  15015-3 0  9997",
-       "2 44244  53.0024  79.8392 0002088  97.3000 262.8225 15.05498183999995"
+       "1 44278U 19029AV  19244.47110737  .00027081  00000+0  13794-3 0  9990",
+       "2 44278  53.0001  44.1724 0025695 269.1158  90.6918 15.80760252999991"
       ],
       [
-       "1 44244U 19029K   19244.89984523  .00001910  00000+0  15052-3 0  9993",
-       "2 44244  53.0025  79.5413 0002080  97.2297 262.8928 15.05498382999997"
+       "1 44278U 19029AV  19245.41943374  .00031209  00000+0  15784-3 0  9994",
+       "2 44278  53.0001  39.4029 0025705 272.6298  87.1780 15.80826508999997"
       ]
      ],
      "fragments": 0
@@ -153,7 +153,7 @@
    ],
    "milestones": [
     {
-     "t": "2019-08-24T12:00:00Z",
+     "t": "2019-08-26T12:00:00Z",
      "step": 0
     },
     {
@@ -161,11 +161,11 @@
      "step": 1
     },
     {
-     "t": "2019-08-29T00:00:00Z",
+     "t": "2019-08-29T18:00:00Z",
      "step": 2
     },
     {
-     "t": "2019-08-30T00:00:00Z",
+     "t": "2019-09-01T12:00:00Z",
      "step": 3
     },
     {
@@ -173,7 +173,7 @@
      "step": 4
     }
    ],
-   "note": "Aeolus is propagated from its last pre-manoeuvre element sets. Starlink-44 was actively lowering its orbit on ion thrust, so public element sets carry large along-track error for it: the minimum element-set separation on 2 Sep is 248 km at 14:16 UTC, while the actionable P\u22481/1,000 screening geometry existed only in operator and 18 SPCS special-perturbation data. That gap between public and operational data is itself part of what this instrument documents."
+   "note": "Aeolus is propagated from its last pre-manoeuvre element sets. Starlink-44 is catalogue object 2019-029AV (NORAD 44278; today's SATCAT labels it STARLINK-67), one of two early Starlinks SpaceX was deliberately de-orbiting, then at ~320 km. Propagated from public element sets, the two pass 2.9 km apart at 11:02:41 UTC \u2014 consistent with ESA's predicted 11:02 UTC conjunction. Public element sets carry km-scale error: the P\u22481/1,000 on which ESA acted came from 18 SPCS conjunction data messages and ESA's own analysis, not from these element sets."
   },
   "iridium": {
    "kind": "collision",
@@ -238,7 +238,7 @@
     0,
     1
    ],
-   "note": "Propagated from the final published element sets, the two objects pass within 700 m of each other at 16:56:00 UTC \u2014 independent confirmation of the collision geometry from public data alone (SOCRATES had predicted a 584 m miss; TLE-space accuracy is of km order). The debris cloud is a physically derived visualisation: one particle per catalogued fragment (521 from Iridium 33, 1,267 from Cosmos 2251), released from the true collision state vector with a modelled velocity spread and propagated by two-body dynamics \u2014 it shows the real mechanics of ring formation, not the catalogued fragment orbits themselves."
+   "note": "Propagated from the final published element sets, the two objects pass within 700 m of each other at 16:55:59.8 UTC \u2014 independent confirmation of the collision geometry from public data alone (SOCRATES had predicted a 584 m miss; TLE-space accuracy is of km order). The debris cloud is a physically derived visualisation: one particle per catalogued fragment (521 from Iridium 33, 1,267 from Cosmos 2251), released from the true collision state vector with a modelled velocity spread and propagated by two-body dynamics \u2014 it shows the real mechanics of ring formation, not the catalogued fragment orbits themselves."
   },
   "fengyun": {
    "kind": "asat",
@@ -247,7 +247,7 @@
     "2007-01-12T08:00:00Z"
    ],
    "keyTime": "2007-01-11T22:26:00Z",
-   "keyLabel": "Kinetic-kill intercept at ~863 km \u2014 no advance notification",
+   "keyLabel": "Kinetic-kill intercept at ~860 km \u2014 no advance notification",
    "slowFinalMin": 30,
    "durationSec": 50,
    "codaFrac": 0.25,
@@ -282,7 +282,7 @@
    "preSteps": [
     0
    ],
-   "note": "At the documented intercept time the element sets place Fengyun-1C at 34.7\u00b0N 100.3\u00b0E, approaching Xichang's latitude band \u2014 the ascending pass the SC-19 interceptor met head-on. The interceptor itself was never a catalogued object; only the target is replayed. The debris cloud is a physically derived visualisation \u2014 one particle per catalogued fragment (3,037), released from the true intercept state vector with a modelled velocity spread and propagated by two-body dynamics \u2014 not the catalogued fragment orbits themselves."
+   "note": "At the documented intercept time the element sets place Fengyun-1C at 34.7\u00b0N 100.3\u00b0E, north-west of Xichang and heading south \u2014 the descending (southbound) pass the SC-19 interceptor met head-on. The interceptor itself was never a catalogued object; only the target is replayed. The debris cloud is a physically derived visualisation \u2014 one particle per catalogued fragment (3,037), released from the true intercept state vector with a modelled velocity spread and propagated by two-body dynamics \u2014 not the catalogued fragment orbits themselves."
   },
   "cosmos1408": {
    "kind": "asat",
@@ -291,7 +291,7 @@
     "2021-11-15T13:00:00Z"
    ],
    "keyTime": "2021-11-15T02:47:00Z",
-   "keyLabel": "Nudol intercept at ~470 km \u2014 ISS crew sheltered",
+   "keyLabel": "Nudol intercept at ~480 km \u2014 ISS crew sheltered",
    "slowFinalMin": 25,
    "durationSec": 50,
    "codaFrac": 0.25,
@@ -486,7 +486,7 @@
       ],
       [
        "1 40258U 14058A   15265.33683693 -.00000156  00000+0  00000+0 0  9998",
-       "2 40258   0.0415 281.3784 0003070 257.5875 285.0815  1.00272679999991"
+       "2 40258   0.0416 281.2696 0003079 257.8884 284.8897  1.00272700999997"
       ],
       [
        "1 40258U 14058A   15267.35632470 -.00000160  00000+0  00000+0 0  9994",

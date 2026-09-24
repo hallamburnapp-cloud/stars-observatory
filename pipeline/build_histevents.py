@@ -27,7 +27,9 @@ FETCH = [
     (2007, [25730], "2007-01-08", "2007-01-12"),
     (2009, [24946, 22675], "2009-02-05", "2009-02-11"),
     (2015, [40258, 26824], "2015-06-15", "2015-10-15"),
-    (2019, [43600, 44244], "2019-08-22", "2019-09-03"),
+    # Starlink-44 per ESA/SpaceNews is 2019-029AV = NORAD 44278 (today's SATCAT
+    # names it STARLINK-67; the SATCAT name "STARLINK-44" belongs to 44261).
+    (2019, [43600, 44278], "2019-08-22", "2019-09-03"),
     (2021, [13552], "2021-11-08", "2021-11-16"),
 ]
 
@@ -165,9 +167,14 @@ def main():
 
     # Computed geometry (embedded so the site can cite it)
     aeolus_cut = datetime(2019, 9, 2, 9, 0, tzinfo=UTC)
-    ae_min = min_sep(rows, 43600, 44244,
-                     datetime(2019, 9, 2, 0, 0, tzinfo=UTC),
-                     datetime(2019, 9, 3, 0, 0, tzinfo=UTC), 5, cut_a=aeolus_cut)
+    ae_c = min_sep(rows, 43600, 44278,
+                   datetime(2019, 9, 2, 0, 0, tzinfo=UTC),
+                   datetime(2019, 9, 3, 0, 0, tzinfo=UTC), 5, cut_a=aeolus_cut)
+    ae_min = min_sep(rows, 43600, 44278,               # refine: 5 s steps at 14 km/s miss the minimum
+                     ae_c[1] - timedelta(seconds=60),
+                     ae_c[1] + timedelta(seconds=60), 0.1, cut_a=aeolus_cut)
+    assert ae_min[0] < 10 and abs((ae_min[1] - datetime(2019, 9, 2, 11, 2, tzinfo=UTC)).total_seconds()) < 300, \
+        f"Aeolus validation failed: {ae_min[0]:.1f} km at {ae_min[1]}"  # ESA: conjunction predicted 11:02 UTC
     lu_coarse = min_sep(rows, 40258, 26824,
                         datetime(2015, 7, 1, tzinfo=UTC),
                         datetime(2015, 10, 14, tzinfo=UTC), 7200)
@@ -190,27 +197,28 @@ def main():
         "kind": "conjunction",
         "window": [iso(t0), iso(t1)],
         "keyTime": "2019-09-02T11:02:00Z",
-        "keyLabel": "Documented closest approach (ESA) — Aeolus had already manoeuvred",
+        "keyLabel": "Predicted conjunction 11:02 UTC (ESA) — Aeolus had already manoeuvred",
         "slowFinalMin": 90, "durationSec": 40,
         "objects": [
             obj(43600, "Aeolus (ESA)", "#4fd1e0", t0, t1, cutoff=aeolus_cut),
-            obj(44244, "Starlink-44 (SpaceX)", "#ff6b6b", t0, t1),
+            obj(44278, "Starlink-44 (SpaceX)", "#ff6b6b", t0, t1),
         ],
         "milestones": [
-            {"t": "2019-08-24T12:00:00Z", "step": 0},
+            {"t": "2019-08-26T12:00:00Z", "step": 0},
             {"t": "2019-08-28T12:00:00Z", "step": 1},
-            {"t": "2019-08-29T00:00:00Z", "step": 2},
-            {"t": "2019-08-30T00:00:00Z", "step": 3},
+            {"t": "2019-08-29T18:00:00Z", "step": 2},
+            {"t": "2019-09-01T12:00:00Z", "step": 3},
             {"t": "2019-09-02T10:14:00Z", "step": 4},
         ],
         "note": ("Aeolus is propagated from its last pre-manoeuvre element sets. "
-                 "Starlink-44 was actively lowering its orbit on ion thrust, so public "
-                 "element sets carry large along-track error for it: the minimum "
-                 f"element-set separation on 2 Sep is {ae_min[0]:.0f} km at "
-                 f"{ae_min[1].strftime('%H:%M')} UTC, while the actionable P≈1/1,000 "
-                 "screening geometry existed only in operator and 18 SPCS "
-                 "special-perturbation data. That gap between public and operational "
-                 "data is itself part of what this instrument documents."),
+                 "Starlink-44 is catalogue object 2019-029AV (NORAD 44278; today's "
+                 "SATCAT labels it STARLINK-67), one of two early Starlinks SpaceX was "
+                 "deliberately de-orbiting, then at ~320 km. Propagated from public "
+                 f"element sets, the two pass {ae_min[0]:.1f} km apart at "
+                 f"{ae_min[1].strftime('%H:%M:%S')} UTC — consistent with ESA's "
+                 "predicted 11:02 UTC conjunction. Public element sets carry km-scale "
+                 "error: the P≈1/1,000 on which ESA acted came from 18 SPCS conjunction "
+                 "data messages and ESA's own analysis, not from these element sets."),
     }
     # -- Iridium 33 / Cosmos 2251 -------------------------------------------
     t0 = datetime(2009, 2, 9, 0, 0, tzinfo=UTC)
@@ -232,7 +240,7 @@ def main():
         ],
         "preSteps": [0, 1],
         "note": (f"Propagated from the final published element sets, the two objects "
-                 f"pass within {miss*1000:.0f} m of each other at 16:56:00 UTC — "
+                 f"pass within {miss*1000:.0f} m of each other at {miss_t.strftime('%H:%M:%S.%f')[:-5]} UTC — "
                  "independent confirmation of the collision geometry from public data "
                  "alone (SOCRATES had predicted a 584 m miss; TLE-space accuracy is "
                  "of km order). The debris cloud is a physically derived visualisation: "
@@ -250,14 +258,14 @@ def main():
         "kind": "asat",
         "window": [iso(t0), iso(t1)],
         "keyTime": "2007-01-11T22:26:00Z",
-        "keyLabel": "Kinetic-kill intercept at ~863 km — no advance notification",
+        "keyLabel": "Kinetic-kill intercept at ~860 km — no advance notification",
         "slowFinalMin": 30, "durationSec": 50, "codaFrac": 0.25,
         "objects": [obj(25730, "Fengyun-1C (CN, defunct)", "#ffb347", t0, t1, cutoff=cut_fy, per_day=4, fragments=3037)],
         "milestones": [{"t": "2007-01-11T22:26:00Z", "step": 1}],
         "preSteps": [0],
         "note": (f"At the documented intercept time the element sets place Fengyun-1C "
-                 f"at {la:.1f}°N {lo:.1f}°E, approaching Xichang's latitude band — the "
-                 "ascending pass the SC-19 interceptor met head-on. The interceptor "
+                 f"at {la:.1f}°N {lo:.1f}°E, north-west of Xichang and heading south — the "
+                 "descending (southbound) pass the SC-19 interceptor met head-on. The interceptor "
                  "itself was never a catalogued object; only the target is replayed. "
                  "The debris cloud is a physically derived visualisation — one particle "
                  "per catalogued fragment (3,037), released from the true intercept "
@@ -272,7 +280,7 @@ def main():
         "kind": "asat",
         "window": [iso(t0), iso(t1)],
         "keyTime": "2021-11-15T02:47:00Z",
-        "keyLabel": "Nudol intercept at ~470 km — ISS crew sheltered",
+        "keyLabel": "Nudol intercept at ~480 km — ISS crew sheltered",
         "slowFinalMin": 25, "durationSec": 50, "codaFrac": 0.25,
         "objects": [obj(13552, "Cosmos 1408 (RU, defunct)", "#ff6b6b", t0, t1, cutoff=cut_ck, per_day=4, fragments=1604)],
         "milestones": [{"t": "2021-11-15T02:47:00Z", "step": 1}],
