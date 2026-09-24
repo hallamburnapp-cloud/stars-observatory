@@ -8,7 +8,7 @@
   --line-strong: rgba(120, 160, 210, 0.32);
   --txt: #d6e2f2;
   --txt-dim: #8a9bb5;
-  --txt-faint: #5d6b83;
+  --txt-faint: #7c8aa2; /* 5.8:1 on --bg (was #5d6b83, 3.7:1 — below WCAG AA for small text) */
   --accent: #4fd1e0;      /* observatory cyan */
   --accent-warn: #ff6b6b;
   --accent-amber: #ffb454;
@@ -121,6 +121,13 @@ select, .rail input[type="text"] {
   padding: 5px 7px; border-radius: 2px; cursor: pointer;
 }
 select:focus { outline: none; border-color: var(--accent); }
+/* Visible keyboard focus everywhere (mouse clicks don't trigger :focus-visible). */
+button:focus-visible, a:focus-visible, select:focus-visible, input:focus-visible, [tabindex]:focus-visible {
+  outline: 2px solid var(--accent); outline-offset: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
+}
 
 /* legend */
 .legend { display: flex; flex-direction: column; gap: 5px; margin-top: 4px; }
@@ -209,7 +216,9 @@ select:focus { outline: none; border-color: var(--accent); }
 .drawer-head .close2 { background: none; border: 1px solid var(--line); border-radius: 2px; color: var(--txt-dim); cursor: pointer; font-size: 18px; width: 30px; height: 30px; }
 .drawer-head .close2:hover { color: var(--txt); border-color: var(--line-strong); }
 .drawer-nav { display: flex; gap: 4px; padding: 8px 22px; border-bottom: 1px solid var(--line); flex-shrink: 0; background: rgba(120,160,210,0.03); }
-.drawer-nav button { font-family: var(--mono); font-size: 10px; letter-spacing: 0.04em; color: var(--txt-dim); background: transparent; border: 1px solid var(--line); border-radius: 2px; padding: 5px 9px; cursor: pointer; transition: all 0.12s; }
+.drawer-nav { overflow-x: auto; scrollbar-width: none; }
+.drawer-nav::-webkit-scrollbar { display: none; }
+.drawer-nav button { white-space: nowrap; flex-shrink: 0; font-family: var(--mono); font-size: 10px; letter-spacing: 0.04em; color: var(--txt-dim); background: transparent; border: 1px solid var(--line); border-radius: 2px; padding: 5px 8px; cursor: pointer; transition: all 0.12s; }
 .drawer-nav button:hover { color: var(--txt); border-color: var(--line-strong); }
 .drawer-nav button.active { background: rgba(79,209,224,0.14); border-color: var(--accent); color: var(--accent); }
 .drawer-body { overflow-y: auto; padding: 22px; flex: 1; }
@@ -516,6 +525,37 @@ footer#foot a:hover, footer#foot .lnk:hover { color: var(--txt); border-bottom-c
   border-radius: 5px; padding: 5px 8px; transition: color 0.15s, border-color 0.15s;
 }
 .dcopy:hover { color: var(--txt); border-color: rgba(120,160,210,0.4); }
+#firstHint {
+  position: absolute; top: 14px; left: 50%; transform: translateX(-50%); z-index: 30;
+  display: flex; align-items: center; gap: 10px; max-width: min(560px, calc(100% - 32px));
+  padding: 8px 8px 8px 14px; border: 1px solid rgba(79,209,224,0.45); border-radius: 999px;
+  background: rgba(10,14,22,0.9); color: var(--txt); font-size: 12.5px; line-height: 1.35;
+  pointer-events: none; box-shadow: 0 6px 24px rgba(0,0,0,0.45);
+}
+#firstHint[hidden] { display: none; }
+#firstHint kbd { font-family: var(--mono); font-size: 11px; padding: 0 5px; border: 1px solid var(--line); border-radius: 3px; }
+#firstHint button { pointer-events: auto; background: none; border: 0; color: var(--txt-dim); font-size: 18px; line-height: 1; cursor: pointer; min-width: 28px; min-height: 28px; border-radius: 50%; }
+#firstHint button:hover { color: var(--txt); }
+@media (max-width: 700px) {
+  /* clear of the Controls & Filters toggle (top) and the tab/time bars (bottom) */
+  #firstHint { top: auto; bottom: 136px; left: 16px; right: 16px; transform: none; max-width: none; font-size: 12px; border-radius: 12px; }
+}
+.view-actions { display: flex; flex-direction: column; gap: 0; margin-top: 4px; }
+.view-actions .dcopy { margin-top: 6px; }
+.dlink { background: none; border: 0; padding: 0; font: inherit; color: var(--accent); cursor: pointer; text-align: right; border-bottom: 1px dotted var(--accent); }
+/* State dossier */
+.dos-h { margin: 14px 0 4px; font-size: 20px; font-weight: 600; color: var(--txt); }
+.dos-sub { font-family: var(--mono); font-size: 10.5px; color: var(--txt-dim); margin-bottom: 14px; }
+.dos-kv { display: grid; grid-template-columns: 1fr auto; gap: 6px 14px; font-size: 12.5px; margin-bottom: 6px; }
+.dos-kv .k { color: var(--txt-dim); }
+.dos-kv .v { font-family: var(--mono); color: var(--txt); text-align: right; }
+.dos-kv.stack { grid-template-columns: 1fr; gap: 2px; margin-bottom: 10px; }
+.dos-kv.stack .v { font-family: inherit; text-align: left; }
+.dos-kv a, .dos-note a { color: var(--accent); }
+.dos-note { font-size: 11.5px; color: var(--txt-faint); line-height: 1.5; margin: 6px 0 0; }
+.dos-cite { font-family: var(--mono); font-size: 11px; color: var(--txt); background: rgba(120,160,210,0.06); border: 1px solid var(--line); border-radius: 5px; padding: 10px 12px; line-height: 1.5; user-select: all; }
+.dos-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+.dos-actions .dcopy { margin-top: 0; }
 
 @media (max-width: 1120px) {
   .databadge { display: none; }

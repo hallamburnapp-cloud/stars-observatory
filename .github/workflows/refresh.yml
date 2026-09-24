@@ -69,6 +69,27 @@ jobs:
         with:
           path: site
 
+  # A failed scheduled refresh leaves the live site serving the previous
+  # snapshot. Make that visible: open (or update) one tracking issue.
+  alert-on-failure:
+    needs: [refresh, deploy]
+    if: failure() && github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REPO: ${{ github.repository }}
+      RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+    steps:
+      - name: Open or update the stale-data issue
+        run: |
+          TITLE="Daily refresh failed - live site is serving an old data snapshot"
+          BODY="The scheduled refresh on $(date -u +%F) failed, so starsobservatory.org still shows the last successful snapshot. Run: $RUN_URL"
+          N=$(gh issue list --repo "$REPO" --state open --search "\"$TITLE\" in:title" --json number --jq '.[0].number')
+          if [ -n "$N" ]; then gh issue comment "$N" --repo "$REPO" --body "$BODY"
+          else gh issue create --repo "$REPO" --title "$TITLE" --body "$BODY"; fi
+
   deploy:
     needs: refresh
     runs-on: ubuntu-latest

@@ -15,6 +15,12 @@ STARS Observatory fuses the public orbital catalog with the legal layer that gov
 - **Supervisory machinery** — payload populations joined against the existence of national space legislation (UNOOSA National Space Law database).
 - **Article IX decision-time compression** — a replayable case-study library (Aeolus/Starlink-44, Iridium 33/Cosmos 2251, Fengyun-1C, Cosmos 1408, Luch/Olymp) contrasting the orbital, machine, and diplomatic clocks.
 
+For researchers, every view is citable and exportable:
+
+- **Shareable views** — the address bar always encodes the current colour mode, filters, selected object and open dossier (e.g. `?color=state&state=PRC&type=PAY&reg=0`, `?sat=25544`, `?dossier=US`).
+- **CSV export** — download exactly the objects the current filters select, with canonical TLE lines and the data-snapshot date.
+- **State dossiers** — one card per responsible State combining supervision burden, registration gap and lag, national space legislation and constellations, with a ready-to-paste OSCOLA citation.
+
 This is a demonstrative artifact supporting doctrinal analysis — **not an operational space situational awareness system**. See the in-app Provenance panel and [METHODOLOGY.md](METHODOLOGY.md) for framing, sources, and limitations.
 
 ## How it self-updates
@@ -22,8 +28,9 @@ This is a demonstrative artifact supporting doctrinal analysis — **not an oper
 A GitHub Actions workflow (`.github/workflows/refresh.yml`) runs daily at 06:00 UTC:
 
 1. Re-fetches CelesTrak GP element sets & SATCAT and GCAT `psatcat` (a download only replaces the previous file if it validates).
-2. Rebuilds the enriched dataset (`pipeline/build_dataset.py`), updating the registration lag ledger (`data/ledger.json` — committed daily as the persistent longitudinal record).
-3. Deploys the rebuilt site to GitHub Pages.
+2. Rebuilds the enriched dataset (`pipeline/build_dataset.py`), updating the registration lag ledger (`data/ledger.json` — committed daily as the persistent longitudinal record), and writes `sats.pack.json`, a lossless ~32% smaller transport copy of `sats.json` for the app's first load (`pipeline/pack_sats.py` refuses to write it unless it round-trips exactly). `sats.json` remains the canonical, archived snapshot.
+3. Fails the run if the source element sets are stale (median epoch older than 3 days); a failed scheduled run opens a tracking issue.
+4. Runs the QA gate (`tests/run_qa.mjs`) and, only if it passes, deploys the rebuilt site to GitHub Pages.
 
 All page statistics are computed client-side from the generated JSON, so no HTML changes are needed between refreshes.
 
@@ -31,7 +38,9 @@ All page statistics are computed client-side from the generated JSON, so no HTML
 
 ```
 site/        the static web instrument (Three.js + SGP4 worker)
-pipeline/    data pipeline: refresh.py (fetch + orchestrate), build_dataset.py (enrich + ledger)
+pipeline/    data pipeline: refresh.py (fetch + orchestrate), build_dataset.py (enrich + ledger),
+             pack_sats.py (compact transport copy), build_citation.py (citation manifest)
+tests/       run_qa.mjs — QA gate that blocks deploys (citation, pickability, real clicks, exports)
 data/        ledger.json — registration lag ledger (persistent state, committed daily)
 ```
 
