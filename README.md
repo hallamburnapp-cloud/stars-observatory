@@ -44,6 +44,14 @@ tests/       run_qa.mjs — QA gate that blocks deploys (citation, pickability, 
 data/        ledger.json — registration lag ledger (persistent state, committed daily)
 ```
 
+## Releasing
+
+1. Bump `version` and `date-released` in `CITATION.cff` on `main`, and add `.github/release-notes/v<version>.md`.
+2. Actions → **Release** → Run workflow → enter the version. This creates a *draft* release.
+3. Open the draft on the Releases page and press **Publish release**. It must be published by a person: Zenodo does not archive releases published by the Actions token.
+
+Publishing makes Zenodo archive the release and mint its version DOI; the workflow waits for that and redeploys, so the site's OSCOLA citation carries the new version DOI. Until then the citation uses the concept DOI rather than another release's DOI.
+
 ## Running locally
 
 ```bash
