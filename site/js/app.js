@@ -1224,8 +1224,8 @@ function buildRegGap() {
 const SCENARIOS = [
   {
     id: 'aeolus', title: 'Aeolus / Starlink-44', year: '2019',
-    tag: 'First dodge of a commercial mega-constellation sat',
-    intro: '<strong style="color:var(--accent-warn)">2 September 2019.</strong> ESA\'s Aeolus performed the agency\'s first-ever collision-avoidance manoeuvre against an active commercial constellation satellite — SpaceX Starlink-44 — half an orbit before closest approach.',
+    tag: 'ESA’s first manoeuvre against a large-constellation satellite',
+    intro: '<strong style="color:var(--accent-warn)">2 September 2019.</strong> ESA’s Aeolus performed the agency’s first collision-avoidance manoeuvre to protect one of its spacecraft from a satellite in a large constellation — SpaceX’s Starlink-44 — half an orbit before the predicted conjunction.',
     steps: [
       { date: 'c. 26–27 Aug 2019', crit: false, txt: 'Data from the US Air Force 18th Space Control Squadron flag a potential conjunction at 11:02 UTC on 2 September between Aeolus (ESA Earth-observation mission) and Starlink-44 (SpaceX) — ‘about a week’ before the event, according to ESA.', prob: null },
       { date: '28 Aug 2019', crit: false, txt: 'With the probability rising but still below threshold (SpaceX puts it at about 1 in 50,000), ESA emails the Starlink team to discuss options. Within a day SpaceX replies that it has no plan to act at that point.', prob: 'P ≈ 1/50,000 · operators in contact' },
