@@ -110,7 +110,7 @@ function _legacyCopy(txt) {
 // 1. Load data
 // ============================================================
 async function loadData() {
-  setLoad('Loading orbital catalog…', 10);
+  setLoad('Loading orbital catalogue…', 10);
   const [sats, stats, lag, natlaw, citation] = await Promise.all([
     loadCatalog(),
     fetch('./data/stats.json', { cache: 'no-cache' }).then(r => r.json()),
@@ -1003,12 +1003,12 @@ function showDetail(i) {
   $('#dType').textContent = fullType(state.objType[i]);
   const rows = $('#dRows');
   const regBadge = state.objType[i] !== 'PAY'
-    ? '<span class="badge na">N/A · non-payload</span>'
+    ? '<span class="badge na">Not assessed · non-payload</span>'
     : (state.registered[i] ? '<span class="badge reg">Registered</span>' : '<span class="badge unreg">No UN record</span>');
   rows.innerHTML = `
     <div class="drow"><span class="k">NORAD ID</span><span class="v">${state.norad[i]}</span></div>
     <div class="drow"><span class="k">Intl designator</span><span class="v">${state.intl[i]}</span></div>
-    <div class="drow"><span class="k">Responsible State</span><span class="v"><button class="dlink" id="dDossier" title="Open the State dossier">${state.ownerName[i]} (${state.ownerCode[i]})</button></span></div>
+    <div class="drow"><span class="k">Attributed State / owner</span><span class="v"><button class="dlink" id="dDossier" title="Open the State dossier">${state.ownerName[i]} (${state.ownerCode[i]})</button></span></div>
     <div class="drow"><span class="k">Constellation</span><span class="v">${state.constLabel[i] || '—'}</span></div>
     <div class="drow"><span class="k">UN registration</span><span class="v">${regBadge}</span></div>
     <div class="drow"><span class="k">Launch year</span><span class="v">${state.launchYear[i] || '—'}</span></div>
@@ -1075,19 +1075,19 @@ function renderLegend() {
     const catalogRB = (state.stats.by_type && state.stats.by_type['R/B']) || 0;
     const renderedRB = count(i => state.objType[i] === 'R/B');
     const noGPRB = Math.max(0, catalogRB - renderedRB);
-    footnote = `\u2020 ${noGPRB.toLocaleString('en-GB')} of the ${catalogRB.toLocaleString('en-GB')} cataloged rocket bodies lack public GP element sets and are not propagated here; they are included in the catalog statistics panels.`;
+    footnote = `\u2020 ${noGPRB.toLocaleString('en-GB')} of the ${catalogRB.toLocaleString('en-GB')} catalogued rocket bodies are not propagated here (only CelesTrak’s active set and four debris clouds are loaded); they are included in the catalogue statistics panels.`;
   } else if (m === 'state') {
     const codes = ['US','CIS','PRC','UK','JPN','FR','IND','ESA'];
     let listed = 0;
     rows = codes.map(c => { const n = count(i => state.ownerCode[i] === c); listed += n;
       return [state.stats.owner_names[c] || c, STATE_COLORS[c], n]; });
     rows.push(['Other States', STATE_COLORS.OTHER, state.N - listed]);
-    footnote = 'Counts are propagated objects per SATCAT owner attribution — an evidentiary proxy for the Article VI “appropriate State”, not a legal determination. Catalog-wide payload figures are in the Art VI panel.';
+    footnote = 'Counts are propagated objects per SATCAT owner attribution — an evidentiary proxy for the Article VI ‘appropriate State’, not a legal determination. Catalogue-wide payload figures are in the Art VI panel.';
   } else if (m === 'reg') {
     rows = [['Registered (payload)', REG_COLORS.reg, count(i => state.objType[i] === 'PAY' && state.registered[i])],
             ['No UN record (payload)', REG_COLORS.unreg, count(i => state.objType[i] === 'PAY' && !state.registered[i])],
-            ['N/A · non-payload', REG_COLORS.na, count(i => state.objType[i] !== 'PAY')]];
-    footnote = 'Registration status is shown for propagated payloads, cross-referenced against GCAT. Submissions lag launch — “no UN record” includes filings still pending.';
+            ['Not assessed · non-payload', REG_COLORS.na, count(i => state.objType[i] !== 'PAY')]];
+    footnote = 'Registration status is shown for propagated payloads, cross-referenced against GCAT. Submissions lag launch — ‘no UN record’ includes filings still pending.';
   } else if (m === 'const') {
     rows = [['Starlink', CONST_COLORS.Starlink, count(i=>constKey(state.constLabel[i])==='Starlink')],
             ['OneWeb', CONST_COLORS.OneWeb, count(i=>constKey(state.constLabel[i])==='OneWeb')],
@@ -1150,7 +1150,7 @@ function populateFilters() {
   for (let i = 0; i < state.N; i++) if (state.objType[i] === 'PAY') (state.registered[i] ? reg++ : unreg++);
   $$('#fReg option').forEach(o => {
     if (o.value === '1') o.textContent = `Registered · ${reg.toLocaleString('en-GB')}`;
-    if (o.value === '0') o.textContent = `Unregistered · ${unreg.toLocaleString('en-GB')}`;
+    if (o.value === '0') o.textContent = `No UN record · ${unreg.toLocaleString('en-GB')}`;
   });
 }
 
@@ -1334,8 +1334,8 @@ function buildThreeClocks() {
     <div class="tclock diplo">
       <h4>Diplomatic clock (Art IX)</h4>
       <div class="cv">Undefined</div>
-      <div class="cd">"Appropriate international consultations" under Article IX have no trigger threshold and no timeline — and have never been formally invoked for an on-orbit conjunction in ~60 years.</div>
-      <div class="cx">No trigger · no timeline · never invoked</div>
+      <div class="cd">‘Appropriate international consultations’ under Article IX turn on a State’s own ‘reason to believe’ — no objective threshold and no timeline — and the consultation mechanism has never been formally invoked in almost 60 years.</div>
+      <div class="cx">Subjective trigger · no timeline · never invoked</div>
     </div>`;
   buildClockScale();
 }
@@ -1543,7 +1543,7 @@ function buildScenIsolation(viz) {
       const hex = '#' + g.color.toString(16).padStart(6, '0');
       parts.push(`<span style="color:${hex}">${set.size.toLocaleString('en-GB')}</span> ${g.label}`);
     }
-    let note = `<strong>Live catalog.</strong> Isolating ${parts.join(' and ')} — objects with public element sets still on orbit today. `;
+    let note = `<strong>Live catalogue.</strong> Isolating ${parts.join(' and ')} — objects with public element sets still on orbit today. `;
     if (viz.groups[0].prefix.startsWith('COSMOS 1408')) {
       note += 'Only a handful of Cosmos 1408 fragments still have public element sets: because the intercept was at low altitude (~480 km), atmospheric drag has re-entered nearly all of the cloud. High-altitude debris (e.g. Fengyun-1C) does not self-clean this way.';
     } else {
@@ -1566,7 +1566,7 @@ function buildScenIsolation(viz) {
     const luchHex = '#' + viz.noradColor.toString(16).padStart(6, '0');
     const itsoHex = '#' + viz.ownerColor.toString(16).padStart(6, '0');
     const luchName = luch.size ? 'Luch-5X (Olymp-K 2)' : 'the Luch successor';
-    const note = `<strong>Live catalog · GEO ring.</strong> <span style="color:${luchHex}">${luchName}</span> (NORAD ${viz.norad}) is isolated against the <span style="color:${itsoHex}">${itso.size} Intelsat (ITSO) GEO payloads</span> it and its predecessor shadowed. The original Olymp (NORAD 40258) is no longer intact — it was moved to a graveyard orbit in October 2025 and fragmented there on 30 January 2026, most plausibly struck by untracked debris, so it cannot be shown here.`;
+    const note = `<strong>Live catalogue · GEO ring.</strong> <span style="color:${luchHex}">${luchName}</span> (NORAD ${viz.norad}) is isolated against the <span style="color:${itsoHex}">${itso.size} Intelsat (ITSO) GEO payloads</span> it and its predecessor shadowed. The original Olymp (NORAD 40258) is no longer intact — it was moved to a graveyard orbit in October 2025 and fragmented there on 30 January 2026, most plausibly struck by untracked debris, so it cannot be shown here.`;
     return { groups, all, cam: [0, 20, 55], orbitPair: null, note };
   }
   return { groups: [], all: [], cam: [9, 7, 20], orbitPair: null, note: '' };
@@ -2105,13 +2105,13 @@ function buildLagIndex() {
     <div class="stat-cell"><div class="n">${(lag.tracked_payloads||0).toLocaleString('en-GB')}</div><div class="l">Payloads tracked</div></div>
     <div class="stat-cell"><div class="n">${(lag.watching_unregistered||0).toLocaleString('en-GB')}</div><div class="l">With no registration record — under watch</div></div>
     <div class="stat-cell"><div class="n">${(lag.flips_observed||0).toLocaleString('en-GB')}</div><div class="l">Registrations observed since launch of this index</div></div>
-    <div class="stat-cell"><div class="n">${median}</div><div class="l">Median observed lag, launch → registration</div></div>`;
+    <div class="stat-cell"><div class="n">${median}</div><div class="l">Median observed lag, launch → registration first recorded in GCAT</div></div>`;
 
   const daysRunning = lag.days_running || 0;
   if (!lag.recent_flips || lag.recent_flips.length === 0) {
     flipsEl.innerHTML = `
       <div class="lag-empty"><span class="lag-dot"></span>
-        No registrations have flipped from "no record" to "registered" yet — longitudinal observation began ${lag.started}${daysRunning ? ` (day ${daysRunning})` : ''}. As objects are registered with UNOOSA, the lag from launch to registration will be measured and accumulated here on each daily refresh.
+        No registrations have flipped from "no record" to "registered" yet — longitudinal observation began ${oscolaDate(lag.started)}${daysRunning ? ` (day ${daysRunning})` : ''}. As registrations appear in GCAT, the interval from launch to recorded registration will be measured and accumulated here on each daily refresh.
       </div>`;
   } else {
     const rows = lag.recent_flips.slice(0, 12).map(f => `
@@ -2160,7 +2160,7 @@ function buildSupervision() {
   const pct = (v) => total ? (v / total * 100) : 0;
   heroEl.innerHTML = `
     <div class="big">${Math.round(pct(cat.no)).toLocaleString('en-GB')}%</div>
-    <div class="cap" style="margin-top:6px">of catalogued payloads are supervised by a State that has <strong>no dedicated national space-law framework</strong> — the domestic machinery Article VI presumes for "authorization and continuing supervision." ${cat.no.toLocaleString('en-GB')} of ${total.toLocaleString('en-GB')} payloads.</div>`;
+    <div class="cap" style="margin-top:6px">of catalogued payloads are attributed to a State that has <strong>no authorisation regime in binding domestic law</strong> — the domestic machinery through which Article VI’s requirement of ‘authorization and continuing supervision’ is usually discharged. ${cat.no.toLocaleString('en-GB')} of ${total.toLocaleString('en-GB')} payloads.</div>`;
 
   const order = ['yes','consortium','unknown','no'];
   barEl.innerHTML = `<div class="stack-bar">${order.map(k =>
@@ -2182,7 +2182,7 @@ function buildSupervision() {
       <th>State (owner)</th><th class="num">Payloads</th><th>Statutory position</th>
       </tr></thead><tbody>${rows}</tbody></table></div>`;
   }
-  footEl.innerHTML = `<strong>Method.</strong> Payload populations from the live catalog are joined to the UNOOSA national space-law database by SATCAT owner code. "No dedicated space law" means the launching/supervising State has no comprehensive statutory authorization-and-supervision regime in force (registration-only or non-statutory policy regimes are counted as "no dedicated space law"). Consortium entries (e.g. Intelsat, Eutelsat, ESA) are supervised through delegated or member-State machinery rather than a single national act. Source: <a href="${nl.source_url}" target="_blank" rel="noopener">${nl.source}</a>.`;
+  footEl.innerHTML = `<strong>Method.</strong> Payload populations from the live catalogue are joined to the UNOOSA national space-law database by SATCAT owner code. ‘No dedicated space law’ means the attributed State has no authorisation regime for non-governmental space activities in binding domestic law — statute or binding regulation — in force; agency-creation, registration-only, telecoms-only and non-binding policy regimes are counted as ‘no dedicated space law’, while binding administrative regimes without a framework statute (eg China’s 2001–02 Measures) and remote-sensing-only regimes are counted as a regime and flagged in the dossier. Entries whose SATCAT owner is not a single State are shown separately: intergovernmental organisations (eg ESA, EUMETSAT, Arabsat), for which Article VI’s third sentence applies; commercial operators coded by company (eg Intelsat, Eutelsat, SES, Globalstar), whose activities are authorised by a licensing State named in each dossier; and joint multi-State programmes. Source: <a href="${nl.source_url}" target="_blank" rel="noopener">${nl.source}</a>.`;
 }
 
 // ============================================================
@@ -2193,13 +2193,13 @@ function buildProvenance() {
   const natEl = $('#provNatlaw'), ledEl = $('#provLedger'), casesEl = $('#provCases');
   if (natEl) {
     natEl.innerHTML = nl
-      ? `<div class="pc-h">National space law</div><a href="${nl.source_url}" target="_blank" rel="noopener">${nl.source}</a> — ${Object.keys(nl.states).length} States/entities classified by statutory position. Snapshot generated ${nl.generated}. Joined to live payload populations by SATCAT owner code.`
+      ? `<div class="pc-h">National space law</div><a href="${nl.source_url}" target="_blank" rel="noopener">${nl.source}</a> — ${Object.keys(nl.states).length} States/entities classified by statutory position. Snapshot generated ${oscolaDate(nl.generated)}. Joined to live payload populations by SATCAT owner code.`
       : `<div class="pc-h">National space law</div>Dataset unavailable.`;
   }
   if (ledEl) {
     const lag = state.lag;
     ledEl.innerHTML = lag
-      ? `<div class="pc-h">Registration Lag Index</div>Longitudinal ledger begun ${lag.started}; ${lag.days_running||0} day(s) of observation, ${(lag.flips_observed||0).toLocaleString('en-GB')} registration events recorded so far. Each daily refresh compares the tracked catalog against UNOOSA registration records and appends any launch→registration lag it observes. This is a forward-looking measurement, not a retrospective estimate.`
+      ? `<div class="pc-h">Registration Lag Index</div>Longitudinal ledger begun ${oscolaDate(lag.started)}; ${lag.days_running||0} day(s) of observation, ${(lag.flips_observed||0).toLocaleString('en-GB')} registration events recorded so far. Each daily refresh compares the catalogue against the UN registration references recorded in McDowell’s GCAT and appends any launch → first-recorded-registration interval it observes. This is a forward-looking measurement, not a retrospective estimate.`
       : `<div class="pc-h">Registration Lag Index</div>Dataset unavailable.`;
   }
   if (casesEl) {
@@ -2320,7 +2320,7 @@ function citeForms() {
   author        = {Burnapp, Hallam},
   title         = {STARS Observatory},
   version       = {${V}},
-  date-released = {${c.date_released}},
+  date          = {${c.date_released}},
   year          = {${Y}},
   organization  = {University of Aberdeen},
   license       = {MIT},
@@ -2645,7 +2645,7 @@ function exportCSV(indices, label) {
   for (const i of indices) {
     const rec = state.data.sats[i];
     rows.push([state.norad[i], state.name[i], state.intl[i], state.objType[i], state.ownerCode[i], state.ownerName[i],
-      state.constLabel[i], state.objType[i] === 'PAY' ? (state.registered[i] ? 'registered' : 'no UN record') : 'n/a',
+      state.constLabel[i], state.objType[i] === 'PAY' ? (state.registered[i] ? 'registered' : 'no UN record') : 'not assessed',
       state.launchYear[i], state.regime ? REGIME_NAMES[state.regime[i]] : '', rec[2], rec[3], snap].map(csvCell).join(','));
   }
   const blob = new Blob([rows.join('\r\n') + '\r\n'], { type: 'text/csv;charset=utf-8' });
@@ -2738,7 +2738,7 @@ function renderDossier() {
   const code = dossierCode, F = dossierFacts(code);
   const fmt = n => Number(n).toLocaleString('en-GB');
   const pct = (a, b) => b ? (a / b * 100).toFixed(1) + '%' : '—';
-  const lawTxt = { yes: 'Dedicated national space legislation', no: 'No dedicated national space law', consortium: 'Intergovernmental / consortium owner', unknown: 'Not determined' };
+  const lawTxt = { yes: 'National authorisation regime in binding law (statute or regulation)', no: 'No dedicated national space law', consortium: 'Non-State or multi-State owner (IGO, company or joint programme) — see the supervising State(s) below', unknown: 'Not determined' };
   const L = F.law;
   const lawSrc = L && L.source_url ? `<a href="${escapeHTML(L.source_url)}" target="_blank" rel="noopener">source ↗</a>` : '';
   const regTot = F.reg + F.unreg;
@@ -2749,11 +2749,11 @@ function renderDossier() {
     <div class="dos-kv">
       <span class="k">Payloads on orbit</span><span class="v">${fmt(F.payN)}</span>
       <span class="k">Share of all payloads on orbit</span><span class="v">${pct(F.payN, F.payTotal)}</span>
-      <span class="k">Rank among responsible States</span><span class="v">${F.rank > 0 ? '#' + F.rank : '—'}</span>
+      <span class="k">Rank among attributed owners</span><span class="v">${F.rank > 0 ? '#' + F.rank : '—'}</span>
       <span class="k">Active payloads</span><span class="v">${fmt(F.active)}</span>
       <span class="k">All catalogued objects (incl. debris, rocket bodies)</span><span class="v">${fmt(F.all)}</span>
     </div>
-    <h3 class="section">Registration (Registration Convention, Art II)</h3>
+    <h3 class="section">UN registration (Registration Convention, art IV; UNGA Res 1721 B (XVI))</h3>
     <div class="dos-kv">
       <span class="k">Payloads with a UN registration record</span><span class="v">${fmt(F.reg)}</span>
       <span class="k">Payloads with no UN record</span><span class="v">${fmt(F.unreg)} (${pct(F.unreg, regTot)})</span>
@@ -2761,7 +2761,7 @@ function renderDossier() {
       <span class="k">Registrations observed by the lag ledger</span><span class="v">${F.lagO ? fmt(F.lagO.flips) : '0'}</span>
       <span class="k">Median launch → registration lag</span><span class="v">${F.lagO && F.lagO.median_lag_days != null ? fmt(Math.round(F.lagO.median_lag_days)) + ' days' : '—'}</span>
     </div>
-    <p class="dos-note">Lag ledger running since ${escapeHTML((state.lag && state.lag.started) || '—')}; a median needs observed registrations, so States with few flips have wide uncertainty.</p>
+    <p class="dos-note">Lag ledger running since ${escapeHTML(state.lag && state.lag.started ? oscolaDate(state.lag.started) : '—')}; a median needs observed registrations, so States with few flips have wide uncertainty.</p>
     <h3 class="section">Supervisory machinery</h3>
     <div class="dos-kv stack">
       <span class="k">National space legislation</span><span class="v">${L ? lawTxt[L.law] || escapeHTML(L.law) : '—'}</span>
@@ -2770,7 +2770,7 @@ function renderDossier() {
     ${L && L.instrument ? `<div class="dos-kv stack"><span class="k">Principal instrument</span><span class="v">${escapeHTML(L.instrument)}${L.year && !String(L.instrument).includes(String(L.year)) ? ' (' + L.year + ')' : ''} ${lawSrc}</span></div>` : ''}
     ${L && L.borderline ? `<p class="dos-note"><strong>Classification note.</strong> ${escapeHTML(L.borderline)}</p>` : ''}
     ${L ? renderInstruments(L) : ''}
-    ${F.consts.length ? `<h3 class="section">Constellations (propagated payloads)</h3><div class="dos-kv">${F.consts.slice(0, 8).map(([l, n]) => `<span class="k">${escapeHTML(l)}</span><span class="v">${fmt(n)}</span>`).join('')}</div>` : ''}
+    ${F.consts.length ? `<h3 class="section">Constellations (propagated objects)</h3><div class="dos-kv">${F.consts.slice(0, 8).map(([l, n]) => `<span class="k">${escapeHTML(l)}</span><span class="v">${fmt(n)}</span>`).join('')}</div>` : ''}
     <h3 class="section">Cite this dossier</h3>
     <div class="dos-note" style="margin:0 0 4px">Footnote (OSCOLA 5, pinpointed to this dossier)</div>
     <div class="dos-cite" id="dosCite">${escapeHTML(dossierCitation(F.name).foot)}</div>
@@ -2782,7 +2782,7 @@ function renderDossier() {
       <button class="dcopy" id="dosShow">Show on globe (${fmt(F.prop)})</button>
       <button class="dcopy" id="dosCsv">Download objects (CSV)</button>
     </div>
-    <p class="dos-note">Attribution follows the 18 SDS/CelesTrak owner convention — an evidentiary proxy for the Article VI "appropriate State", not a legal determination. Catalogue-wide counts include objects without public element sets; the globe and CSV cover propagated objects only.</p>`;
+    <p class="dos-note">Attribution follows the 18 SDS/CelesTrak owner convention — an evidentiary proxy for the Article VI ‘appropriate State’, not a legal determination. Catalogue-wide counts include every on-orbit object in the SATCAT; the globe and CSV cover only the propagated set (CelesTrak’s active satellites and four debris clouds).</p>`;
   $('#dosCopyCite').addEventListener('click', e => copyText($('#dosCite').textContent).then(ok => flashButton(e.target, ok ? 'Footnote copied ✓' : 'Select the text above', 'Copy footnote')));
   $('#dosCopyLink').addEventListener('click', e => {
     const u = location.origin + location.pathname + '?dossier=' + encodeURIComponent(code);
@@ -2805,7 +2805,7 @@ function showFirstHint() {
   try { seen = localStorage.getItem(HINT_KEY) === '1'; } catch (e) { /* storage blocked */ }
   if (seen || INITIAL_QUERY.has('sat')) return;
   const el = $('#firstHint'); if (!el) return;
-  if (IS_TOUCH) $('#firstHintText').innerHTML = 'Tap any dot to open its legal record · drag to rotate · pinch to zoom';
+  if (IS_TOUCH) $('#firstHintText').innerHTML = 'Tap any dot to open its catalogue and legal-attribution record · drag to rotate · pinch to zoom';
   el.hidden = false;
   $('#firstHintClose').addEventListener('click', dismissFirstHint);
 }

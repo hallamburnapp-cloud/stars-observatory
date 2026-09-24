@@ -93,15 +93,17 @@ for m in re.finditer(r">([A-Z-]{2,6})</td><td[^>]*>([^<]+)</td>", src):
     owner_names[m.group(1)] = html.unescape(m.group(2)).strip()
 # Canonical SATCAT owner codes (standard 18 SDS designators)
 owner_names.update({
-    "US": "United States", "CIS": "Russia (CIS)", "PRC": "China", "UK": "United Kingdom",
+    "US": "United States", "CIS": "Russia / former USSR (CIS)", "PRC": "China", "UK": "United Kingdom",
     "JPN": "Japan", "FR": "France", "GER": "Germany", "IND": "India", "IT": "Italy",
     "CA": "Canada", "AUS": "Australia", "BRAZ": "Brazil", "SKOR": "South Korea",
-    "NKOR": "North Korea", "TWN": "Taiwan", "ISRA": "Israel", "SPN": "Spain",
+    "NKOR": "North Korea", "TWN": "Taiwan", "ROC": "Taiwan (Republic of China)",
+    "RP": "Philippines", "BUL": "Bulgaria", "MA": "Morocco", "RWA": "Rwanda", "DJI": "Djibouti",
+    "BWA": "Botswana", "MNE": "Montenegro", "SEAL": "Sea Launch", "HRV": "Croatia", "ISRA": "Israel", "SPN": "Spain",
     "NETH": "Netherlands", "SWTZ": "Switzerland", "SWED": "Sweden", "NOR": "Norway",
-    "DEN": "Denmark", "FIN": "Finland", "POL": "Poland", "CZCH": "Czech Republic",
+    "DEN": "Denmark", "FIN": "Finland", "POL": "Poland", "CZCH": "Czechia",
     "CHLE": "Chile", "MEX": "Mexico", "UAE": "United Arab Emirates", "SAUD": "Saudi Arabia",
-    "TURK": "Turkey", "IRAN": "Iran", "PAKI": "Pakistan", "INDO": "Indonesia",
-    "THAI": "Thailand", "MALA": "Malaysia", "SING": "Singapore", "VTNM": "Vietnam",
+    "TURK": "Türkiye", "IRAN": "Iran", "PAKI": "Pakistan", "INDO": "Indonesia",
+    "THAI": "Thailand", "MALA": "Malaysia", "SING": "Singapore", "VTNM": "Viet Nam",
     "EGYP": "Egypt", "NIG": "Nigeria", "SAFR": "South Africa", "KAZ": "Kazakhstan",
     "UKR": "Ukraine", "BELA": "Belarus", "AZER": "Azerbaijan", "LUXE": "Luxembourg",
     "BEL": "Belgium", "AUST": "Austria", "POR": "Portugal", "GREC": "Greece",
@@ -144,7 +146,7 @@ CONSTELLATIONS = [
     ("QIANFAN", "Qianfan/G60 (China)"),
     ("SQX", None), ("GUOWANG", "Guowang (China)"), ("HULIANWANG", "Guowang (China)"),
     ("KUIPER", "Kuiper (Amazon, US)"),
-    ("IRIDIUM", "Iridium NEXT (US)"),
+    ("IRIDIUM", "Iridium (US)"),
     ("GLOBALSTAR", "Globalstar (US)"),
     ("FLOCK", "Planet Flock (US)"),
     ("LEMUR", "Spire Lemur (US)"),
@@ -153,6 +155,8 @@ CONSTELLATIONS = [
 ]
 def constellation(name):
     u = name.upper()
+    if " DEB" in u or u.endswith(" R/B"):  # fragments and rocket bodies are not constellation members
+        return ""
     for pre, label in CONSTELLATIONS:
         if label and u.startswith(pre): return label
     return ""
