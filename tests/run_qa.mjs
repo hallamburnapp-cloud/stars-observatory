@@ -268,6 +268,89 @@ check(Math.abs(shownVis - cc.top[0][1]) / cc.top[0][1] < 0.04, `selecting ${cc.t
 await page.selectOption('#fState', '');
 await page.waitForTimeout(150);
 
+// ---------- 4c. ground truth: click where the dot is DRAWN ----------
+// Every check above aims with the app's own projection maths, so a bug in
+// that maths (e.g. measuring from the window instead of the canvas, which sits
+// below the top bar) passes them all while real users miss every dot. This
+// section is independent of the app's projection: it recolours ONE dot,
+// screenshot-diffs to find the pixel where it is really drawn, and then
+// real-clicks/taps exactly there — resolving any chooser with a real click too.
+console.log('[4c] Ground truth: real clicks on drawn dots');
+async function groundTruth(pg, { touch = false, n = 10, cam = null, label = '' } = {}) {
+  const vp = pg.viewportSize();
+  await pg.evaluate(() => { __QA.pause(); const c = document.querySelector('#dClose'); if (c) c.click(); });
+  await pg.evaluate(c => __QA.setCam(...c), cam || [6, 10, 36]); // default view unless given
+  await pg.addStyleTag({ content: 'body.qa-gt *:not(html):not(body):not(#app):not(main):not(#scene){visibility:hidden!important;transition:none!important;animation:none!important}' });
+  await pg.waitForTimeout(300);
+  const lay = await pg.evaluate(() => { const c = document.querySelector('#scene').getBoundingClientRect(), h = document.querySelector('#scene').parentElement.getBoundingClientRect();
+    return { dTop: Math.abs(c.top - h.top), dH: Math.abs(c.height - h.height), dW: Math.abs(c.width - h.width) }; });
+  check(lay.dTop < 1 && lay.dH < 1 && lay.dW < 1, `${label}canvas exactly fills its host (not clipped under the top bar)`, JSON.stringify(lay));
+  const shot = async () => (await pg.screenshot()).toString('base64');
+  const drawnAt = (a, b) => pg.evaluate(async ([a, b]) => {
+    const load = async s => { const bm = await createImageBitmap(await (await fetch('data:image/png;base64,' + s)).blob());
+      const c = new OffscreenCanvas(bm.width, bm.height), x = c.getContext('2d'); x.drawImage(bm, 0, 0); return x.getImageData(0, 0, bm.width, bm.height); };
+    const A = await load(a), B = await load(b); let sx = 0, sy = 0, n = 0;
+    for (let i = 0; i < A.data.length; i += 4) {
+      // count only pixels that turned towards the flash colour (magenta:
+      // +R, -G, +B) so an unrelated change on the canvas (e.g. a late orbit
+      // trail from an earlier selection) cannot pull the measurement
+      const dr = B.data[i] - A.data[i], dg = B.data[i+1] - A.data[i+1], db = B.data[i+2] - A.data[i+2];
+      if (dr - dg > 30 && db - dg > 30) { const p = i / 4; sx += p % A.width; sy += Math.floor(p / A.width); n++; }
+    }
+    return n ? { x: sx / n, y: sy / n, n } : null;
+  }, [a, b]);
+  const pool = await pg.evaluate(() => { const e = __QA.eligible(), o = []; for (let k = 0; k < 600; k++) o.push(e[Math.floor(Math.random() * e.length)]); return o; });
+  let tried = 0, ok = 0, worstOff = 0, shots = 0; const fails = [];
+  for (const idx of pool) {
+    if (tried >= n || shots >= n * 3) break;
+    const s = await pg.evaluate(i => __QA.screenOf(i), idx);
+    if (s.z > 1 || s.x < 16 || s.x > vp.width - 16 || s.y < 16 || s.y > vp.height - 16) continue;
+    if (!(await pg.evaluate(([x, y]) => document.elementFromPoint(x, y)?.id === 'scene', [s.x, s.y]))) continue; // under a panel
+    if (await pg.evaluate(i => __QA.occluded(i), idx)) continue; // behind the Earth
+    shots++;
+    await pg.evaluate(() => document.body.classList.add('qa-gt')); await pg.waitForTimeout(120);
+    const a = await shot();
+    await pg.evaluate(i => __QA.flash(i, true), idx); await pg.waitForTimeout(100);
+    const b = await shot();
+    await pg.evaluate(i => __QA.flash(i, false), idx);
+    await pg.evaluate(() => document.body.classList.remove('qa-gt')); await pg.waitForTimeout(80);
+    const g = await drawnAt(a, b);
+    if (!g) continue; // dot hidden behind the Earth or another object
+    tried++;
+    worstOff = Math.max(worstOff, Math.hypot(g.x - s.x, g.y - s.y));
+    const tap = (x, y) => touch ? pg.touchscreen.tap(x, y) : pg.mouse.click(x, y);
+    await tap(g.x, g.y); await pg.waitForTimeout(150);
+    let sel = await pg.evaluate(() => __QA.selected);
+    if (sel !== idx && await pg.evaluate(() => __QA.chooserOpen())) {
+      const row = pg.locator(`#pickChooser .sr[data-i="${idx}"]`);
+      if (await row.count()) {
+        await row.scrollIntoViewIfNeeded(); const bb = await row.boundingBox();
+        await tap(bb.x + bb.width / 2, bb.y + bb.height / 2); await pg.waitForTimeout(120);
+        sel = await pg.evaluate(() => __QA.selected);
+      }
+    }
+    const card = sel === idx && (await pg.evaluate(() => __QA.detailNorad())).includes(await pg.evaluate(i => __QA.norad(i), idx));
+    if (card) ok++; else fails.push(`${await pg.evaluate(i => __QA.norad(i), idx)}→${sel}`);
+    await pg.keyboard.press('Escape').catch(() => {});
+    await pg.evaluate(() => { const c = document.querySelector('#dClose'); if (c) c.click(); });
+    await pg.waitForTimeout(60);
+  }
+  check(tried >= Math.ceil(n / 2) && worstOff <= 3, `${label}app projection matches the drawn pixel (worst ${worstOff.toFixed(1)}px over ${tried} dots)`);
+  check(tried >= Math.ceil(n / 2) && ok === tried, `${label}real ${touch ? 'taps' : 'clicks'} on drawn dots open that object's card (${ok}/${tried})`, fails.join(', '));
+}
+await groundTruth(page, { n: QUICK ? 8 : 16, label: 'desktop default view: ' });
+await groundTruth(page, { n: QUICK ? 6 : 12, cam: [40, 60, 160], label: 'desktop zoomed out: ' });
+{
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+  const phone = await ctx.newPage();
+  phone.on('pageerror', e => pageErrors.push(String(e)));
+  await phone.goto(`http://127.0.0.1:${PORT}/`, { timeout: 120000, waitUntil: 'domcontentloaded' });
+  await phone.waitForFunction(() => { const l = document.querySelector('#loader'); return l && getComputedStyle(l).display === 'none'; }, { timeout: 180000 });
+  await phone.waitForFunction(() => window.__QA && __QA.eligible().length > 0, { timeout: 60000 });
+  await groundTruth(phone, { touch: true, n: QUICK ? 6 : 12, label: 'phone (touch): ' });
+  await ctx.close();
+}
+
 // ---------- 5. permalinks ----------
 console.log('[5] Permalinks');
 const alive = await page.evaluate(() => __QA.eligible().map(i => __QA.norad(i)));
