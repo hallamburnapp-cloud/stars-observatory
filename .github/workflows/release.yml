@@ -1,13 +1,13 @@
-# Releasing, in two clicks:
-#   1. Actions → "Release" → Run workflow → version (e.g. 1.7.0).
-#      Refuses unless CITATION.cff on main carries that version, then creates a
-#      DRAFT release v<version> with notes from .github/release-notes/v<version>.md.
-#   2. Open the draft on the Releases page and press "Publish release".
-#      A person must publish: Zenodo does not archive releases published by the
-#      Actions token (it ignored v1.7.0 when the workflow published it itself).
-# Publishing triggers the second job: wait for Zenodo to archive the release and
-# mint its version DOI, then redeploy so the OSCOLA citation carries it. Until
-# then build_citation.py cites the concept DOI, never a mismatched one.
+# One-click release: Actions → "Release" → Run workflow → version (e.g. 1.7.0).
+#
+# 1. Refuses unless CITATION.cff on main already carries that version.
+# 2. Publishes GitHub release v<version> (notes: .github/release-notes/v<version>.md).
+#    The Zenodo GitHub integration archives the release and mints its version DOI.
+# 3. Waits for Zenodo to list the new version under the concept record, then
+#    redeploys the site so the OSCOLA citation carries the new version DOI.
+#    (Until then build_citation.py cites the concept DOI, never a mismatched one.)
+#    Zenodo can take well over 30 minutes under load (v1.7.0 did), so this waits
+#    up to 2 hours; if it is slower still, the next daily refresh picks it up.
 name: Release
 
 on:
@@ -16,8 +16,6 @@ on:
       version:
         description: "Version to release, without the v (must equal CITATION.cff)"
         required: true
-  release:
-    types: [published]
 
 permissions:
   contents: write
@@ -28,12 +26,12 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  draft:
-    if: github.event_name == 'workflow_dispatch'
+  release:
     runs-on: ubuntu-latest
     env:
       GH_TOKEN: ${{ github.token }}
       V: ${{ inputs.version }}
+      CONCEPT_RECID: "22662848"
     steps:
       - uses: actions/checkout@v4
         with:
@@ -46,32 +44,22 @@ jobs:
           [ "$CFF" = "$V" ] || { echo "::error::CITATION.cff says $CFF, not $V — bump it on main first"; exit 1; }
           if gh release view "v$V" >/dev/null 2>&1; then echo "::error::release v$V already exists"; exit 1; fi
 
-      - name: Create draft release
+      - name: Publish GitHub release
         run: |
           NOTES=".github/release-notes/v$V.md"
           if [ -f "$NOTES" ]; then ARGS=(--notes-file "$NOTES"); else ARGS=(--generate-notes); fi
           TITLE=$(head -1 "$NOTES" 2>/dev/null | sed -E 's/^#+\s*//')
-          gh release create "v$V" --draft --target main --title "${TITLE:-v$V}" "${ARGS[@]}"
-          echo "::notice::Draft v$V created. Publish it from the Releases page to archive it on Zenodo."
+          gh release create "v$V" --target main --title "${TITLE:-v$V}" "${ARGS[@]}"
 
-  archive-and-redeploy:
-    if: github.event_name == 'release'
-    runs-on: ubuntu-latest
-    env:
-      GH_TOKEN: ${{ github.token }}
-      V: ${{ github.event.release.tag_name }}
-      CONCEPT_RECID: "22662848"
-    steps:
-      - name: Wait for Zenodo to archive ${{ github.event.release.tag_name }}
+      - name: Wait for Zenodo to archive v${{ inputs.version }}
         run: |
-          V="${V#v}"
-          for i in $(seq 1 60); do
-            GOT=$(curl -fsS "https://zenodo.org/api/records/$CONCEPT_RECID" | python3 -c "import json,sys; r=json.load(sys.stdin); print(r['metadata'].get('version',''), r['doi'])" || true)
+          for i in $(seq 1 240); do
+            GOT=$(curl -fsS --max-time 60 "https://zenodo.org/api/records/$CONCEPT_RECID" | python3 -c "import json,sys; r=json.load(sys.stdin); print(r['metadata'].get('version',''), r['doi'])" || true)
             echo "Zenodo latest: $GOT"
             case "$GOT" in "v$V "*|"$V "*) echo "archived"; exit 0;; esac
             sleep 30
           done
-          echo "::warning::Zenodo has not archived v$V after 30 minutes. The site keeps citing the concept DOI; the next daily refresh will pick up the version DOI automatically."
+          echo "::warning::Zenodo has not archived v$V after 2 hours. The site keeps citing the concept DOI; the next daily refresh will pick up the version DOI automatically."
 
       - name: Redeploy so the citation carries the new version DOI
         run: gh workflow run refresh.yml --ref main

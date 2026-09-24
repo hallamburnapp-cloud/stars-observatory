@@ -47,10 +47,9 @@ data/        ledger.json — registration lag ledger (persistent state, committe
 ## Releasing
 
 1. Bump `version` and `date-released` in `CITATION.cff` on `main`, and add `.github/release-notes/v<version>.md`.
-2. Actions → **Release** → Run workflow → enter the version. This creates a *draft* release.
-3. Open the draft on the Releases page and press **Publish release**. It must be published by a person: Zenodo does not archive releases published by the Actions token.
+2. Actions → **Release** → Run workflow → enter the version.
 
-Publishing makes Zenodo archive the release and mint its version DOI; the workflow waits for that and redeploys, so the site's OSCOLA citation carries the new version DOI. Until then the citation uses the concept DOI rather than another release's DOI.
+The workflow publishes the GitHub release, which Zenodo archives to mint the version DOI (this can take over half an hour when Zenodo is busy). It waits up to 2 hours for that, then redeploys so the site's OSCOLA citation carries the new version DOI; any later archive is picked up by the next daily refresh. Until then the citation uses the concept DOI, never another release's DOI.
 
 ## Running locally
 
