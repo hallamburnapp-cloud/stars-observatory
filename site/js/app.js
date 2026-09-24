@@ -2738,7 +2738,8 @@ function renderDossier() {
     <div class="dos-kv stack">
       <span class="k">National space legislation</span><span class="v">${L ? lawTxt[L.law] || escapeHTML(L.law) : '—'}</span>
     </div>
-    ${L && L.instrument ? `<div class="dos-kv stack"><span class="k">Instrument</span><span class="v">${escapeHTML(L.instrument)}${L.year ? ' (' + L.year + ')' : ''} ${lawSrc}</span></div>` : ''}
+    ${L && L.verified ? `<p class="dos-note" style="margin:-4px 0 10px">Legal status last verified ${escapeHTML(oscolaDate(L.verified))} against official sources.</p>` : ''}
+    ${L && L.instrument ? `<div class="dos-kv stack"><span class="k">Instrument</span><span class="v">${escapeHTML(L.instrument)}${L.year && !String(L.instrument).includes(String(L.year)) ? ' (' + L.year + ')' : ''} ${lawSrc}</span></div>` : ''}
     ${F.consts.length ? `<h3 class="section">Constellations (propagated payloads)</h3><div class="dos-kv">${F.consts.slice(0, 8).map(([l, n]) => `<span class="k">${escapeHTML(l)}</span><span class="v">${fmt(n)}</span>`).join('')}</div>` : ''}
     <h3 class="section">Cite this dossier</h3>
     <div class="dos-note" style="margin:0 0 4px">Footnote (OSCOLA 5, pinpointed to this dossier)</div>
