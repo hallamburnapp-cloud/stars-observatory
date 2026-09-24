@@ -3,8 +3,10 @@
 still loads. Content is maintained by hand; this only catches links that break.
 
 Entries marked source_check == "blocked-but-canonical" are official pages that
-refuse automated requests (HTTP 403) but work in a browser; a 403 there is not
-reported. Prints a Markdown report and exits 1 if any link is broken.
+refuse automated requests (403/405, JavaScript-only pages, incomplete TLS chains
+that browsers repair) but work in a browser; for those only 404/410 (gone) is
+reported. Timeouts are retried once. Prints a Markdown report and exits 1 if any
+link is broken.
 """
 import json, sys, urllib.request, urllib.error
 from pathlib import Path
@@ -33,9 +35,11 @@ def main():
             broken.append((code, rec.get("state"), "(no source_url)", "missing"))
             continue
         st = status(url)
-        if st == 200 or (isinstance(st, int) and 200 <= st < 300):
+        if isinstance(st, str) and "timed out" in st:
+            st = status(url)
+        if isinstance(st, int) and 200 <= st < 300:
             continue
-        if st == 403 and rec.get("source_check") == "blocked-but-canonical":
+        if rec.get("source_check") == "blocked-but-canonical" and st not in (404, 410):
             continue
         broken.append((code, rec.get("state"), url, st))
     if not broken:
