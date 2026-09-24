@@ -2535,6 +2535,7 @@ window.__QA = {
     return toClient(pa[idx*3], pa[idx*3+1], pa[idx*3+2], viewRect());
   },
   select(idx) { selectObject(idx); },
+  occluded(idx) { const pa = posAttr.array; return earthOccluded(pa[idx*3], pa[idx*3+1], pa[idx*3+2]); },
   // Recolour ONE dot (or restore it) without any other visual change, so a
   // screenshot diff yields the exact pixel where the dot is really drawn —
   // ground truth that is independent of the app's own projection maths.

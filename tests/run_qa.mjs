@@ -279,7 +279,7 @@ console.log('[4c] Ground truth: real clicks on drawn dots');
 async function groundTruth(pg, { touch = false, n = 10, cam = null, label = '' } = {}) {
   const vp = pg.viewportSize();
   await pg.evaluate(() => __QA.pause());
-  if (cam) await pg.evaluate(c => __QA.setCam(...c), cam);
+  await pg.evaluate(c => __QA.setCam(...c), cam || [6, 10, 36]); // default view unless given
   await pg.addStyleTag({ content: 'body.qa-gt *:not(html):not(body):not(#app):not(main):not(#scene){visibility:hidden!important;transition:none!important;animation:none!important}' });
   await pg.waitForTimeout(300);
   const lay = await pg.evaluate(() => { const c = document.querySelector('#scene').getBoundingClientRect(), h = document.querySelector('#scene').parentElement.getBoundingClientRect();
@@ -297,12 +297,14 @@ async function groundTruth(pg, { touch = false, n = 10, cam = null, label = '' }
     return n ? { x: sx / n, y: sy / n, n } : null;
   }, [a, b]);
   const pool = await pg.evaluate(() => { const e = __QA.eligible(), o = []; for (let k = 0; k < 600; k++) o.push(e[Math.floor(Math.random() * e.length)]); return o; });
-  let tried = 0, ok = 0, worstOff = 0; const fails = [];
+  let tried = 0, ok = 0, worstOff = 0, shots = 0; const fails = [];
   for (const idx of pool) {
-    if (tried >= n) break;
+    if (tried >= n || shots >= n * 3) break;
     const s = await pg.evaluate(i => __QA.screenOf(i), idx);
     if (s.z > 1 || s.x < 16 || s.x > vp.width - 16 || s.y < 16 || s.y > vp.height - 16) continue;
     if (!(await pg.evaluate(([x, y]) => document.elementFromPoint(x, y)?.id === 'scene', [s.x, s.y]))) continue; // under a panel
+    if (await pg.evaluate(i => __QA.occluded(i), idx)) continue; // behind the Earth
+    shots++;
     await pg.evaluate(() => document.body.classList.add('qa-gt')); await pg.waitForTimeout(120);
     const a = await shot();
     await pg.evaluate(i => __QA.flash(i, true), idx); await pg.waitForTimeout(100);
