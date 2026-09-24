@@ -257,14 +257,15 @@ function initThree() {
   const canvas = $('#scene');
   renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-  renderer.setSize(window.innerWidth, window.innerHeight);
+  const [vw0, vh0] = viewSize();
+  renderer.setSize(vw0, vh0);
   renderer.setClearColor(0x05070d, 1);
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.15;
 
   scene = new THREE.Scene();
 
-  camera = new THREE.PerspectiveCamera(42, window.innerWidth / window.innerHeight, 0.1, 20000);
+  camera = new THREE.PerspectiveCamera(42, vw0 / vh0, 0.1, 20000);
   camera.position.set(6, 10, 36);
 
   controls = new OrbitControls(camera, renderer.domElement);
@@ -377,6 +378,9 @@ function initThree() {
   pointer = new THREE.Vector2();
 
   window.addEventListener('resize', onResize);
+  // The canvas host also changes size without a window resize (the top bar
+  // wraps on narrow screens, mobile toolbars collapse) — track it directly.
+  if (window.ResizeObserver) new ResizeObserver(onResize).observe(canvas.parentElement);
   renderer.domElement.addEventListener('pointerdown', onPointerDown);
   renderer.domElement.addEventListener('pointermove', onPointerMove);
 }
@@ -657,11 +661,36 @@ function updateClock() {
 }
 
 function onResize() {
-  camera.aspect = window.innerWidth / window.innerHeight;
+  const [w, h] = viewSize();
+  camera.aspect = w / h;
   camera.updateProjectionMatrix();
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setSize(w, h);
   if (points) points.material.uniforms.uPix.value = renderer.getPixelRatio();
+}
+
+// ------------------------------------------------------------
+// Screen geometry. The canvas sits BELOW the top bar, so its origin is not
+// the window's: every screen <-> scene conversion must use the canvas's own
+// client rect. (Using window.innerWidth/innerHeight here shifted every hit
+// test by the top-bar height, so clicks on a dot missed it and clicks in
+// the empty space above a dot selected it.)
+// ------------------------------------------------------------
+function viewSize() {
+  const host = $('#scene').parentElement;
+  return [Math.max(1, host.clientWidth), Math.max(1, host.clientHeight)];
+}
+function viewRect() { return renderer.domElement.getBoundingClientRect(); }
+// Project a scene point to client (CSS px, window-relative) coordinates.
+// Leaves the NDC depth in _pv.z for callers.
+function toClient(x, y, z, r) {
+  _pv.set(x, y, z).project(camera);
+  return { x: r.left + (_pv.x * 0.5 + 0.5) * r.width, y: r.top + (-_pv.y * 0.5 + 0.5) * r.height, z: _pv.z };
+}
+function setPointerFromClient(cx, cy) {
+  const r = viewRect();
+  pointer.x = ((cx - r.left) / r.width) * 2 - 1;
+  pointer.y = -((cy - r.top) / r.height) * 2 + 1;
 }
 
 // ============================================================
@@ -669,23 +698,22 @@ function onResize() {
 // ============================================================
 let lastHover = 0;
 function onPointerMove(e) {
-  pointer.x = (e.clientX / window.innerWidth) * 2 - 1;
-  pointer.y = -(e.clientY / window.innerHeight) * 2 + 1;
+  setPointerFromClient(e.clientX, e.clientY);
   // Desktop hover affordance: pointer cursor over any selectable object.
   if (IS_TOUCH || !points || !state.lastAlive || downXY) return;
   const now = performance.now();
   if (now - lastHover < 120) return;
   lastHover = now;
   const sx = e.clientX, sy = e.clientY;
-  const pa = posAttr.array;
+  const pa = posAttr.array, r = viewRect();
   let hit = false;
   for (let i = 0; i < state.N; i++) {
     if (!state.lastAlive[i]) continue; // dimmed (filtered-out) dots are pickable too
-    _pv.set(pa[i*3], pa[i*3+1], pa[i*3+2]).project(camera);
-    if (_pv.z > 1) continue;
-    const px = (_pv.x * 0.5 + 0.5) * window.innerWidth;
-    const py = (-_pv.y * 0.5 + 0.5) * window.innerHeight;
-    if (Math.hypot(px - sx, py - sy) <= 10 && !earthOccluded(pa[i*3], pa[i*3+1], pa[i*3+2])) { hit = true; break; }
+    const q = toClient(pa[i*3], pa[i*3+1], pa[i*3+2], r);
+    if (q.z > 1) continue;
+    // same radius as the click, so the pointer cursor never promises less
+    // (or more) than a click delivers
+    if (Math.hypot(q.x - sx, q.y - sy) <= PICK_RADIUS && !earthOccluded(pa[i*3], pa[i*3+1], pa[i*3+2])) { hit = true; break; }
   }
   renderer.domElement.style.cursor = hit ? 'pointer' : '';
 }
@@ -707,9 +735,9 @@ function renderPickBind() {
     downXY = null;
     if (moved > 8 || dt > 900) return; // drag, not click
     if (e.target !== renderer?.domElement) return;
-    pointer.x = (e.clientX / window.innerWidth) * 2 - 1;
-    pointer.y = -(e.clientY / window.innerHeight) * 2 + 1;
-    pickAt();
+    setPointerFromClient(e.clientX, e.clientY);
+    pickAt(e.clientX, e.clientY);
+    if (pickEl) swallowClickUntil = performance.now() + 700;
   });
 }
 
@@ -732,10 +760,10 @@ function earthOccluded(x, y, z) {
   const R = RE_SCENE * 0.985;
   return (qx * qx + qy * qy + qz * qz) < R * R;
 }
-function pickAt() {
+// sx, sy: client (window-relative CSS px) coordinates of the click.
+function pickAt(sx, sy) {
   if (!points || !state.lastAlive) return;
-  const sx = (pointer.x * 0.5 + 0.5) * window.innerWidth;
-  const sy = (-pointer.y * 0.5 + 0.5) * window.innerHeight;
+  const r = viewRect();
   const pa = posAttr.array;
   // The pointerdown snapshot is only trusted for the click it belongs to:
   // it must be fresh (a click's down→up span) and is consumed after use, so
@@ -743,7 +771,7 @@ function pickAt() {
   const snap = (downPosSnap && downPosSnap.length === pa.length && (performance.now() - downSnapT) < 1500) ? downPosSnap : null;
   downPosSnap = null;
   const N = state.N;
-  const RADIUS = IS_TOUCH ? 26 : 14; // px — wider hit area for fingers
+  const RADIUS = PICK_RADIUS;
   hidePickChooser();
   const cands = [];
   for (let i = 0; i < N; i++) {
@@ -752,19 +780,16 @@ function pickAt() {
     // filter. A visible dot that ignores clicks reads as broken; the detail
     // card is evidence regardless of the current filter view.
     const wx = pa[i*3], wy = pa[i*3+1], wz = pa[i*3+2];
-    _pv.set(wx, wy, wz).project(camera);
-    if (_pv.z > 1) continue; // behind camera / clipped
-    const px = (_pv.x * 0.5 + 0.5) * window.innerWidth;
-    const py = (-_pv.y * 0.5 + 0.5) * window.innerHeight;
-    let d = Math.hypot(px - sx, py - sy);
+    const q = toClient(wx, wy, wz, r);
+    if (q.z > 1) continue; // behind camera / clipped
+    const depth = q.z;
+    let d = Math.hypot(q.x - sx, q.y - sy);
     // While playing, a dot may have drifted between aim and click — also
     // accept a hit on the dot's position captured at pointerdown.
     if (snap && d > 2) {
-      _pv.set(snap[i*3], snap[i*3+1], snap[i*3+2]).project(camera);
-      if (_pv.z <= 1) {
-        const dx0 = (_pv.x * 0.5 + 0.5) * window.innerWidth - sx;
-        const dy0 = (-_pv.y * 0.5 + 0.5) * window.innerHeight - sy;
-        const d0 = Math.hypot(dx0, dy0);
+      const q0 = toClient(snap[i*3], snap[i*3+1], snap[i*3+2], r);
+      if (q0.z <= 1) {
+        const d0 = Math.hypot(q0.x - sx, q0.y - sy);
         if (d0 < d) d = d0;
       }
     }
@@ -772,14 +797,51 @@ function pickAt() {
     if (earthOccluded(wx, wy, wz)) continue; // hidden behind the Earth
     // prefer closest-to-cursor, strongly favouring nearer-camera (front)
     // objects; dots dimmed by an active filter rank slightly behind.
-    cands.push({ i, d, s: d + _pv.z * 30 + (passesFilter(i) ? 0 : 3), f: passesFilter(i) });
+    cands.push({ i, d, s: d + depth * 30 + (passesFilter(i) ? 0 : 3), f: passesFilter(i) });
   }
   if (!cands.length) return;
   cands.sort((a, b) => a.s - b.s);
-  // Unambiguous click: dead-on hit, single hit, or the nearest is clearly separated.
-  if (cands[0].d <= 4 || cands.length === 1 || cands[1].d - cands[0].d >= 6) { selectObject(cands[0].i); return; }
+  // Dots under the cursor itself. When two or more objects are drawn on the
+  // same few pixels (common in the dense LEO shells when zoomed out) a click
+  // cannot tell them apart — silently taking the fractionally nearest one
+  // opened an object the user did not aim at, so ask instead.
+  const onDot = cands.filter(c => c.d <= DIRECT_RADIUS);
+  if (onDot.length === 1) { selectObject(onDot[0].i); return; }
+  if (onDot.length === 0 && (cands.length === 1 || cands[1].d - cands[0].d >= 6)) { selectObject(cands[0].i); return; }
   showPickChooser(cands.slice(0, 40), sx, sy, cands.length);
 }
+
+// Place the chooser beside the click point, NEVER over it: on touch screens
+// the tap that opened the chooser is followed by a synthetic click at the
+// same spot, which would otherwise land on (and select) whatever row ended
+// up under the finger. The finger also hides anything drawn beneath it.
+function placePickChooser(el, sx, sy) {
+  const vw = window.innerWidth, vh = window.innerHeight, M = 8, G = 14;
+  const clamp = (v, lo, hi) => Math.min(Math.max(v, lo), Math.max(lo, hi));
+  let W = el.offsetWidth, H = el.offsetHeight;
+  // Beside the point (right, then left), vertically clamped.
+  if (sx + G + W <= vw - M || sx - G - W >= M) {
+    const left = (sx + G + W <= vw - M) ? sx + G : sx - G - W;
+    el.style.left = left + 'px';
+    el.style.top = clamp(sy - 24, M, vh - H - M) + 'px';
+    return;
+  }
+  // Otherwise above or below it (whichever has more room), horizontally
+  // clamped; shrink the list to the room available so it cannot overlap.
+  const below = vh - M - (sy + G), above = (sy - G) - M;
+  const room = Math.max(below, above);
+  if (H > room) { el.style.maxHeight = Math.max(120, room) + 'px'; H = el.offsetHeight; }
+  el.style.left = clamp(sx - W / 2, M, vw - W - M) + 'px';
+  el.style.top = (below >= above ? sy + G : sy - G - H) + 'px';
+}
+// Swallow the one click event that the opening tap/click itself produces.
+let swallowClickUntil = 0;
+document.addEventListener('click', (e) => {
+  if (performance.now() < swallowClickUntil && pickEl && pickEl.contains(e.target)) {
+    e.stopPropagation(); e.preventDefault();
+  }
+  swallowClickUntil = 0;
+}, true);
 
 // Disambiguation chooser — in dense clusters every object stays reachable.
 let pickEl = null;
@@ -794,9 +856,7 @@ function showPickChooser(cands, sx, sy, total) {
       <span class="sr-meta">${state.norad[c.i]} · ${fullType(state.objType[c.i])} · ${state.ownerCode[c.i]}${c.f === false ? ' · <em>filtered out</em>' : ''}</span>
     </button>`).join('');
   document.body.appendChild(pickEl);
-  const W = pickEl.offsetWidth, H = pickEl.offsetHeight;
-  pickEl.style.left = Math.min(Math.max(8, sx + 12), window.innerWidth - W - 8) + 'px';
-  pickEl.style.top = Math.min(Math.max(8, sy + 12), window.innerHeight - H - 8) + 'px';
+  placePickChooser(pickEl, sx, sy);
   pickEl.querySelectorAll('.sr').forEach(b => b.addEventListener('click', (e) => {
     e.stopPropagation();
     selectObject(parseInt(b.dataset.i, 10));
@@ -1174,6 +1234,8 @@ const SCENARIOS = [
 ];
 
 const IS_TOUCH = window.matchMedia('(pointer: coarse)').matches;
+const PICK_RADIUS = IS_TOUCH ? 26 : 14; // px — wider hit area for fingers
+const DIRECT_RADIUS = IS_TOUCH ? 10 : 5; // px — a click this close is "on" a dot
 
 let scenActiveIdx = 0;
 let scenIndex = -1, scenTimer = null;
@@ -2470,11 +2532,18 @@ window.__QA = {
   },
   screenOf(idx) {
     const pa = posAttr.array;
-    const v = new THREE.Vector3(pa[idx*3], pa[idx*3+1], pa[idx*3+2]);
-    v.project(camera);
-    return { x: (v.x * 0.5 + 0.5) * window.innerWidth, y: (-v.y * 0.5 + 0.5) * window.innerHeight, z: v.z };
+    return toClient(pa[idx*3], pa[idx*3+1], pa[idx*3+2], viewRect());
   },
   select(idx) { selectObject(idx); },
+  // Recolour ONE dot (or restore it) without any other visual change, so a
+  // screenshot diff yields the exact pixel where the dot is really drawn —
+  // ground truth that is independent of the app's own projection maths.
+  flash(idx, on) {
+    if (!on) { updateColors(); render(); return; }
+    const ca = colorAttr.array;
+    ca[idx*3] = 1; ca[idx*3+1] = 0; ca[idx*3+2] = 1;
+    colorAttr.needsUpdate = true; render();
+  },
   get selected() { return selectedIndex; },
   setCam(x, y, z) { camera.position.set(x, y, z); controls.update(); },
   get sunDir() { return sunDirWorld ? sunDirWorld.toArray() : null; },
@@ -2512,18 +2581,19 @@ window.__QA = {
     camera.lookAt(p.x, p.y, p.z);
     camera.updateMatrixWorld(true);
     const s = this.screenOf(idx);
-    if (!(s.x >= 2 && s.x <= window.innerWidth - 2 && s.y >= 2 && s.y <= window.innerHeight - 2) || s.z > 1) {
+    const vr = viewRect();
+    if (!(s.x >= vr.left + 2 && s.x <= vr.right - 2 && s.y >= vr.top + 2 && s.y <= vr.bottom - 2) || s.z > 1) {
       return { ok: false, why: 'offscreen', s };
     }
     // A pointer offset forces the chooser path: clicking dead-on an object
     // that has a nearly co-located twin always direct-selects the nearer of
     // the two, so the only way a user reaches the other one is a click a few
     // pixels off — which opens the disambiguation chooser.
-    pointer.x = ((s.x + (pxOff || 0)) / window.innerWidth) * 2 - 1;
-    pointer.y = -((s.y + (pxOff || 0) * 0.4) / window.innerHeight) * 2 + 1;
+    const cx = s.x + (pxOff || 0), cy = s.y + (pxOff || 0) * 0.4;
+    setPointerFromClient(cx, cy);
     hidePickChooser();
     selectedIndex = -1;
-    pickAt();
+    pickAt(cx, cy);
     let mode = 'direct';
     if (pickEl) { // dense cluster — the chooser must list the object
       mode = 'chooser';
@@ -2610,13 +2680,13 @@ window.__QA = {
     camera.lookAt(0, 0, 0);
     camera.updateMatrixWorld(true);
     const el = this.eligible();
-    const pa = posAttr.array;
+    const pa = posAttr.array, vr = viewRect();
     const grid = new Map();
     const pairs = [];
     for (const i of el) {
       if (earthOccluded(pa[i*3], pa[i*3+1], pa[i*3+2])) continue;
       const s = this.screenOf(i);
-      if (s.z > 1 || s.x < 30 || s.x > window.innerWidth - 30 || s.y < 30 || s.y > window.innerHeight - 30) continue;
+      if (s.z > 1 || s.x < vr.left + 30 || s.x > vr.right - 30 || s.y < vr.top + 30 || s.y > vr.bottom - 30) continue;
       const key = `${Math.round(s.x / 3)}:${Math.round(s.y / 3)}`;
       if (grid.has(key)) {
         const j = grid.get(key); const sj = this.screenOf(j.i);
@@ -2634,11 +2704,10 @@ window.__QA = {
     let tried = 0;
     for (const [a, b, mx, my] of pairs) {
       tried++;
-      pointer.x = ((mx + 8) / window.innerWidth) * 2 - 1;
-      pointer.y = -((my + 3) / window.innerHeight) * 2 + 1;
+      setPointerFromClient(mx + 8, my + 3);
       hidePickChooser();
       selectedIndex = -1;
-      pickAt();
+      pickAt(mx + 8, my + 3);
       if (!pickEl) continue;
       const rows = pickEl.querySelectorAll('.sr').length;
       const btn = pickEl.querySelector(`.sr[data-i="${a}"]`) || pickEl.querySelector(`.sr[data-i="${b}"]`);
