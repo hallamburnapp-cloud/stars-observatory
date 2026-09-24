@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>STARS Observatory — Articles VI &amp; IX OST</title>
 <meta name="description" content="A demonstrative evidence instrument visualising all tracked objects in Earth orbit against State legal-responsibility obligations under Articles VI and IX of the Outer Space Treaty." />
 <meta name="author" content="Hallam Burnapp" />
@@ -36,6 +36,31 @@
     "three": "./js/three.module.min.js",
     "three/addons/controls/OrbitControls.js": "./js/OrbitControls.js"
   }
+}
+</script>
+<link rel="canonical" href="https://starsobservatory.org/" />
+<!-- Structured data: lets Google Dataset Search and scholarly indexes find the daily dataset. -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Dataset",
+  "name": "STARS Observatory — orbital catalogue fused with Article VI & IX Outer Space Treaty obligations",
+  "description": "Daily dataset of every tracked object in Earth orbit with a public element set (~19,000), each joined to its Article VI responsible State (18 SDS/CelesTrak owner attribution), its UN registration status (cross-referenced against GCAT), and the existence of national space legislation (UNOOSA). Includes a longitudinal registration-lag ledger running since July 2026. Demonstrative evidence instrument; not an operational space situational awareness system.",
+  "url": "https://starsobservatory.org/",
+  "sameAs": "https://doi.org/10.5281/zenodo.22662848",
+  "identifier": "https://doi.org/10.5281/zenodo.22662848",
+  "keywords": ["space law", "Outer Space Treaty", "Article VI", "Article IX", "Registration Convention", "space debris", "satellite registration", "SGP4", "orbital catalogue"],
+  "license": "https://creativecommons.org/licenses/by/4.0/",
+  "isAccessibleForFree": true,
+  "creator": { "@type": "Person", "name": "Hallam Burnapp", "affiliation": { "@type": "Organization", "name": "University of Aberdeen" } },
+  "temporalCoverage": "2026-07-11/..",
+  "spatialCoverage": "Earth orbit",
+  "isBasedOn": ["https://celestrak.org/", "https://planet4589.org/space/gcat/", "https://www.unoosa.org/oosa/en/ourwork/spacelaw/nationalspacelaw/index.html"],
+  "distribution": [
+    { "@type": "DataDownload", "encodingFormat": "application/json", "contentUrl": "https://starsobservatory.org/data/sats.json" },
+    { "@type": "DataDownload", "encodingFormat": "application/json", "contentUrl": "https://starsobservatory.org/data/stats.json" },
+    { "@type": "DataDownload", "encodingFormat": "application/json", "contentUrl": "https://starsobservatory.org/data/lag.json" }
+  ]
 }
 </script>
 </head>
@@ -77,11 +102,15 @@
   </header>
 
   <main>
-    <canvas id="scene"></canvas>
+    <div id="firstHint" hidden role="note">
+      <span id="firstHintText">Click any dot to open its legal record · drag to rotate · scroll to zoom · press <kbd>/</kbd> to search</span>
+      <button id="firstHintClose" aria-label="Dismiss hint">×</button>
+    </div>
+    <canvas id="scene" role="img" aria-label="3D globe showing every tracked object in Earth orbit. Keyboard users: press / to search the catalogue by name, NORAD number or designator."></canvas>
 
     <div id="loader">
       <div class="spinner"></div>
-      <div class="status" id="loadStatus">Initialising orbital catalog…</div>
+      <div class="status" id="loadStatus" role="status" aria-live="polite">Initialising orbital catalog…</div>
       <div class="bar"><div id="loadBar"></div></div>
       <div class="sub" id="loadSub">Parsing element sets · SGP4 propagation</div>
     </div>
@@ -140,6 +169,11 @@
             </div>
           </div>
           <div class="count-badge" id="visibleCount">—</div>
+          <div class="view-actions">
+            <button class="dcopy" id="vDossier" hidden>State dossier →</button>
+            <button class="dcopy" id="vCopy">Copy link to this view</button>
+            <button class="dcopy" id="vCsv">Download these objects (CSV)</button>
+          </div>
         </div>
       </div>
     </aside>
@@ -150,7 +184,7 @@
       <div class="hh-top">
         <span class="hh-badge">HISTORICAL REPLAY</span>
         <span class="hh-title" id="hhTitle"></span>
-        <button id="hhExit" title="Exit replay">✕</button>
+        <button id="hhExit" title="Exit replay" aria-label="Exit replay">✕</button>
       </div>
       <div class="hh-clock" id="hhClock"></div>
       <div class="hh-count" id="hhCount"></div>
@@ -165,14 +199,14 @@
           <div class="name" id="dName">—</div>
           <div class="type" id="dType">—</div>
         </div>
-        <button class="close" id="dClose">×</button>
+        <button class="close" id="dClose" aria-label="Close object details">×</button>
       </div>
       <div class="drows" id="dRows"></div>
     </div>
 
     <!-- Time controls -->
     <div class="timebar">
-      <button class="tbtn icon" id="tPlay" title="Play / pause">
+      <button class="tbtn icon" id="tPlay" title="Play / pause" aria-label="Play / pause simulation">
         <svg viewBox="0 0 24 24" fill="currentColor"><path id="playPath" d="M8 5v14l11-7z"/></svg>
       </button>
       <button class="tbtn" id="tNow" title="Reset to real time">NOW</button>
@@ -209,19 +243,20 @@
     </footer>
 
     <!-- Analytical drawer -->
-    <aside id="drawer">
+    <aside id="drawer" aria-labelledby="drawerTitle">
       <div class="drawer-head">
         <div>
           <div class="dt" id="drawerTag">Analytical panel</div>
           <h2 id="drawerTitle">—</h2>
         </div>
-        <button class="close2" id="drawerClose">×</button>
+        <button class="close2" id="drawerClose" aria-label="Close panel">×</button>
       </div>
       <nav class="drawer-nav" id="drawerNav">
         <button data-panel="art6">01 · Art VI</button>
         <button data-panel="reggap">02 · Registration</button>
         <button data-panel="art9">03 · Art IX</button>
         <button data-panel="prov">04 · Provenance</button>
+        <button data-panel="dossier">05 · Dossier</button>
       </nav>
       <div class="drawer-body">
         <!-- Panel: Article VI -->
@@ -254,6 +289,15 @@
           <div class="legal-caption">
             <strong>Article VI OST.</strong> States Parties bear international responsibility for national activities in outer space, "whether such activities are carried on by governmental agencies or by non-governmental entities," and the activities of non-governmental entities "shall require authorization and <em>continuing supervision</em> by the appropriate State Party." The chart quantifies the supervisory burden: a doctrine written for a handful of state programmes now attaches to tens of thousands of privately operated, software-defined objects concentrated under a few licensing States. Attribution here follows the 18&nbsp;SDS/CelesTrak owner convention — an evidentiary proxy for the "appropriate State", not a legal determination of responsibility (see Provenance → Limitations).
           </div>
+        </section>
+
+        <!-- Panel: State dossier — one citable card per responsible State -->
+        <section class="panel" id="panel-dossier">
+          <div class="field">
+            <label for="dosState">Responsible State</label>
+            <select id="dosState"></select>
+          </div>
+          <div id="dosBody"></div>
         </section>
 
         <!-- Panel: Registration gap -->

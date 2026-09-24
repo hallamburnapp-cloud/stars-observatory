@@ -317,6 +317,7 @@ async function groundTruth(pg, { touch = false, n = 10, cam = null, label = '' }
   let tried = 0, ok = 0, worstOff = 0, shots = 0; const fails = [];
   for (const idx of pool) {
     if (tried >= n || shots >= n * 3) break;
+    await pg.evaluate(() => __QA.settle());
     const s = await pg.evaluate(i => __QA.screenOf(i), idx);
     if (s.z > 1 || s.x < 16 || s.x > vp.width - 16 || s.y < 16 || s.y > vp.height - 16) continue;
     if (!(await pg.evaluate(([x, y]) => document.elementFromPoint(x, y)?.id === 'scene', [s.x, s.y]))) continue; // under a panel
@@ -363,6 +364,43 @@ await groundTruth(page, { n: QUICK ? 6 : 12, cam: [40, 60, 160], label: 'desktop
   await phone.waitForFunction(() => window.__QA && __QA.eligible().length > 0, { timeout: 60000 });
   await groundTruth(phone, { touch: true, n: QUICK ? 6 : 12, label: 'phone (touch): ' });
   await ctx.close();
+}
+
+// ---------- 4d. research tools: view links, CSV export, State dossier ----------
+console.log('[4d] View links, CSV export, State dossier');
+{
+  await loadApp(`http://127.0.0.1:${PORT}/?color=state&state=PRC&type=PAY`);
+  const v = await page.evaluate(() => ({ st: document.querySelector('#fState').value, ty: document.querySelector('#fType').value,
+    color: document.querySelector('#colorModes .chip.active')?.dataset.mode, search: location.search, vis: __QA.vis() }));
+  check(v.st === 'PRC' && v.ty === 'PAY' && v.color === 'state', 'view link restores colour mode and filters', JSON.stringify(v));
+  check(/state=PRC/.test(v.search) && /type=PAY/.test(v.search) && /color=state/.test(v.search), 'address bar keeps the view parameters', v.search);
+  await page.selectOption('#fReg', '0');
+  await page.waitForTimeout(150);
+  const s2 = await page.evaluate(() => location.search);
+  check(/reg=0/.test(s2), 'changing a filter updates the address bar', s2);
+  const vis = await page.evaluate(() => __QA.vis());
+  const [dl] = await Promise.all([page.waitForEvent('download', { timeout: 15000 }), page.click('#vCsv')]);
+  const csv = readFileSync(await dl.path(), 'utf8').trim().split(/\r\n/);
+  check(csv[0].startsWith('norad_cat_id,name,intl_designator,object_type,responsible_state_code'), 'CSV header is present', csv[0]);
+  check(csv.length - 1 === vis, `CSV row count equals the objects shown (${csv.length - 1} vs ${vis})`);
+  const bad = csv.slice(1).filter(r => !/,PAY,PRC,/.test(r) || !/,no UN record,/.test(r)).length;
+  check(bad === 0, 'every CSV row matches the active filters (PAY, PRC, no UN record)', `${bad} mismatching rows`);
+  check(dl.suggestedFilename() === `stars-observatory_${loadedSnapshotISO}_state-PRC_type-PAY_reg-0.csv`, 'CSV filename carries snapshot date and filters', dl.suggestedFilename());
+  // exact TLE round trip: first CSV row's lines equal the canonical sats.json record
+  const first = csv[1].split(',');
+  const rec = sats.sats.find(r => String(r[0]) === first[0]);
+  check(rec && csv[1].includes(rec[2]) && csv[1].includes(rec[3]), 'CSV TLE lines are the canonical sats.json element sets');
+
+  await loadApp(`http://127.0.0.1:${PORT}/?dossier=CIS`);
+  await page.waitForSelector('#panel-dossier.active .dos-h', { timeout: 15000 });
+  const d = await page.evaluate(() => ({ h: document.querySelector('.dos-h').textContent, cite: document.querySelector('#dosCite').textContent,
+    open: document.querySelector('#drawer').classList.contains('open'), search: location.search,
+    pay: [...document.querySelectorAll('#dosBody .dos-kv')][0].textContent }));
+  check(d.open && d.h.length > 0, 'dossier link opens the State dossier', d.h);
+  check(d.cite.startsWith(expFoot.replace(/\.$/, '')) && d.cite.endsWith(`State dossier: ${d.h}.`), 'dossier citation extends the canonical footnote with a pinpoint', d.cite);
+  const cisPay = JSON.parse(readFileSync(join(SITE, 'data', 'stats.json'), 'utf8')).by_owner_payloads.CIS;
+  check(d.pay.includes(cisPay.toLocaleString('en-GB')), `dossier payload count equals stats.json (${cisPay})`);
+  check(/dossier=CIS/.test(d.search), 'address bar keeps the open dossier', d.search);
 }
 
 // ---------- 5. permalinks ----------

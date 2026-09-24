@@ -641,9 +641,9 @@ function applyPositions() {
     selMarker.lookAt(camera.position);
     // Constant screen size (~20 px) with a slow pulse — unmissable at any zoom.
     const selDist = camera.position.distanceTo(selMarker.position);
-    const pulse = 1 + 0.16 * Math.sin(performance.now() * 0.004);
+    const pulse = REDUCED_MOTION ? 1 : 1 + 0.16 * Math.sin(performance.now() * 0.004);
     selMarker.scale.setScalar(selDist * 0.052 * pulse);
-    selMarker.material.opacity = 0.75 + 0.25 * Math.sin(performance.now() * 0.004);
+    selMarker.material.opacity = REDUCED_MOTION ? 1 : 0.75 + 0.25 * Math.sin(performance.now() * 0.004);
     updateDetailLive(selectedIndex);
   } else {
     selMarker.visible = false;
@@ -933,10 +933,12 @@ function showPickChooser(cands, sx, sy, total) {
 
 function selectObject(i, fly) {
   selectedIndex = i;
+  dismissFirstHint();
   updateColors();
   showDetail(i);
   requestSelOrbit(i);
   if (fly) flyToIndex(i);
+  syncURL();
 }
 
 // One-period orbit trail for the selected object, propagated by the SGP4
@@ -991,7 +993,7 @@ function flyToIndex(i) {
   flyAnim = {
     from: camera.position.clone(),
     to: p.clone().normalize().multiplyScalar(dist),
-    t0: performance.now(), dur: 950
+    t0: performance.now(), dur: REDUCED_MOTION ? 1 : 950
   };
 }
 
@@ -1006,7 +1008,7 @@ function showDetail(i) {
   rows.innerHTML = `
     <div class="drow"><span class="k">NORAD ID</span><span class="v">${state.norad[i]}</span></div>
     <div class="drow"><span class="k">Intl designator</span><span class="v">${state.intl[i]}</span></div>
-    <div class="drow"><span class="k">Responsible State</span><span class="v">${state.ownerName[i]} (${state.ownerCode[i]})</span></div>
+    <div class="drow"><span class="k">Responsible State</span><span class="v"><button class="dlink" id="dDossier" title="Open the State dossier">${state.ownerName[i]} (${state.ownerCode[i]})</button></span></div>
     <div class="drow"><span class="k">Constellation</span><span class="v">${state.constLabel[i] || '—'}</span></div>
     <div class="drow"><span class="k">UN registration</span><span class="v">${regBadge}</span></div>
     <div class="drow"><span class="k">Launch year</span><span class="v">${state.launchYear[i] || '—'}</span></div>
@@ -1023,6 +1025,8 @@ function showDetail(i) {
       </div>
       <button class="dcopy" id="dCopy">Copy link to this object</button>
     </div>`;
+  const dd = $('#dDossier');
+  if (dd) dd.addEventListener('click', () => openDossier(state.ownerCode[i]));
   const cp = $('#dCopy');
   if (cp) cp.addEventListener('click', () => {
     const url = location.origin + location.pathname + '?sat=' + state.norad[i];
@@ -1295,6 +1299,7 @@ const SCENARIOS = [
 ];
 
 const IS_TOUCH = window.matchMedia('(pointer: coarse)').matches;
+const REDUCED_MOTION = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 const PICK_RADIUS = IS_TOUCH ? 26 : 14; // px — wider hit area for fingers
 const DIRECT_RADIUS = IS_TOUCH ? 10 : 5; // px — a click this close is "on" a dot
 
@@ -2280,7 +2285,7 @@ function wireUI() {
   }
 
   // detail close
-  $('#dClose').addEventListener('click', () => { $('#detail').classList.remove('show'); selectedIndex = -1; if(!state._scenIsolate) updateColors(); selMarker.visible=false; clearSelOrbit(); });
+  $('#dClose').addEventListener('click', () => { $('#detail').classList.remove('show'); selectedIndex = -1; if(!state._scenIsolate) updateColors(); selMarker.visible=false; clearSelOrbit(); syncURL(); });
 
   // catalogue search (name / NORAD / international designator)
   wireSearch();
@@ -2490,6 +2495,12 @@ function wireSearch() {
   });
   document.addEventListener('click', (e) => { if (!e.target.closest('.search')) close(); });
   document.addEventListener('keydown', (e) => {
+    // Escape closes the topmost overlay: chooser, then object card, then panel.
+    if (e.key === 'Escape' && document.activeElement !== inp) {
+      if (pickEl) { hidePickChooser(); return; }
+      if ($('#detail').classList.contains('show')) { $('#dClose').click(); return; }
+      if ($('#drawer').classList.contains('open')) { closeDrawer(); return; }
+    }
     if (e.key === '/' && document.activeElement !== inp &&
         !/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) {
       e.preventDefault(); inp.focus();
@@ -2499,7 +2510,7 @@ function wireSearch() {
 
 // Deep link: ?sat=<NORAD> selects and flies to an object once positions exist.
 function applyPermalink() {
-  const q = new URLSearchParams(location.search).get('sat');
+  const q = INITIAL_QUERY.get('sat');
   if (!q) return;
   for (let i = 0; i < state.N; i++) {
     if (String(state.norad[i]) === q) {
@@ -2519,7 +2530,8 @@ const PANEL_META = {
   art6: { tag: 'Analytical panel · 01', title: 'Article VI — Supervision burden' },
   reggap: { tag: 'Analytical panel · 02', title: 'UN registration gap' },
   art9: { tag: 'Analytical panel · 03', title: 'Article IX — Decision-time compression' },
-  prov: { tag: 'Analytical panel · 04', title: 'Provenance & limitations' }
+  prov: { tag: 'Analytical panel · 04', title: 'Provenance & limitations' },
+  dossier: { tag: 'Analytical panel · 05', title: 'State dossier' }
 };
 function openPanel(name) {
   $$('.panel').forEach(p => p.classList.remove('active'));
@@ -2529,13 +2541,249 @@ function openPanel(name) {
   $$('#drawerNav button').forEach(b => b.classList.toggle('active', b.dataset.panel === name));
   $('#drawer').querySelector('.drawer-body').scrollTop = 0;
   $('#drawer').classList.add('open');
+  dismissFirstHint();
+  if (name === 'dossier') { if (!dossierCode) { openDossier(); return; } populateDossierSelect(); $('#dosState').value = dossierCode; renderDossier(); }
+  syncURL();
   // Defensive: some browsers scroll fixed-layout ancestors on focus/scrollIntoView,
   // which has no scrollbar to recover from. Pin them back to the origin.
   const mn = document.querySelector('main'); if (mn) { mn.scrollTop = 0; mn.scrollLeft = 0; }
   const app = document.getElementById('app'); if (app) { app.scrollTop = 0; app.scrollLeft = 0; }
   if (document.scrollingElement) { document.scrollingElement.scrollTop = 0; document.scrollingElement.scrollLeft = 0; }
 }
-function closeDrawer() { $('#drawer').classList.remove('open'); }
+function closeDrawer() { $('#drawer').classList.remove('open'); syncURL(); }
+
+
+// ============================================================
+// 13. Shareable views, CSV export, State dossier
+// ============================================================
+// The address bar always describes the current view (colour mode, filters,
+// selected object, open dossier), so any view can be shared or cited as-is.
+const FILTER_KEYS = ['state', 'type', 'const', 'reg', 'regime'];
+// The query as the page was opened: read by applyViewFromURL/applyPermalink,
+// which run after syncURL may already have rewritten location.search.
+const INITIAL_QUERY = new URLSearchParams(location.search);
+let dossierCode = '';
+let viewReady = false; // no URL writes until the URL's own view has been applied
+function viewQuery() {
+  const q = new URLSearchParams();
+  if (state.colorMode !== 'type') q.set('color', state.colorMode);
+  for (const k of FILTER_KEYS) if (state.filters[k] !== '') q.set(k, state.filters[k]);
+  if (selectedIndex >= 0) q.set('sat', String(state.norad[selectedIndex]));
+  if (dossierCode && $('#drawer').classList.contains('open') && $('#panel-dossier').classList.contains('active')) q.set('dossier', dossierCode);
+  return q;
+}
+function viewURL() {
+  const q = viewQuery().toString();
+  return location.origin + location.pathname + (q ? '?' + q : '');
+}
+function syncURL() {
+  if (!viewReady) return;
+  try {
+    const q = viewQuery().toString();
+    const next = location.pathname + (q ? '?' + q : '') + location.hash;
+    if (next !== location.pathname + location.search + location.hash) history.replaceState(null, '', next);
+  } catch (e) { /* sandboxed iframes may forbid history writes */ }
+  const d = $('#vDossier');
+  if (d) {
+    const code = state.filters.state;
+    d.hidden = !code;
+    if (code) d.textContent = `State dossier: ${state.stats.owner_names[code] || code} →`;
+  }
+}
+function setColorMode(mode) {
+  const btn = document.querySelector(`#colorModes .chip[data-mode="${mode}"]`);
+  if (!btn) return false;
+  $$('#colorModes .chip').forEach(b => b.classList.toggle('active', b === btn));
+  state.colorMode = mode;
+  if (!state._scenIsolate) updateColors();
+  renderLegend();
+  return true;
+}
+// Apply ?color= &state= &type= &const= &reg= &regime= &dossier= (and ?sat=
+// via applyPermalink). Unknown values are ignored rather than half-applied.
+function applyViewFromURL() {
+  const q = INITIAL_QUERY;
+  const c = q.get('color'); if (c) setColorMode(c);
+  const sel = { state: '#fState', type: '#fType', const: '#fConst', reg: '#fReg' };
+  for (const [k, id] of Object.entries(sel)) {
+    const v = q.get(k); if (v === null) continue;
+    const el = $(id);
+    if ([...el.options].some(o => o.value === v)) { el.value = v; state.filters[k] = v; }
+  }
+  const r = q.get('regime');
+  if (r !== null) {
+    const chip = document.querySelector(`#fRegime .chip[data-r="${r}"]`);
+    if (chip) { $$('#fRegime .chip').forEach(b => b.classList.toggle('active', b === chip)); state.filters.regime = r; }
+  }
+  refreshFilters();
+  const dos = q.get('dossier');
+  if (dos && state.stats.owner_names[dos] !== undefined) openDossier(dos);
+  viewReady = true;
+  syncURL();
+}
+
+// ---- CSV export of the objects the current filters select -----------------
+const REGIME_NAMES = ['LEO', 'MEO', 'GEO', 'HEO'];
+function csvCell(v) {
+  const s = v === null || v === undefined ? '' : String(v);
+  return /[",\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+}
+function filteredIndices() {
+  const out = [];
+  for (let i = 0; i < state.N; i++) if (passesFilter(i)) out.push(i);
+  return out;
+}
+function exportCSV(indices, label) {
+  const snap = ((state.data && state.data.generated) || '').substring(0, 10);
+  const head = ['norad_cat_id', 'name', 'intl_designator', 'object_type', 'responsible_state_code', 'responsible_state',
+    'constellation', 'un_registration', 'launch_year', 'orbital_regime', 'tle_line1', 'tle_line2', 'data_snapshot'];
+  const rows = [head.join(',')];
+  for (const i of indices) {
+    const rec = state.data.sats[i];
+    rows.push([state.norad[i], state.name[i], state.intl[i], state.objType[i], state.ownerCode[i], state.ownerName[i],
+      state.constLabel[i], state.objType[i] === 'PAY' ? (state.registered[i] ? 'registered' : 'no UN record') : 'n/a',
+      state.launchYear[i], state.regime ? REGIME_NAMES[state.regime[i]] : '', rec[2], rec[3], snap].map(csvCell).join(','));
+  }
+  const blob = new Blob([rows.join('\r\n') + '\r\n'], { type: 'text/csv;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `stars-observatory_${snap}_${label || 'all'}.csv`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  return rows.length - 1;
+}
+function viewLabel() {
+  const parts = [];
+  for (const k of FILTER_KEYS) if (state.filters[k] !== '') parts.push(k + '-' + (k === 'regime' ? REGIME_NAMES[+state.filters[k]] : state.filters[k]));
+  return (parts.join('_') || 'all').replace(/[^A-Za-z0-9_-]+/g, '');
+}
+function flashButton(btn, msg, back) {
+  btn.textContent = msg;
+  clearTimeout(btn._t); btn._t = setTimeout(() => { btn.textContent = back; }, 1800);
+}
+
+// ---- State dossier ---------------------------------------------------------
+function populateDossierSelect() {
+  const sel = $('#dosState'); if (!sel || sel.options.length) return;
+  const pay = state.stats.by_owner_payloads || {}, all = state.stats.by_owner_all || {};
+  const codes = Object.keys(state.stats.owner_names).filter(c => (all[c] || 0) > 0)
+    .sort((a, b) => (pay[b] || 0) - (pay[a] || 0) || (all[b] || 0) - (all[a] || 0));
+  sel.innerHTML = codes.map(c => `<option value="${c}">${escapeHTML(state.stats.owner_names[c])} (${c})</option>`).join('');
+  sel.addEventListener('change', () => { dossierCode = sel.value; renderDossier(); syncURL(); });
+}
+function escapeHTML(s) { return String(s).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch])); }
+function openDossier(code) {
+  populateDossierSelect();
+  const pay = state.stats.by_owner_payloads || {};
+  dossierCode = code || dossierCode || state.filters.state || Object.entries(pay).sort((a, b) => b[1] - a[1])[0][0];
+  $('#dosState').value = dossierCode;
+  openPanel('dossier');
+}
+function dossierFacts(code) {
+  const st = state.stats, pay = st.by_owner_payloads || {};
+  const payN = pay[code] || 0;
+  const payTotal = Object.values(pay).reduce((a, b) => a + b, 0);
+  const rank = Object.entries(pay).sort((a, b) => b[1] - a[1]).findIndex(([c]) => c === code) + 1;
+  const [reg, unreg] = (st.registration_by_owner || {})[code] || [0, 0];
+  let wr = 0, wu = 0; for (const [r, u] of Object.values(st.registration_by_owner || {})) { wr += r; wu += u; }
+  const lagO = state.lag && state.lag.lag_by_owner ? state.lag.lag_by_owner[code] : null;
+  const law = state.natlaw && state.natlaw.states ? state.natlaw.states[code] : null;
+  const consts = {}; let prop = 0;
+  for (let i = 0; i < state.N; i++) if (state.ownerCode[i] === code) { prop++; const l = state.constLabel[i]; if (l) consts[l] = (consts[l] || 0) + 1; }
+  return { name: st.owner_names[code] || code, payN, payTotal, rank, all: (st.by_owner_all || {})[code] || 0,
+    active: (st.by_owner_active || {})[code] || 0, reg, unreg, worldUnregPct: (wr + wu) ? wu / (wr + wu) * 100 : 0,
+    lagO, law, consts: Object.entries(consts).sort((a, b) => b[1] - a[1]), prop };
+}
+function dossierCitation(name) {
+  const f = citeForms(); if (!f) return '';
+  // Pinpoint the dossier after the DOI, as with a paragraph pinpoint.
+  return f.foot.replace(/\.$/, '') + `, State dossier: ${name}.`;
+}
+function renderDossier() {
+  const el = $('#dosBody'); if (!el || !dossierCode) return;
+  const code = dossierCode, F = dossierFacts(code);
+  const fmt = n => Number(n).toLocaleString('en-GB');
+  const pct = (a, b) => b ? (a / b * 100).toFixed(1) + '%' : '—';
+  const lawTxt = { yes: 'Dedicated national space legislation', no: 'No dedicated national space law', consortium: 'Intergovernmental / consortium owner', unknown: 'Not determined' };
+  const L = F.law;
+  const lawSrc = L && L.source_url ? `<a href="${escapeHTML(L.source_url)}" target="_blank" rel="noopener">source ↗</a>` : '';
+  const regTot = F.reg + F.unreg;
+  el.innerHTML = `
+    <div class="dos-h">${escapeHTML(F.name)}</div>
+    <div class="dos-sub">SATCAT owner code ${escapeHTML(code)} · data snapshot ${escapeHTML(oscolaDate(((state.data && state.data.generated) || '').substring(0, 10)))}</div>
+    <h3 class="section">Article VI — supervision burden</h3>
+    <div class="dos-kv">
+      <span class="k">Payloads on orbit</span><span class="v">${fmt(F.payN)}</span>
+      <span class="k">Share of all payloads on orbit</span><span class="v">${pct(F.payN, F.payTotal)}</span>
+      <span class="k">Rank among responsible States</span><span class="v">${F.rank > 0 ? '#' + F.rank : '—'}</span>
+      <span class="k">Active payloads</span><span class="v">${fmt(F.active)}</span>
+      <span class="k">All catalogued objects (incl. debris, rocket bodies)</span><span class="v">${fmt(F.all)}</span>
+    </div>
+    <h3 class="section">Registration (Registration Convention, Art II)</h3>
+    <div class="dos-kv">
+      <span class="k">Payloads with a UN registration record</span><span class="v">${fmt(F.reg)}</span>
+      <span class="k">Payloads with no UN record</span><span class="v">${fmt(F.unreg)} (${pct(F.unreg, regTot)})</span>
+      <span class="k">World average with no UN record</span><span class="v">${F.worldUnregPct.toFixed(1)}%</span>
+      <span class="k">Registrations observed by the lag ledger</span><span class="v">${F.lagO ? fmt(F.lagO.flips) : '0'}</span>
+      <span class="k">Median launch → registration lag</span><span class="v">${F.lagO && F.lagO.median_lag_days != null ? fmt(Math.round(F.lagO.median_lag_days)) + ' days' : '—'}</span>
+    </div>
+    <p class="dos-note">Lag ledger running since ${escapeHTML((state.lag && state.lag.started) || '—')}; a median needs observed registrations, so States with few flips have wide uncertainty.</p>
+    <h3 class="section">Supervisory machinery</h3>
+    <div class="dos-kv stack">
+      <span class="k">National space legislation</span><span class="v">${L ? lawTxt[L.law] || escapeHTML(L.law) : '—'}</span>
+    </div>
+    ${L && L.instrument ? `<div class="dos-kv stack"><span class="k">Instrument</span><span class="v">${escapeHTML(L.instrument)}${L.year ? ' (' + L.year + ')' : ''} ${lawSrc}</span></div>` : ''}
+    ${F.consts.length ? `<h3 class="section">Constellations (propagated payloads)</h3><div class="dos-kv">${F.consts.slice(0, 8).map(([l, n]) => `<span class="k">${escapeHTML(l)}</span><span class="v">${fmt(n)}</span>`).join('')}</div>` : ''}
+    <h3 class="section">Cite this dossier</h3>
+    <div class="dos-cite" id="dosCite">${escapeHTML(dossierCitation(F.name))}</div>
+    <div class="dos-actions">
+      <button class="dcopy" id="dosCopyCite">Copy citation</button>
+      <button class="dcopy" id="dosCopyLink">Copy link to this dossier</button>
+      <button class="dcopy" id="dosShow">Show on globe (${fmt(F.prop)})</button>
+      <button class="dcopy" id="dosCsv">Download objects (CSV)</button>
+    </div>
+    <p class="dos-note">Attribution follows the 18 SDS/CelesTrak owner convention — an evidentiary proxy for the Article VI "appropriate State", not a legal determination. Catalogue-wide counts include objects without public element sets; the globe and CSV cover propagated objects only.</p>`;
+  $('#dosCopyCite').addEventListener('click', e => copyText($('#dosCite').textContent).then(ok => flashButton(e.target, ok ? 'Citation copied ✓' : 'Select the text above', 'Copy citation')));
+  $('#dosCopyLink').addEventListener('click', e => {
+    const u = location.origin + location.pathname + '?dossier=' + encodeURIComponent(code);
+    copyText(u).then(ok => flashButton(e.target, ok ? 'Link copied ✓' : u, 'Copy link to this dossier'));
+  });
+  $('#dosShow').addEventListener('click', () => {
+    $('#fState').value = code; state.filters.state = code; refreshFilters(); closeDrawer(); syncURL();
+  });
+  $('#dosCsv').addEventListener('click', e => {
+    const idx = []; for (let i = 0; i < state.N; i++) if (state.ownerCode[i] === code) idx.push(i);
+    const n = exportCSV(idx, 'state-' + code.replace(/[^A-Za-z0-9-]/g, ''));
+    flashButton(e.target, `Downloaded ${fmt(n)} rows ✓`, 'Download objects (CSV)');
+  });
+}
+// ---- First-visit hint --------------------------------------------------------
+// Shown once per browser until the visitor dismisses it or opens any object.
+const HINT_KEY = 'stars.hintSeen';
+function showFirstHint() {
+  let seen = false;
+  try { seen = localStorage.getItem(HINT_KEY) === '1'; } catch (e) { /* storage blocked */ }
+  if (seen || INITIAL_QUERY.has('sat')) return;
+  const el = $('#firstHint'); if (!el) return;
+  if (IS_TOUCH) $('#firstHintText').innerHTML = 'Tap any dot to open its legal record · drag to rotate · pinch to zoom';
+  el.hidden = false;
+  $('#firstHintClose').addEventListener('click', dismissFirstHint);
+}
+function dismissFirstHint() {
+  const el = $('#firstHint'); if (!el || el.hidden) return;
+  el.hidden = true;
+  try { localStorage.setItem(HINT_KEY, '1'); } catch (e) { /* storage blocked */ }
+}
+function wireViewTools() {
+  $('#vCopy').addEventListener('click', e => copyText(viewURL()).then(ok => flashButton(e.target, ok ? 'Link copied ✓' : viewURL(), 'Copy link to this view')));
+  $('#vCsv').addEventListener('click', e => {
+    const n = exportCSV(filteredIndices(), viewLabel());
+    flashButton(e.target, `Downloaded ${n.toLocaleString('en-GB')} rows ✓`, 'Download these objects (CSV)');
+  });
+  $('#vDossier').addEventListener('click', () => openDossier(state.filters.state));
+  ['#fState', '#fType', '#fConst', '#fReg'].forEach(id => $(id).addEventListener('change', syncURL));
+  $$('#fRegime .chip, #colorModes .chip').forEach(b => b.addEventListener('click', syncURL));
+}
 
 // ============================================================
 // Boot
@@ -2557,6 +2805,7 @@ async function boot() {
     selectScenario(0);
     buildProvenance();
     wireUI();
+    wireViewTools();
     await startWorker(tle1, tle2);
     // first propagation
     requestPropagation(state.simTime);
@@ -2566,7 +2815,9 @@ async function boot() {
         clearInterval(waitReady);
         setLoad('Live', 100);
         applyPositions();
+        applyViewFromURL();
         applyPermalink();
+        showFirstHint();
         setTimeout(() => { const l = $('#loader'); if (l) l.style.display = 'none'; }, 350);
         upgradeEarthTexture();
       }
@@ -2626,6 +2877,9 @@ window.__QA = {
   },
   get selected() { return selectedIndex; },
   setCam(x, y, z) { camera.position.set(x, y, z); controls.update(); },
+  // Drain OrbitControls' damping so the camera is exactly still (a tap can
+  // leave a little inertia that keeps easing the view for a second).
+  settle() { for (let k = 0; k < 400; k++) controls.update(); camera.updateMatrixWorld(true); render(); },
   get sunDir() { return sunDirWorld ? sunDirWorld.toArray() : null; },
   rayTest(nx, ny) {
     pointer.x = nx; pointer.y = ny;
