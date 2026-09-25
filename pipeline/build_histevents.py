@@ -213,13 +213,12 @@ def main():
         "preSteps": [0],  # 'about a week before' (ESA) — shown at the start, not pinned to a date
         "note": ("Aeolus is propagated from its last pre-manoeuvre element sets. "
                  "Starlink-44 is catalogue object 2019-029AV (NORAD 44278; today's "
-                 "SATCAT labels it STARLINK-67), one of two early Starlinks SpaceX was "
-                 "deliberately de-orbiting, then at ~320 km. Propagated from public "
+                 "SATCAT labels it STARLINK-67). Propagated from public "
                  f"element sets, the two pass {ae_min[0]:.1f} km apart at "
                  f"{ae_min[1].strftime('%H:%M:%S')} UTC — consistent with ESA's "
                  "predicted 11:02 UTC conjunction. Public element sets carry km-scale "
-                 "error: the P≈1/1,000 on which ESA acted came from 18 SPCS conjunction "
-                 "data messages and ESA's own analysis, not from these element sets."),
+                 "error: the P≈1/1,000 on which ESA acted came from data issued by the 18th "
+                 "Space Control Squadron and ESA's own analysis, not from these element sets."),
     }
     # -- Iridium 33 / Cosmos 2251 -------------------------------------------
     t0 = datetime(2009, 2, 9, 0, 0, tzinfo=UTC)
@@ -229,7 +228,7 @@ def main():
         "kind": "collision",
         "window": [iso(t0), iso(t1)],
         "keyTime": "2009-02-10T16:55:59Z",
-        "keyLabel": "Collision — 11.647 km/s, both satellites destroyed",
+        "keyLabel": "Collision — 11.647 km/s: Iridium 33 destroyed, Cosmos 2251 broken up",
         "slowFinalMin": 45, "durationSec": 55, "codaFrac": 0.25,
         "objects": [
             obj(24946, "Iridium 33 (US, active)", "#4fd1e0", t0, t1, cutoff=cut, per_day=4, fragments=521),
@@ -261,13 +260,13 @@ def main():
         "keyTime": "2007-01-11T22:26:00Z",
         "keyLabel": "Kinetic-kill intercept at ~860 km",
         "slowFinalMin": 30, "durationSec": 50, "codaFrac": 0.25,
-        "objects": [obj(25730, "Fengyun-1C (CN, defunct)", "#ffb347", t0, t1, cutoff=cut_fy, per_day=4, fragments=3037)],
+        "objects": [obj(25730, "Fengyun-1C (CN)", "#ffb347", t0, t1, cutoff=cut_fy, per_day=4, fragments=3037)],
         "milestones": [{"t": "2007-01-11T22:26:00Z", "step": 0}],
         "preSteps": [],
         "note": (f"At the documented intercept time the element sets place Fengyun-1C "
-                 f"at {la:.1f}°N {lo:.1f}°E, north-north-west of Xichang and heading south, on a "
-                 "descending (southbound) pass. The interceptor "
-                 "itself was never a catalogued object; only the target is replayed. "
+                 f"at {la:.1f}°N {lo:.1f}°E, north-west of Xichang (Johnson and others, IAC 2007: "
+                 "'near 35° N, 100° E, northwest of the vicinity of Xichang'), heading south "
+                 "on a descending (southbound) pass. The interceptor is not shown in the 3D view. "
                  "The debris cloud is a physically derived visualisation — one particle "
                  "per catalogued fragment (3,037), released from the true intercept "
                  "state vector with a modelled velocity spread and propagated by "
@@ -287,7 +286,7 @@ def main():
         "milestones": [{"t": "2021-11-15T02:50:00Z", "step": 0}],
         "preSteps": [],
         "note": (f"At the documented intercept time the element sets place Cosmos 1408 "
-                 f"at {la2:.1f}°N {lo2:.1f}°E over northern Russia. The interceptor was never a catalogued object. The debris "
+                 f"at {la2:.1f}°N {lo2:.1f}°E over northern Russia. The interceptor is not shown in the 3D view. The debris "
                  "cloud is a physically derived visualisation — one particle per "
                  "catalogued fragment (1,604), released from the true intercept state "
                  "vector with a modelled velocity spread and propagated by two-body "
@@ -308,12 +307,11 @@ def main():
         ],
         "milestones": [{"t": iso(lu_min[1]), "step": 0}],
         "preSteps": [],
-        "note": (f"A 3½-month time-lapse: Luch/Olymp manoeuvres along the GEO ring and "
-                 f"holds station alongside Intelsat 901 at 18°W. Element sets bottom out "
+        "note": (f"A 3½-month time-lapse: Luch/Olymp-K (NORAD 40258) manoeuvres along the GEO ring and "
+                 f"holds station alongside Intelsat 901 (NORAD 26824) at 18°W. Element sets bottom out "
                  f"at ≈{lu_min[0]:.0f} km ({lu_min[1].strftime('%d %b %Y')}); operator "
-                 "and SSA reporting put the true approaches at ~10 km — GEO element-set "
-                 "accuracy is tens of km, so the public data shows the pattern, not the "
-                 "precise range."),
+                 "and SSA reporting put the true approaches at ~10 km; the public element sets "
+                 "show the pattern, not the precise range."),
     }
 
     out = {

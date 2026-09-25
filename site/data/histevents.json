@@ -172,7 +172,7 @@
    "preSteps": [
     0
    ],
-   "note": "Aeolus is propagated from its last pre-manoeuvre element sets. Starlink-44 is catalogue object 2019-029AV (NORAD 44278; today's SATCAT labels it STARLINK-67), one of two early Starlinks SpaceX was deliberately de-orbiting, then at ~320 km. Propagated from public element sets, the two pass 2.9 km apart at 11:02:41 UTC \u2014 consistent with ESA's predicted 11:02 UTC conjunction. Public element sets carry km-scale error: the P\u22481/1,000 on which ESA acted came from 18 SPCS conjunction data messages and ESA's own analysis, not from these element sets."
+   "note": "Aeolus is propagated from its last pre-manoeuvre element sets. Starlink-44 is catalogue object 2019-029AV (NORAD 44278; today's SATCAT labels it STARLINK-67), Propagated from public element sets, the two pass 2.9 km apart at 11:02:41 UTC \u2014 consistent with ESA's predicted 11:02 UTC conjunction. Public element sets carry km-scale error: the P\u22481/1,000 on which ESA acted came from data issued by the 18th Space Control Squadron and ESA's own analysis, not from these element sets."
   },
   "iridium": {
    "kind": "collision",
@@ -181,7 +181,7 @@
     "2009-02-11T04:00:00Z"
    ],
    "keyTime": "2009-02-10T16:55:59Z",
-   "keyLabel": "Collision \u2014 11.647 km/s, both satellites destroyed",
+   "keyLabel": "Collision \u2014 11.647 km/s: Iridium 33 destroyed, Cosmos 2251 broken up",
    "slowFinalMin": 45,
    "durationSec": 55,
    "codaFrac": 0.25,
@@ -250,7 +250,7 @@
    "objects": [
     {
      "norad": 25730,
-     "name": "Fengyun-1C (CN, defunct)",
+     "name": "Fengyun-1C (CN)",
      "color": "#ffb347",
      "tles": [
       [
@@ -276,7 +276,7 @@
     }
    ],
    "preSteps": [],
-   "note": "At the documented intercept time the element sets place Fengyun-1C at 34.7\u00b0N 100.3\u00b0E, north-north-west of Xichang and heading south, on a descending (southbound) pass. The interceptor itself was never a catalogued object; only the target is replayed. The debris cloud is a physically derived visualisation \u2014 one particle per catalogued fragment (3,037), released from the true intercept state vector with a modelled velocity spread and propagated by two-body dynamics \u2014 not the catalogued fragment orbits themselves."
+   "note": "At the documented intercept time the element sets place Fengyun-1C at 34.7\u00b0N 100.3\u00b0E, north-west of Xichang (Johnson and others, IAC 2007: 'near 35\u00b0 N, 100\u00b0 E, northwest of the vicinity of Xichang'), heading south on a descending (southbound) pass. The interceptor is not shown in the 3D view. The debris cloud is a physically derived visualisation \u2014 one particle per catalogued fragment (3,037), released from the true intercept state vector with a modelled velocity spread and propagated by two-body dynamics \u2014 not the catalogued fragment orbits themselves."
   },
   "cosmos1408": {
    "kind": "asat",
@@ -322,7 +322,7 @@
     }
    ],
    "preSteps": [],
-   "note": "At the documented intercept time the element sets place Cosmos 1408 at 76.9\u00b0N 60.9\u00b0E over northern Russia. The interceptor was never a catalogued object. The debris cloud is a physically derived visualisation \u2014 one particle per catalogued fragment (1,604), released from the true intercept state vector with a modelled velocity spread and propagated by two-body dynamics \u2014 not the catalogued fragment orbits themselves."
+   "note": "At the documented intercept time the element sets place Cosmos 1408 at 76.9\u00b0N 60.9\u00b0E over northern Russia. The interceptor is not shown in the 3D view. The debris cloud is a physically derived visualisation \u2014 one particle per catalogued fragment (1,604), released from the true intercept state vector with a modelled velocity spread and propagated by two-body dynamics \u2014 not the catalogued fragment orbits themselves."
   },
   "luch": {
    "kind": "rpo",
@@ -679,7 +679,7 @@
     }
    ],
    "preSteps": [],
-   "note": "A 3\u00bd-month time-lapse: Luch/Olymp manoeuvres along the GEO ring and holds station alongside Intelsat 901 at 18\u00b0W. Element sets bottom out at \u224836 km (05 Aug 2015); operator and SSA reporting put the true approaches at ~10 km \u2014 GEO element-set accuracy is tens of km, so the public data shows the pattern, not the precise range."
+   "note": "A 3\u00bd-month time-lapse: Luch/Olymp-K (NORAD 40258) manoeuvres along the GEO ring and holds station alongside Intelsat 901 (NORAD 26824) at 18\u00b0W. Element sets bottom out at \u224836 km (05 Aug 2015); operator and SSA reporting put the true approaches at ~10 km; the public element sets show the pattern, not the precise range."
   }
  }
 }
