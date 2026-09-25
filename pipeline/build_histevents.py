@@ -258,7 +258,7 @@ def main():
         "kind": "asat",
         "window": [iso(t0), iso(t1)],
         "keyTime": "2007-01-11T22:26:00Z",
-        "keyLabel": "Kinetic-kill intercept at ~860 km — no advance notification",
+        "keyLabel": "Kinetic-kill intercept at ~860 km",
         "slowFinalMin": 30, "durationSec": 50, "codaFrac": 0.25,
         "objects": [obj(25730, "Fengyun-1C (CN, defunct)", "#ffb347", t0, t1, cutoff=cut_fy, per_day=4, fragments=3037)],
         "milestones": [{"t": "2007-01-11T22:26:00Z", "step": 1}],

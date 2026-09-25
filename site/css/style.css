@@ -744,3 +744,19 @@ footer#foot a:hover, footer#foot .lnk:hover { color: var(--txt); border-bottom-c
 /* Footer copyright line */
 footer#foot .foot-line { display: block; }
 footer#foot .foot-line + .foot-line { margin-top: 3px; }
+
+/* ============ v1.8.0: snapshot dates, registration lag, treaty status ============ */
+.snapdate { font-family: var(--mono); font-size: 10px; letter-spacing: 0.06em; color: var(--txt-faint); margin-top: 6px; }
+.reg-lead { font-size: 13px; line-height: 1.55; color: var(--txt); margin: 0 0 10px; }
+.reg-caveat { margin-bottom: 14px; }
+.ts { display: inline-block; font-family: var(--mono); font-size: 10px; padding: 1px 6px; border-radius: 3px; border: 1px solid var(--line); color: var(--txt-dim); margin: 1px 0; white-space: nowrap; }
+.ts-party { border-color: rgba(85,209,139,0.5); color: #55d18b; }
+.ts-signatory, .ts-declaration { border-color: rgba(255,180,84,0.5); color: var(--accent-amber, #ffb454); }
+.ts-neither, .ts-no-entry, .ts-none { color: var(--txt-faint); }
+.ts-row { display: flex; flex-wrap: wrap; gap: 4px; justify-content: flex-end; }
+.ts-who { font-size: 11px; color: var(--txt-dim); margin-top: 4px; text-align: right; }
+.ts-note { font-size: 10.5px; color: var(--txt-faint); margin-top: 4px; text-align: right; line-height: 1.4; }
+.ts-src { font-size: 10.5px; color: var(--txt-faint); line-height: 1.45; margin-top: 6px; }
+.ts-src a { color: var(--accent); }
+.ts-drow { align-items: flex-start; }
+#detail .ts-src { padding: 0 0 8px; }

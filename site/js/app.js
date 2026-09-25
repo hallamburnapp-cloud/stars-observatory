@@ -111,14 +111,15 @@ function _legacyCopy(txt) {
 // ============================================================
 async function loadData() {
   setLoad('Loading orbital catalogue…', 10);
-  const [sats, stats, lag, citation] = await Promise.all([
+  const [sats, stats, lag, citation, treaty] = await Promise.all([
     loadCatalog(),
     fetch('./data/stats.json', { cache: 'no-cache' }).then(r => r.json()),
     fetch('./data/lag.json', { cache: 'no-cache' }).then(r => r.json()).catch(() => null),
-    fetch('./data/citation.json', { cache: 'no-cache' }).then(r => r.json()).catch(() => null)
+    fetch('./data/citation.json', { cache: 'no-cache' }).then(r => r.json()).catch(() => null),
+    fetch('./data/treaty_status.json', { cache: 'no-cache' }).then(r => r.json()).catch(() => null)
   ]);
   state.data = sats; state.stats = stats; state.lag = lag;
-  state.citation = citation;
+  state.citation = citation; state.treaty = treaty;
   const arr = sats.sats;
   const N = arr.length;
   state.N = N;
@@ -139,7 +140,7 @@ async function loadData() {
     const s = arr[i];
     state.norad[i] = s[0];
     state.name[i] = s[1];
-    tle1[i] = s[2]; tle2[i] = s[3];
+    tle1[i] = alpha5(s[2]); tle2[i] = alpha5(s[3]);
     state.objType[i] = s[4];
     state.ownerIdx[i] = s[5];
     state.constIdx[i] = s[6];
@@ -150,8 +151,9 @@ async function loadData() {
     state.ownerName[i] = owner ? owner[1] : 'Unknown';
     state.constLabel[i] = sats.constellations[s[6]] || '';
     // intl designator from TLE line 1 cols 10-17
-    state.intl[i] = parseIntlDes(s[2]);
+    state.intl[i] = parseIntlDes(tle1[i]);
   }
+  state.tle2 = tle2; // fixed-column copies (alpha5) for inclination / mean-motion reads
   setLoad('Parsing element sets…', 30);
   fillStats();
   return { tle1, tle2 };
@@ -235,6 +237,20 @@ function fillStats() {
     const k = el.getAttribute('data-stat');
     if (vals[k] !== undefined) el.textContent = vals[k];
   });
+}
+
+// Catalogue numbers above 99,999 (issued since 11 July 2026) do not fit the
+// TLE's five-character field. sats.json carries them in full, which shifts
+// every later column by one and makes SGP4 parsing fail. For propagation only,
+// re-encode them in the standard Alpha-5 form (A0000 = 100000, letters I and O
+// skipped); sats.json and the CSV export keep the canonical records.
+const ALPHA5 = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+function alpha5(line) {
+  if (!line || line.length !== 70) return line;
+  const n = parseInt(line.substring(2, 8), 10);
+  if (!(n >= 100000 && n <= 339999)) return line;
+  const body = line.substring(0, 2) + ALPHA5[Math.floor(n / 10000) - 10] + String(n % 10000).padStart(4, '0') + line.substring(8, 69);
+  return body + tleChecksum(body);
 }
 
 function parseIntlDes(tle1) {
@@ -961,7 +977,7 @@ function selectObject(i, fly) {
 function requestSelOrbit(i) {
   clearSelOrbit();
   if (!workerReady) return;
-  const tle2 = state.data.sats[i][3];
+  const tle2 = state.tle2[i];
   const mm = parseFloat(tle2.substring(52, 63)); // rev/day
   const periodMs = (mm > 0 ? 1440 / mm : 95) * 60 * 1000;
   const t0 = state.simTime;
@@ -1019,13 +1035,15 @@ function showDetail(i) {
   const rows = $('#dRows');
   const regBadge = state.objType[i] !== 'PAY'
     ? '<span class="badge na">Not assessed · non-payload</span>'
-    : (state.registered[i] ? '<span class="badge reg">Registered</span>' : '<span class="badge unreg">No UN record</span>');
+    : (state.registered[i] ? '<span class="badge reg">Matched UN record</span>' : '<span class="badge unreg">No matching UN record</span>');
   rows.innerHTML = `
     <div class="drow"><span class="k">NORAD ID</span><span class="v">${state.norad[i]}</span></div>
     <div class="drow"><span class="k">Intl designator</span><span class="v">${state.intl[i]}</span></div>
-    <div class="drow"><span class="k">Attributed State / owner</span><span class="v">${state.ownerName[i]} (${state.ownerCode[i]})</span></div>
+    <div class="drow"><span class="k">Attributed State (SATCAT owner code)</span><span class="v">${state.ownerName[i]} (${state.ownerCode[i]})</span></div>
     <div class="drow"><span class="k">Constellation</span><span class="v">${state.constLabel[i] || '—'}</span></div>
-    <div class="drow"><span class="k">UN registration</span><span class="v">${regBadge}</span></div>
+    <div class="drow"><span class="k">UN registration (GCAT match)</span><span class="v">${regBadge}</span></div>
+    <div class="drow ts-drow"><span class="k">Treaty status of attributed State</span><span class="v">${treatyBlock(state.ownerCode[i])}</span></div>
+    <div class="ts-src">${treatySourceLine()}</div>
     <div class="drow"><span class="k">Launch year</span><span class="v">${state.launchYear[i] || '—'}</span></div>
     <div class="drow"><span class="k">Orbital regime</span><span class="v">${regimeName(state.regime ? state.regime[i] : 0)}</span></div>
     <div class="drow"><span class="k">Altitude</span><span class="v live" id="dAlt">—</span></div>
@@ -1060,7 +1078,7 @@ function updateDetailLive(i) {
   const alt = r - EARTH_R;
   const altEl = $('#dAlt'); if (altEl) altEl.textContent = alt.toFixed(0) + ' km';
   // inclination & period from TLE line 2
-  const tle2 = state.data.sats[i][3];
+  const tle2 = state.tle2[i];
   const inc = parseFloat(tle2.substring(8, 16));
   const mm = parseFloat(tle2.substring(52, 63)); // rev/day
   const incEl = $('#dInc'); if (incEl) incEl.textContent = isNaN(inc) ? '—' : inc.toFixed(2) + '°';
@@ -1095,12 +1113,12 @@ function renderLegend() {
     rows = codes.map(c => { const n = count(i => state.ownerCode[i] === c); listed += n;
       return [state.stats.owner_names[c] || c, STATE_COLORS[c], n]; });
     rows.push(['Other States', STATE_COLORS.OTHER, state.N - listed]);
-    footnote = 'Counts are propagated objects per SATCAT owner attribution — an evidentiary proxy for the Article VI ‘appropriate State’, not a legal determination. Catalogue-wide payload figures are in the Art VI panel.';
+    footnote = 'Counts are propagated objects per attributed State (SATCAT owner code, an evidentiary proxy) — not the launching State, the State of registry, or a determination of the ‘appropriate State Party’ under Article VI. Catalogue-wide payload figures are in the Art VI panel.';
   } else if (m === 'reg') {
-    rows = [['Registered (payload)', REG_COLORS.reg, count(i => state.objType[i] === 'PAY' && state.registered[i])],
-            ['No UN record (payload)', REG_COLORS.unreg, count(i => state.objType[i] === 'PAY' && !state.registered[i])],
+    rows = [['Matched UN record (payload)', REG_COLORS.reg, count(i => state.objType[i] === 'PAY' && state.registered[i])],
+            ['No matching UN record (payload)', REG_COLORS.unreg, count(i => state.objType[i] === 'PAY' && !state.registered[i])],
             ['Not assessed · non-payload', REG_COLORS.na, count(i => state.objType[i] !== 'PAY')]];
-    footnote = 'Registration status is shown for propagated payloads, cross-referenced against GCAT. Submissions lag launch — ‘no UN record’ includes filings still pending.';
+    footnote = 'Matching is shown for propagated payloads, cross-referenced against GCAT’s UN registration field. Submissions lag launch — ‘no matching UN record’ includes filings not yet matched. A missing match is not a finding of non-compliance.';
   } else if (m === 'const') {
     rows = [['Starlink', CONST_COLORS.Starlink, count(i=>constKey(state.constLabel[i])==='Starlink')],
             ['OneWeb', CONST_COLORS.OneWeb, count(i=>constKey(state.constLabel[i])==='OneWeb')],
@@ -1162,8 +1180,8 @@ function populateFilters() {
   let reg = 0, unreg = 0;
   for (let i = 0; i < state.N; i++) if (state.objType[i] === 'PAY') (state.registered[i] ? reg++ : unreg++);
   $$('#fReg option').forEach(o => {
-    if (o.value === '1') o.textContent = `Registered · ${reg.toLocaleString('en-GB')}`;
-    if (o.value === '0') o.textContent = `No UN record · ${unreg.toLocaleString('en-GB')}`;
+    if (o.value === '1') o.textContent = `Matched UN record · ${reg.toLocaleString('en-GB')}`;
+    if (o.value === '0') o.textContent = `No matching UN record · ${unreg.toLocaleString('en-GB')}`;
   });
 }
 
@@ -1192,7 +1210,7 @@ function buildRegGap() {
   let maxTotal = 0;
   years.forEach(y => { const [r,u] = state.stats.registration_by_year[String(y)]; maxTotal = Math.max(maxTotal, r+u); });
   const yScale = (H - padB - padT) / maxTotal;
-  let svg = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Registered versus unregistered payloads by launch year">`;
+  let svg = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Payloads with and without a matching UN record, by launch year">`;
   // gridlines
   for (let g = 0; g <= 4; g++) {
     const yv = maxTotal * g / 4;
@@ -1206,14 +1224,14 @@ function buildRegGap() {
     const hr = r * yScale, hu = u * yScale;
     const yr = H - padB - hr;
     const yu = yr - hu;
-    svg += `<rect x="${x}" y="${yr}" width="${bw}" height="${hr}" fill="#55d18b" rx="1"><title>${y}: ${r} registered</title></rect>`;
-    svg += `<rect x="${x}" y="${yu}" width="${bw}" height="${hu}" fill="#ff6b6b" rx="1"><title>${y}: ${u} no record</title></rect>`;
+    svg += `<rect x="${x}" y="${yr}" width="${bw}" height="${hr}" fill="#55d18b" rx="1"><title>${y}: ${r} matched UN record</title></rect>`;
+    svg += `<rect x="${x}" y="${yu}" width="${bw}" height="${hu}" fill="#ff6b6b" rx="1"><title>${y}: ${u} no matching UN record</title></rect>`;
     svg += `<text x="${x + bw/2}" y="${H-padB+9}" text-anchor="middle" font-size="7" fill="#8a9bb5" font-family="monospace">'${String(y).slice(2)}</text>`;
   });
   svg += `</svg>`;
   $('#regChart').innerHTML = svg;
 
-  // table: worst absolute gaps
+  // table: largest numbers of payloads with no matching UN record
   const rows = Object.entries(state.stats.registration_by_owner)
     .map(([c, [reg, un]]) => ({ c, reg, un, tot: reg+un }))
     .filter(o => o.tot >= 10)
@@ -1222,8 +1240,30 @@ function buildRegGap() {
   tb.innerHTML = rows.map(o => {
     const name = state.stats.owner_names[o.c] || o.c;
     const pct = o.tot ? Math.round(o.un / o.tot * 100) : 0;
-    return `<tr><td>${name}</td><td class="num">${o.reg.toLocaleString()}</td><td class="num hl">${o.un.toLocaleString()}</td><td class="num">${pct}%</td></tr>`;
+    return `<tr><td>${name}</td><td class="num">${o.reg.toLocaleString()}</td><td class="num hl">${o.un.toLocaleString()}</td><td class="num">${pct}%</td><td>${treatyCell(o.c, 'REG')}</td></tr>`;
   }).join('');
+  const src = $('#regTreatySrc'); if (src) src.innerHTML = treatySourceLine();
+}
+
+// ---- Treaty party status (UNOOSA status document only) -------------------
+// site/data/treaty_status.json is built by tools/build_treaty_status.py from
+// the UNOOSA status table; nothing is inferred from any other source.
+const TREATY_SHORT = { OST: 'OST', LIAB: 'Liability', REG: 'Registration' };
+function treatyEntries(code) { const t = state.treaty; return t && t.status ? t.status[code] || null : null; }
+function treatyCell(code, key) {
+  const e = treatyEntries(code);
+  if (!e) return '<span class="ts ts-none">not listed</span>';
+  return e.map(x => `<span class="ts ts-${x[key].replace(/\s+/g, '-')}"${e.length > 1 ? ` title="${escapeHTML(x.name)}"` : ''}>${e.length > 1 ? escapeHTML(x.name) + ': ' : ''}${x[key]}</span>`).join(' ');
+}
+function treatySourceLine() {
+  const t = state.treaty; if (!t || !t.source) return 'Treaty status unavailable.';
+  return `Treaty status: UNOOSA, <a href="${t.source.url}" target="_blank" rel="noopener">UN Doc ${t.source.symbol}</a>, as at ${oscolaDate(t.source.as_at)}. ‘Party’ = ratification, acceptance, approval, accession or succession; ‘declaration’ = an intergovernmental organisation’s declaration of acceptance of rights and obligations.`;
+}
+function treatyBlock(code) {
+  const e = treatyEntries(code), t = state.treaty;
+  const note = t && t.notes && t.notes[code] ? `<div class="ts-note">${escapeHTML(t.notes[code])}</div>` : '';
+  if (!e) return `<span class="ts ts-none">not listed in the UNOOSA status table</span>${note}`;
+  return e.map(x => `${e.length > 1 ? `<div class="ts-who">${escapeHTML(x.name)}</div>` : ''}<div class="ts-row">${['OST', 'LIAB', 'REG'].map(k => `<span class="ts ts-${x[k].replace(/\s+/g, '-')}">${TREATY_SHORT[k]}: ${x[k]}</span>`).join(' ')}</div>`).join('') + note;
 }
 
 // ============================================================
@@ -1246,7 +1286,7 @@ const SCENARIOS = [
       { date: '29 Aug – 1 Sep 2019', crit: true, txt: 'US data show the probability still rising (SpaceX later cites 1.69 × 10⁻³). A bug in SpaceX’s on-call paging system means the Starlink operator never sees ESA’s follow-up emails. On Sunday 1 September, with P ≈ 1 in 1,000 (ten times ESA’s threshold), ESA decides to manoeuvre alone, relying on SpaceX’s earlier statement that Starlink-44 would not move.', prob: 'P ≈ 1/1,000 · follow-ups unseen' },
       { date: '2 Sep 2019 · 10:14 UTC', crit: true, txt: 'Aeolus fires its thrusters at 10:14, 10:17 and 10:18 UTC, half an orbit before the predicted 11:02 UTC conjunction, raising its altitude by about 350 m — ESA’s first collision-avoidance manoeuvre to protect one of its spacecraft from a satellite in a large constellation.', prob: 'Manoeuvre executed · T-½ orbit' }
     ],
-    caption: '<strong>Article IX OST.</strong> States Parties must conduct all their activities ‘with due regard to the corresponding interests of all other States Parties to the Treaty’, and a State that ‘has reason to believe that an activity or experiment planned by it or its nationals … would cause potentially harmful interference’ must ‘undertake appropriate international consultations before proceeding’. The Aeolus / Starlink-44 event exposes the mismatch: the operational decision was made over five days by email between an intergovernmental agency (ESA, within OST art XIII) and a private operator whose activity is a US national activity under art VI, and the decisive final 48 hours were lost to a paging-system bug that hid ESA’s follow-ups from SpaceX — while the treaty’s inter-State consultation mechanism had, and has, no operative timeline capable of engaging at that tempo.',
+    caption: '<strong>Article IX OST.</strong> The consultation clause of Article IX applies where a State Party ‘has reason to believe’ that an activity or experiment planned by it or its nationals in outer space ‘would cause potentially harmful interference’ with activities of other States Parties. <strong>Fact pattern.</strong> The predicted conjunction was knowable from US tracking data about a week in advance (c. 26–27 August 2019). ESA and SpaceX were in contact by email from 28 August. ESA’s manoeuvre threshold was first crossed on the evening of 29 August; ESA decided on 1 September and manoeuvred at 10:14 UTC on 2 September, about 48 minutes before the predicted 11:02 UTC conjunction. The window from first warning to manoeuvre was about a week; from threshold crossing to manoeuvre, under four days.',
     viz: { mode: 'pair' }
   },
   {
@@ -1259,24 +1299,24 @@ const SCENARIOS = [
       { date: '10 Feb 2009 · 15:02 UTC', crit: false, txt: 'CelesTrak’s public SOCRATES report predicts a 584 m close approach at 16:55:59 UTC — one of many sub-kilometre Iridium conjunctions that week; it never makes the Top Ten list and ranks 152nd at the time of the collision.', prob: 'Predicted miss: 584 m · not escalated' },
       { date: '10 Feb 2009 · 16:55:59 UTC', crit: true, txt: 'Collision at 778.6 km altitude over northern Siberia (72.5°N 97.9°E), relative velocity 11.647 km/s, destroying both satellites. The US military’s high-accuracy catalogue was not shared with Iridium, and JSpOC did not know that Iridium 33 had manoeuvred for station-keeping hours earlier.', prob: 'Impact · 11.647 km/s · both destroyed' },
       { date: '10 Jun 2010', crit: true, txt: 'Catalogue update: Cosmos 2251 produced 1,267 catalogued fragments (1,212 on orbit); Iridium 33 produced 521 (498 on orbit).', prob: 'Catalogued fragments: 1,788' },
-      { date: 'To date', crit: true, txt: 'No claim is publicly known to have been presented under the 1972 Liability Convention (which requires a State-to-State claim through diplomatic channels), and no Claims Commission was established. Neither State requested Article IX consultations.', prob: 'No public Liability Convention claim' }
+      { date: 'To date', crit: true, txt: 'No claim under the 1972 Liability Convention is publicly recorded, and no Claims Commission was established.', prob: 'No public Liability Convention claim' }
     ],
-    caption: '<strong>Article IX & the Liability Convention.</strong> The first accidental collision of two intact satellites produced no publicly known formal legal process: no Liability Convention claim and no Article IX consultation. Article IX’s consultation duty attaches to a State’s planned activities that it has reason to believe would cause potentially harmful interference, so it is ill-suited to an unforeseen conjunction with a derelict. The Liability Convention requires fault for damage in space (art III), hard to establish when one object was defunct and uncontrolled; a private operator cannot itself invoke that State-to-State Convention; and Russia was itself a launching State of both objects (Iridium 33 flew on a Proton from Baikonur). The case shows a regime with no ex ante mechanism for conjunctions and only a fault-based, State-to-State ex post one.',
+    caption: '<strong>Article IX OST.</strong> The consultation clause of Article IX applies where a State Party ‘has reason to believe’ that an activity or experiment planned by it or its nationals in outer space ‘would cause potentially harmful interference’ with activities of other States Parties. <strong>Fact pattern.</strong> Cosmos 2251 had been derelict and uncontrolled since 1995; Iridium 33 was an operating commercial satellite. On the day, CelesTrak’s public SOCRATES report (15:02 UTC) predicted a 584 m close approach at 16:55:59 UTC; it was not on the report’s Top Ten list and ranked 152nd at the time of the collision. The collision occurred at 16:55:59 UTC, under two hours after that report.',
     viz: { mode: 'names', groups: [{ prefix: 'IRIDIUM 33 DEB', color: 0x4fd1e0, label: 'Iridium 33 debris' }, { prefix: 'COSMOS 2251 DEB', color: 0xff6b6b, label: 'Cosmos 2251 debris' }] }
   },
   {
     id: 'fengyun', title: 'Fengyun-1C ASAT test', year: '2007',
     tag: 'Largest debris-generating event on record',
-    intro: '<strong style="color:var(--accent-warn)">11 January 2007.</strong> China destroyed its own defunct Fengyun-1C weather satellite with a direct-ascent kinetic kill vehicle at ~860 km — the single largest debris-generating event in history. No advance notification was given to any State. The debris cloud in the 3D view is what remains.',
+    intro: '<strong style="color:var(--accent-warn)">11 January 2007.</strong> China destroyed its own defunct Fengyun-1C weather satellite with a direct-ascent kinetic kill vehicle at ~860 km — the single largest debris-generating event in history. The debris cloud in the 3D view is what remains.',
     steps: [
       { date: '10 May 1999', crit: false, txt: 'Fengyun-1C, a ~960 kg Chinese sun-synchronous weather satellite, is launched from Taiyuan. It works ‘through at least 2005’; by January 2007 it still responds to controllers but no longer provides significant meteorological service.', prob: null },
-      { date: '11 Jan 2007 · 22:26 UTC', crit: true, txt: 'A direct-ascent SC-19 kinetic-kill vehicle strikes Fengyun-1C at ~860 km altitude at ~9 km/s, destroying the satellite. No advance notification is given to any other State.', prob: 'Impact · ~8–9 km/s · no notification' },
+      { date: '11 Jan 2007 · 22:26 UTC', crit: true, txt: 'A direct-ascent SC-19 kinetic-kill vehicle strikes Fengyun-1C at ~860 km altitude at ~9 km/s, destroying the satellite.', prob: 'Impact · ~8–9 km/s' },
       { date: '17–18 Jan 2007', crit: false, txt: 'Aviation Week first reports the test; the US National Security Council publicly confirms it on 18 January.', prob: null },
-      { date: '19–22 Jan 2007', crit: true, txt: 'The US lodges a formal protest, and Japan, Australia, Canada, the UK and others publicly raise concerns; China declines to confirm or deny for 12 days.', prob: 'Bilateral protests — not Art IX' },
+      { date: '19–22 Jan 2007', crit: true, txt: 'The US lodges a formal protest, and Japan, Australia, Canada, the UK and others publicly raise concerns; China declines to confirm or deny for 12 days.', prob: 'Diplomatic protests' },
       { date: '23 Jan 2007', crit: false, txt: 'China confirms the test, stating that it ‘was not directed at any country’ and reiterating opposition to the weaponisation of outer space.', prob: null },
       { date: 'Ongoing', crit: true, txt: 'By mid-September 2010 the catalogue held 3,037 fragments (97% still on orbit). CSET (November 2025) reported nearly 2,500 still on orbit — almost 19% of all tracked debris, still the single largest contributor of any event.', prob: '≈2,500 fragments still on orbit (CSET, 2025)' }
     ],
-    caption: '<strong>Article IX due regard and prior consultation.</strong> A deliberate, unannounced destruction that left debris in long-lived orbits, with lifetimes ‘measured in decades and even centuries’ (NASA), is the paradigm case for Article IX’s duty to ‘undertake appropriate international consultations before proceeding’ with a planned activity likely to cause potentially harmful interference. China did not consult, and no State exercised its right to ‘request consultation’; the response was diplomatic protest. The case suggests that, absent enforcement or procedural machinery, the due-regard and consultation clauses exert little operative constraint on national-security space activity.',
+    caption: '<strong>Article IX OST.</strong> The consultation clause of Article IX applies where a State Party ‘has reason to believe’ that an activity or experiment planned by it or its nationals in outer space ‘would cause potentially harmful interference’ with activities of other States Parties. <strong>Fact pattern.</strong> The intercept took place at 22:26 UTC on 11 January 2007. It was first reported publicly by <i>Aviation Week</i> on 17 January and confirmed by the US National Security Council on 18 January; China confirmed the test on 23 January, 12 days after it. The debris was released at ~860 km, where fragments remain in orbit for many years: nearly 2,500 were still on orbit in November 2025.',
     viz: { mode: 'names', groups: [{ prefix: 'FENGYUN 1C DEB', color: 0xffb347, label: 'Fengyun-1C debris' }] }
   },
   {
@@ -1291,7 +1331,7 @@ const SCENARIOS = [
       { date: '7 Dec 2022', crit: false, txt: 'The UN General Assembly adopts Resolution 77/41, calling on States to commit not to conduct destructive direct-ascent ASAT missile tests, by 155 votes to 9 with 9 abstentions (Russia and China against; India abstaining). It is not legally binding.', prob: 'UNGA 77/41 · non-binding' },
       { date: 'By 2025', crit: true, txt: 'Because the intercept was at low altitude, atmospheric drag self-cleaned the cloud: only a handful of Cosmos 1408 fragments still have public element sets — most have re-entered. High-altitude debris (Fengyun-1C) does not clean itself this way.', prob: 'Low-altitude debris self-cleans' }
     ],
-    caption: '<strong>Article IX & the limits of soft law.</strong> The clearest modern case of ‘potentially harmful interference’ — debris forcing astronauts into shelter — still produced no Article IX consultation: Russia did not consult before the test, and no State requested consultation. The multilateral response was a non-binding UNGA resolution (77/41) calling on States not to conduct such tests, which Russia and China voted against and India abstained on. The case shows the treaty’s consultation duty going unperformed and unenforced even when human life is directly at risk, and that the altitude of an event, not the law, determines how long its harm persists.',
+    caption: '<strong>Article IX OST.</strong> The consultation clause of Article IX applies where a State Party ‘has reason to believe’ that an activity or experiment planned by it or its nationals in outer space ‘would cause potentially harmful interference’ with activities of other States Parties. <strong>Fact pattern.</strong> The intercept took place at about 02:47–02:50 UTC on 15 November 2021. The same day, the ISS crew sheltered in their return vehicles and the US State Department reported more than 1,500 trackable pieces. By 7 March 2022, 1,604 fragments had been catalogued. On 7 December 2022 the UN General Assembly adopted Resolution 77/41 by 155 votes to 9, with 9 abstentions.',
     viz: { mode: 'names', groups: [{ prefix: 'COSMOS 1408 DEB', color: 0xff6b6b, label: 'Cosmos 1408 debris' }] }
   },
   {
@@ -1300,13 +1340,13 @@ const SCENARIOS = [
     intro: '<strong style="color:var(--accent-warn)">2014–2026.</strong> Russia’s Olymp-K (often called Luch) repeatedly parked beside Western commercial and military satellites in geostationary orbit, at times within about 10 km; Western officials and analysts assess that it was intercepting their communications, and France called its approach to Athena-Fidus ‘an act of espionage’. The manoeuvres themselves generated no debris. The 3D view isolates its successor Luch-5X against the Intelsat (ITSO) GEO ring; the original Olymp, retired to a graveyard orbit and fragmented in January 2026, is not in the live element-set feed.',
     steps: [
       { date: '27 Sep 2014 · 20:23 UTC', crit: false, txt: 'Russia launches Olymp-K (often called Luch, NORAD 40258) on a Proton-M from Baikonur into geostationary orbit; it is assessed as an FSB/MoD signals-intelligence platform.', prob: null },
-      { date: '2015', crit: true, txt: 'From about 4 April, Olymp-K parks for five months at 18.1°W, directly between Intelsat 901 (18°W) and Intelsat 7 (18.2°W), at times within about 10 km of them. Intelsat General calls it ‘not normal behavior’; Intelsat’s attempts to reach the owner directly and through the US Defense Department go unanswered, and JFCC Space says the satellite has come within 5 km of another satellite three times since launch — operator and military contact, not an Article IX consultation request.', prob: '~10 km approach · calls unanswered' },
+      { date: '2015', crit: true, txt: 'From about 4 April, Olymp-K parks for five months at 18.1°W, directly between Intelsat 901 (18°W) and Intelsat 7 (18.2°W), at times within about 10 km of them. Intelsat General calls it ‘not normal behavior’; Intelsat’s attempts to reach the owner directly and through the US Defense Department go unanswered, and JFCC Space says the satellite has come within 5 km of another satellite three times since launch.', prob: '~10 km approach · calls unanswered' },
       { date: '2017', crit: true, txt: 'Olymp-K approaches the Franco-Italian military communications satellite Athena-Fidus — ‘a bit too close’, France later says, ‘so close that one really could believe that it was trying to capture our communications’.', prob: 'Close approach to Athena-Fidus' },
-      { date: '7 Sep 2018', crit: true, txt: 'France’s Minister for the Armed Forces, Florence Parly, publicly declares: ‘Trying to listen to one’s neighbor is not only unfriendly. It’s called an act of espionage’ (Defense News translation). No treaty mechanism is invoked — the response is a diplomatic statement.', prob: '‘An act of espionage’ · no Art IX' },
+      { date: '7 Sep 2018', crit: true, txt: 'France’s Minister for the Armed Forces, Florence Parly, publicly declares: ‘Trying to listen to one’s neighbor is not only unfriendly. It’s called an act of espionage’ (Defense News translation).', prob: '‘An act of espionage’' },
       { date: '12 Mar 2023', crit: false, txt: 'Russia launches a successor, Luch-5X / Olymp-K-2 (NORAD 55841), widely assessed as a signals-intelligence platform continuing the pattern.', prob: 'Successor Luch-5X on station' },
       { date: 'Oct 2025 – 30 Jan 2026', crit: true, txt: 'The original Olymp (NORAD 40258) is decommissioned and moved to a graveyard orbit above GEO in October 2025 — then on 30 January 2026 at 06:09 UTC it fragments there, observed by Swiss SSA firm s2A systems. Analysts suggest an impact by untracked debris as a possible cause, since internal energy sources should have been vented at retirement; incomplete passivation has not been ruled out.', prob: 'Olymp fragments · suspected debris strike' }
     ],
-    caption: '<strong>Article IX due regard, without collision.</strong> Luch/Olymp raises the question whether close-proximity signals collection — with no physical contact and no reported disruption of service — is ‘potentially harmful interference’ or a failure of ‘due regard’ under Article IX: years of such operations against allied satellites drew unanswered operator enquiries and a ministerial ‘espionage’ charge, but no State requested Article IX consultation. And in a closing irony, the platform that spent a decade exploiting the shared orbital environment ended fragmented in its graveyard orbit — possibly struck by that same environment’s untracked debris.',
+    caption: '<strong>Article IX OST.</strong> The consultation clause of Article IX applies where a State Party ‘has reason to believe’ that an activity or experiment planned by it or its nationals in outer space ‘would cause potentially harmful interference’ with activities of other States Parties. <strong>Fact pattern.</strong> Olymp-K’s station-keeping beside Intelsat 901 and Intelsat 7, from about April 2015, was reported publicly in October 2015. Its 2017 approach to Athena-Fidus was made public by France on 7 September 2018. The approaches produced no debris; the retired Olymp fragmented in its graveyard orbit on 30 January 2026.',
     viz: { mode: 'geo', norad: 55841, noradColor: 0xff6b6b, ownerCode: 'ITSO', ownerColor: 0x4fd1e0 }
   }
 ];
@@ -1347,8 +1387,8 @@ function buildThreeClocks() {
     <div class="tclock diplo">
       <h4>Diplomatic clock (Art IX)</h4>
       <div class="cv">Undefined</div>
-      <div class="cd">‘Appropriate international consultations’ under Article IX turn on a State’s own ‘reason to believe’ — no objective threshold and no timeline — and the consultation mechanism has never been formally invoked in almost 60 years.</div>
-      <div class="cx">Subjective trigger · no timeline · never invoked</div>
+      <div class="cd">Article IX’s consultation clause applies where a State Party ‘has reason to believe’ that an activity ‘would cause potentially harmful interference’ with activities of other States Parties. The Treaty sets no timeline for the consultations it provides for.</div>
+      <div class="cx">Trigger: ‘has reason to believe’ · no timeline in the Treaty</div>
     </div>`;
   buildClockScale();
 }
@@ -1593,7 +1633,7 @@ function pickIllustrativePair() {
     if (!state.lastAlive[i] || state.regime[i] !== 0) continue;
     if (star < 0 && constKey(state.constLabel[i]) === 'Starlink') star = i;
     if (eo < 0 && state.objType[i] === 'PAY' && state.constLabel[i] === '') {
-      const inc = parseFloat(state.data.sats[i][3].substring(8, 16));
+      const inc = parseFloat(state.tle2[i].substring(8, 16));
       const yr = parseInt(state.launchYear[i]);
       if (inc > 96 && inc < 99.5 && yr >= 2015) eo = i;
     }
@@ -2116,7 +2156,7 @@ function buildLagIndex() {
     : lag.median_lag_days.toLocaleString('en-GB') + '<span class="l" style="display:inline"> days</span>';
   statsEl.innerHTML = `
     <div class="stat-cell"><div class="n">${(lag.tracked_payloads||0).toLocaleString('en-GB')}</div><div class="l">Payloads tracked</div></div>
-    <div class="stat-cell"><div class="n">${(lag.watching_unregistered||0).toLocaleString('en-GB')}</div><div class="l">With no registration record — under watch</div></div>
+    <div class="stat-cell"><div class="n">${(lag.watching_unregistered||0).toLocaleString('en-GB')}</div><div class="l">No matching UN record — under watch</div></div>
     <div class="stat-cell"><div class="n">${(lag.flips_observed||0).toLocaleString('en-GB')}</div><div class="l">Registrations observed since launch of this index</div></div>
     <div class="stat-cell"><div class="n">${median}</div><div class="l">Median observed lag, launch → registration first recorded in GCAT</div></div>`;
 
@@ -2506,8 +2546,8 @@ function applyPermalink() {
 
 const PANEL_META = {
   art6: { tag: 'Analytical panel · 01', title: 'Article VI — Supervision burden' },
-  reggap: { tag: 'Analytical panel · 02', title: 'UN registration gap' },
-  art9: { tag: 'Analytical panel · 03', title: 'Article IX — Decision-time compression' },
+  reggap: { tag: 'Analytical panel · 02', title: 'Registration lag' },
+  art9: { tag: 'Analytical panel · 03', title: 'Article IX — Incident replays' },
   prov: { tag: 'Analytical panel · 04', title: 'Provenance & limitations' }
 };
 function openPanel(name) {

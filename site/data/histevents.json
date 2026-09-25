@@ -247,7 +247,7 @@
     "2007-01-12T08:00:00Z"
    ],
    "keyTime": "2007-01-11T22:26:00Z",
-   "keyLabel": "Kinetic-kill intercept at ~860 km \u2014 no advance notification",
+   "keyLabel": "Kinetic-kill intercept at ~860 km",
    "slowFinalMin": 30,
    "durationSec": 50,
    "codaFrac": 0.25,
