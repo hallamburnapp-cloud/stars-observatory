@@ -2932,6 +2932,30 @@ window.__QA = {
     return toClient(pa[idx*3], pa[idx*3+1], pa[idx*3+2], viewRect());
   },
   select(idx) { selectObject(idx); },
+  // Rendered dots that are on the canvas, not hidden behind the Earth, and
+  // have no other dot within minPx on screen — the only dots whose drawn
+  // position a screenshot diff can isolate unambiguously.
+  isolatedOnScreen(minPx) {
+    const r = viewRect(), pa = posAttr.array, pts = [];
+    for (const i of this.eligible()) {
+      if (earthOccluded(pa[i*3], pa[i*3+1], pa[i*3+2])) continue;
+      const q = toClient(pa[i*3], pa[i*3+1], pa[i*3+2], r);
+      if (q.z > 1 || q.x < r.left + 16 || q.x > r.right - 16 || q.y < r.top + 16 || q.y > r.bottom - 16) continue;
+      pts.push([i, q.x, q.y]);
+    }
+    const cell = Math.max(4, minPx), grid = new Map(), key = (x, y) => `${Math.floor(x / cell)}:${Math.floor(y / cell)}`;
+    for (const p of pts) { const k = key(p[1], p[2]); (grid.get(k) || grid.set(k, []).get(k)).push(p); }
+    const out = [];
+    for (const [i, x, y] of pts) {
+      let alone = true;
+      for (let dx = -1; dx <= 1 && alone; dx++) for (let dy = -1; dy <= 1 && alone; dy++) {
+        for (const [j, x2, y2] of grid.get(`${Math.floor(x / cell) + dx}:${Math.floor(y / cell) + dy}`) || [])
+          if (j !== i && Math.hypot(x2 - x, y2 - y) < minPx) { alone = false; break; }
+      }
+      if (alone) out.push(i);
+    }
+    return out;
+  },
   occluded(idx) { const pa = posAttr.array; return earthOccluded(pa[idx*3], pa[idx*3+1], pa[idx*3+2]); },
   // Recolour ONE dot (or restore it) without any other visual change, so a
   // screenshot diff yields the exact pixel where the dot is really drawn —

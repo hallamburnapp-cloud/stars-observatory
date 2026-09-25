@@ -313,7 +313,11 @@ async function groundTruth(pg, { touch = false, n = 10, cam = null, label = '' }
     }
     return n ? { x: sx / n, y: sy / n, n } : null;
   }, [a, b]);
-  const pool = await pg.evaluate(() => { const e = __QA.eligible(), o = []; for (let k = 0; k < 600; k++) o.push(e[Math.floor(Math.random() * e.length)]); return o; });
+  // draw from dots that are on screen, unoccluded and have no neighbour within
+  // 8px, so a zoomed-out view still yields enough measurable dots
+  const pool = await pg.evaluate(() => { __QA.settle(); const e = __QA.isolatedOnScreen(8);
+    for (let i = e.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [e[i], e[j]] = [e[j], e[i]]; }
+    return e.slice(0, 600); });
   let tried = 0, ok = 0, worstOff = 0, shots = 0; const fails = [];
   for (const idx of pool) {
     if (tried >= n || shots >= n * 3) break;
@@ -345,7 +349,8 @@ async function groundTruth(pg, { touch = false, n = 10, cam = null, label = '' }
       }
     }
     const card = sel === idx && (await pg.evaluate(() => __QA.detailNorad())).includes(await pg.evaluate(i => __QA.norad(i), idx));
-    if (card) ok++; else fails.push(`${await pg.evaluate(i => __QA.norad(i), idx)}→${sel}`);
+    if (card) ok++; else { const d = await pg.evaluate(([i,x,y]) => ({ el: document.elementFromPoint(x,y)?.id || document.elementFromPoint(x,y)?.className, now: __QA.screenOf(i), occ: __QA.occluded(i), cam: __QA.cam ? __QA.cam() : null, sel: __QA.selected, det: document.querySelector('#detail')?.className }), [idx, g.x, g.y]);
+      fails.push(`${await pg.evaluate(i => __QA.norad(i), idx)}→${sel} g=${g.x.toFixed(1)},${g.y.toFixed(1)} s=${s.x.toFixed(1)},${s.y.toFixed(1)} ${JSON.stringify(d)}`); }
     await pg.keyboard.press('Escape').catch(() => {});
     await pg.evaluate(() => { const c = document.querySelector('#dClose'); if (c) c.click(); });
     await pg.waitForTimeout(60);
