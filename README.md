@@ -76,7 +76,7 @@ Live catalogue data are drawn from CelesTrak (GP and SATCAT, OMM formats). Regis
 ### Third-party libraries and fonts
 
 - **[three.js](https://threejs.org/)** (incl. OrbitControls) — © 2010–present three.js authors, [MIT](https://github.com/mrdoob/three.js/blob/dev/LICENSE) (vendored).
-- **[satellite.js](https://github.com/shashwatak/satellite-js)** v5.0.0 — SGP4/SDP4 propagation, [MIT](https://github.com/shashwatak/satellite-js/blob/develop/LICENSE) (vendored).
+- **[satellite.js](https://github.com/shashwatak/satellite-js)** v5.0.0 — SGP4/SDP4 propagation, [MIT](https://github.com/shashwatak/satellite-js/blob/develop/LICENSE.md) (vendored).
 - **[IBM Plex Sans and IBM Plex Mono](https://github.com/IBM/plex)** — served by Google Fonts, [SIL Open Font License 1.1](https://github.com/IBM/plex/blob/master/LICENSE.txt).
 
 All other code, design, text, and the debris-cloud and replay engines are original work by the author (MIT). No trademarked assets or restricted imagery are used.
