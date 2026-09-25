@@ -102,7 +102,7 @@ The author designed this instrument, defined its legal categories and verified i
 
 [^11]: Charles Constant, Santosh Bhattarai and Marek Ziebart, 'Limitations of Current Practices in Uncooperative Space Surveillance: Analysis of Mega-Constellation Data Time-Series' (Advanced Maui Optical and Space Surveillance Technologies Conference, Maui, 2023) <https://amostech.com/TechnicalPapers/2023/Poster/Constant.pdf> accessed 24 September 2026; 'Documentation' (*CelesTrak*) (n 10).
 
-[^12]: 'Frequently Asked Questions (FAQs)' (*NASA Conjunction Assessment Risk Analysis*) <https://www.nasa.gov/cara/frequently-asked-questions/> accessed 24 September 2026.
+[^12]: 'Frequently Asked Questions (FAQs)' (*NASA Conjunction Assessment Risk Analysis*) <https://www.nasa.gov/cara/frequently-asked-questions/> accessed 24 September 2026; Joe Pappalardo, 'The Pentagon Is Declassifying Lots of Info About What's in Orbit' (*Popular Mechanics*, 13 December 2018) <https://www.popularmechanics.com/space/satellites/a25562991/pentagon-declassifying-space-traffic-data/> accessed 25 September 2026.
 
 [^13]: Kelso (n 1).
 
@@ -175,6 +175,8 @@ McAdams RH and Ulen TS, 'Introduction' [2002] U Ill L Rev 791
 McDowell JC, 'GCAT: General Catalog of Artificial Space Objects' (*Jonathan's Space Report*) <https://planet4589.org/space/gcat/> accessed 24 September 2026
 
 —— 'Payload Catalog Column Descriptions' (*Jonathan's Space Report*) <https://planet4589.org/space/gcat/web/cat/pcols.html> accessed 24 September 2026
+
+Pappalardo J, 'The Pentagon Is Declassifying Lots of Info About What's in Orbit' (*Popular Mechanics*, 13 December 2018) <https://www.popularmechanics.com/space/satellites/a25562991/pentagon-declassifying-space-traffic-data/> accessed 25 September 2026
 
 Picker RC, 'SimLaw 2011' [2002] U Ill L Rev 1019
 
