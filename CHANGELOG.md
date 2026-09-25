@@ -1,0 +1,30 @@
+# Changelog
+
+All notable changes to STARS Observatory. Each release is archived on Zenodo with its own version DOI; the concept DOI [10.5281/zenodo.22662848](https://doi.org/10.5281/zenodo.22662848) always resolves to the latest release. Earlier releases are listed on the [GitHub releases page](https://github.com/hallamburnapp-cloud/stars-observatory/releases).
+
+## v1.8.0 — scope freeze and legal wording pass
+
+### Scope
+- **State dossier and national space legislation layer withdrawn.** The dossier panel, `national_law.json`, the "supervisory machinery" block of the Article VI panel, the law-link checker and its workflow, and the 24 September 2026 law review document are preserved on the [`dossier`](https://github.com/hallamburnapp-cloud/stars-observatory/tree/dossier) branch and are not part of this release, its exports or its archive.
+- The release contains three analytical layers plus Provenance: per-State supervision burden (attributed State); UN registration lag and the registration-lag time series; Article IX incident replays.
+
+### Added
+- **About tab** (top-right navigation, footer link, `/about`): what the instrument is and is not, purpose, author, method and sources, citation, how it was made, licences, support and feedback, and the version, which is taken from the latest release tag.
+- **Treaty party status field** for each attributed State under the Outer Space Treaty (1967), the Liability Convention (1972) and the Registration Convention (1975) — party, signatory or neither — taken solely from UNOOSA, *Status of International Agreements relating to activities in outer space as at 1 January 2026*, UN Doc A/AC.105/C.2/2026/CRP.9/Rev.1, and shown with its symbol and date in the object card and the registration table. Built by `tools/build_treaty_status.py`.
+
+### Changed
+- **Legal wording.** "Attributed State (SATCAT owner code, an evidentiary proxy)" replaces "responsible State" wording throughout; the attributed-State paragraph (not the launching State, not the State of registry, not a determination of the "appropriate State Party" under art VI) appears in Provenance and METHODOLOGY.md. "Unregistered", "breach" and similar wording replaced with "no matching UN record".
+- **Registration panel reframed as "Registration lag"**, opening with the Registration Convention's art IV "as soon as practicable" standard and a caveat that a missing match is not a finding of non-compliance (other launching State, intergovernmental organisation, transfer of ownership under UNGA Res 62/101, GCAT's limits, registration under UNGA Res 1721 B (XVI)).
+- **Intergovernmental organisations.** The "consortium" category belonged to the withdrawn national-law layer; where organisations appear in the release (ESA, EUMETSAT and EUTELSAT in the treaty status field) they are described as intergovernmental organisations with their art VII declarations, and METHODOLOGY.md explains art VII declarations and art XIII responsibility.
+- **Article IX replays** describe the fact pattern only — what was knowable, when, by whom, over what time window — and quote the art IX trigger exactly; statements that consultation was owed, requested or omitted are removed.
+- **"Demonstrative evidence instrument"** is used consistently as the description of the site, including the title, meta description and a new social card with no numerical claim.
+- **Every headline figure shows its snapshot date**; the pipeline now writes the current snapshot figures, release tag and DOI into the static HTML at build time (`pipeline/stamp_static.py`), so first paint never shows stale values.
+- **Footer** is now "© 2026 Hallam Burnapp · Code MIT · Data CC BY 4.0 · About"; the Ko-fi link and support text are removed from the footer (the Support button in the top bar is unchanged).
+- **Citation** (OSCOLA footnote, bibliography, BibTeX) gives author, title, version, snapshot date, URL, accessed date and DOI, and names no institution.
+- **Metadata.** `CITATION.cff` and a new `.zenodo.json` (title, software, description, creator with affiliation, MIT licence, keywords); "University of Aberdeen" is removed from the citation generator and structured data and kept only as the author's affiliation and in the About author text; "All rights reserved" is removed everywhere.
+- **Provenance** keeps data sources, methods, matching rules and limits; the AI statement, licences and affiliation moved to About. Credits added for NASA Black Marble, satellite.js, three.js and IBM Plex.
+- **Citation verification.** Every citation in METHODOLOGY.md, README.md and the site was checked against its source; unconfirmed citations were removed.
+
+### Fixed
+- **Objects with 6-digit catalogue numbers now propagate.** Since 11 July 2026 new objects carry catalogue numbers above 99,999, which the two-line element format cannot hold; they failed to propagate and never appeared on the globe (637 objects in the 25 September 2026 snapshot). The browser now re-encodes them in the standard Alpha-5 form for propagation; `sats.json` and the CSV export are unchanged. Data ingestion was audited: every CelesTrak download already uses OMM (JSON) or CSV, never TLE.
+- Phone taps on dots beside a button no longer open the button; the tap that opens an object card can no longer close it; the QA gate's ground-truth click checks no longer fail on too few measurable dots (#12–#14).

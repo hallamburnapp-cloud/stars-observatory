@@ -112,6 +112,14 @@ def main():
     if r.returncode != 0:
         print("CITATION BUILD FAILED\n", r.stderr[-2000:]); sys.exit(1)
 
+    # Write the current snapshot figures, release tag and DOI into the static
+    # HTML, so first paint and no-JavaScript visits never show stale values.
+    r = subprocess.run([sys.executable, str(_ROOT / "pipeline" / "stamp_static.py")],
+                       capture_output=True, text=True)
+    print(r.stdout.strip())
+    if r.returncode != 0:
+        print("STATIC STAMP FAILED\n", r.stdout[-2000:], r.stderr[-2000:]); sys.exit(1)
+
     # Stamp asset cache-busters from the single version source (CITATION.cff).
     # Idempotent: only rewrites ?v=... tokens; a stale literal version anywhere
     # in index.html is treated as a bug and overwritten.

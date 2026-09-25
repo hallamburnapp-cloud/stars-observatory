@@ -1,0 +1,30 @@
+{
+  "title": "STARS Observatory",
+  "upload_type": "software",
+  "description": "<p>STARS Observatory is a demonstrative evidence instrument. Each day it takes the public catalogue of objects in Earth orbit and shows the legal layer that governs them: which State the catalogue attributes each object to, whether and when a matching entry appears in the United Nations Register of Objects Launched into Outer Space, and how documented incidents unfolded in time. It exists to make the factual predicate of a legal argument observable, quantified and citable.</p><p>It is not a space situational awareness service. Positions are propagated from public element sets and carry kilometre-scale error; the instrument does not predict conjunctions or issue warnings. It makes no legal determinations. The attributed State is the owner code in the public catalogue, used as an evidentiary proxy: it is not the launching State, the State of registry, or a finding as to the &quot;appropriate State Party&quot; under Article VI of the Outer Space Treaty, which may be more than one State. A missing United Nations registration match is not a finding of non-compliance: the Registration Convention sets no deadline for notification, and objects may be registered by a different launching State, by an intergovernmental organisation, or following a transfer of ownership. The instrument shows how far the public record runs behind the catalogue; it does not judge why.</p><p>Licences: code MIT; data and snapshots CC BY 4.0. Live instrument: <a href=\"https://starsobservatory.org\">starsobservatory.org</a>.</p>",
+  "creators": [
+    {
+      "name": "Burnapp, Hallam",
+      "affiliation": "University of Aberdeen"
+    }
+  ],
+  "license": "mit",
+  "keywords": [
+    "space law",
+    "Outer Space Treaty",
+    "Article VI",
+    "Article IX",
+    "Registration Convention",
+    "satellite catalogue",
+    "registration lag",
+    "demonstrative evidence",
+    "space governance"
+  ],
+  "related_identifiers": [
+    {
+      "identifier": "https://starsobservatory.org",
+      "relation": "isDocumentedBy",
+      "resource_type": "other"
+    }
+  ]
+}

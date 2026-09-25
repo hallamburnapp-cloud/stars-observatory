@@ -6,6 +6,8 @@ Single sources of truth — NOTHING in the citation is hardcoded here or in the 
   * version DOI + archived version -> Zenodo API via the concept record
                                       (cached in data/zenodo_cache.json for offline runs)
   * data snapshot date       -> the dataset manifest (data/out/sats.json "generated")
+  * displayed release        -> the latest GitHub release tag (GitHub API, cached in
+                                data/release_cache.json for offline runs)
 
 The browser renders the OSCOLA footnote / bibliography forms and BibTeX from this
 manifest plus the "generated" field of the dataset it ACTUALLY loaded, and warns
@@ -23,6 +25,8 @@ SATS = ROOT / "data" / "out" / "sats.json"
 SITE_SATS = ROOT / "site" / "data" / "sats.json"
 
 CONCEPT_RECID = "22662848"  # Zenodo concept record for STARS Observatory (all versions)
+REPO = "hallamburnapp-cloud/stars-observatory"
+TAG_CACHE = ROOT / "data" / "release_cache.json"
 
 
 def read_cff():
@@ -61,6 +65,26 @@ def zenodo_latest():
         sys.exit(f"FATAL: Zenodo API unavailable and no cache present: {e}")
 
 
+def latest_release_tag():
+    """The version the site displays comes from the latest published release tag."""
+    url = f"https://api.github.com/repos/{REPO}/releases/latest"
+    try:
+        req = urllib.request.Request(url, headers={"User-Agent": "stars-observatory-build/1.0",
+                                                   "Accept": "application/vnd.github+json"})
+        with urllib.request.urlopen(req, timeout=60) as r:
+            tag = json.load(r).get("tag_name") or ""
+        if not re.match(r"^v\d+\.\d+\.\d+$", tag):
+            raise ValueError(f"unexpected tag {tag!r}")
+        TAG_CACHE.write_text(json.dumps({"tag": tag, "fetched": datetime.now(timezone.utc).isoformat()}, indent=2), encoding="utf-8")
+        return tag
+    except Exception as e:
+        if TAG_CACHE.exists():
+            print(f"WARN: GitHub releases API unavailable ({e}); using cached tag {TAG_CACHE}")
+            return json.loads(TAG_CACHE.read_text(encoding="utf-8"))["tag"]
+        print(f"WARN: GitHub releases API unavailable ({e}) and no cache; release tag left empty")
+        return ""
+
+
 def snapshot_date():
     for p in (SATS, SITE_SATS):
         if p.exists():
@@ -74,6 +98,7 @@ def main():
     version, released = read_cff()
     zen, src = zenodo_latest()
     snap = snapshot_date()
+    tag = latest_release_tag()
     # Never pair "version X" with the DOI of a different archived release. Between
     # bumping CITATION.cff and Zenodo minting the new version's DOI, cite the
     # concept DOI (it always resolves to the latest archived release) instead.
@@ -87,7 +112,7 @@ def main():
         "generated": datetime.now(timezone.utc).isoformat(),
         "version": version,
         "date_released": released,
-        "publisher_year": int(released[:4]),
+        "release_tag": tag,
         "concept_doi": zen["concept_doi"],
         "version_doi": doi,
         "version_doi_version": zen["version_doi_version"],
@@ -96,7 +121,7 @@ def main():
     }
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
-    print(f"citation.json: version {version} · snapshot {snap} · "
+    print(f"citation.json: version {version} · release tag {tag or 'unknown'} · snapshot {snap} · "
           f"(latest archive {zen['version_doi_version'] or 'unknown'}) · cited DOI {doi} · concept DOI {zen['concept_doi']} [{src}]")
 
 

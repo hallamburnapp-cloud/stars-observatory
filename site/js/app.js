@@ -12,7 +12,7 @@ const EARTH_R = 6371;          // km (mean)
 const SCALE = 1 / 1000;        // scene units: 1 unit = 1000 km
 const RE_SCENE = EARTH_R * SCALE;
 // Support / donation link — set to a Ko-fi or GitHub Sponsors URL to enable
-// the support UI (footer link + provenance-panel box). null = hidden.
+// the support button in the top bar and the About panel link. null = hidden.
 const SUPPORT_URL = 'https://ko-fi.com/hallamburnapp';
 
 // ---- palettes ----
@@ -1280,13 +1280,13 @@ const SCENARIOS = [
     tag: 'ESA’s first manoeuvre against a large-constellation satellite',
     intro: '<strong style="color:var(--accent-warn)">2 September 2019.</strong> ESA’s Aeolus performed the agency’s first collision-avoidance manoeuvre to protect one of its spacecraft from a satellite in a large constellation — SpaceX’s Starlink-44 — half an orbit before the predicted conjunction.',
     steps: [
-      { date: 'c. 26–27 Aug 2019', crit: false, txt: 'Data from the US Air Force 18th Space Control Squadron flag a potential conjunction at 11:02 UTC on 2 September between Aeolus (ESA Earth-observation mission) and Starlink-44 (SpaceX) — ‘about a week’ before the event, according to ESA.', prob: null },
+      { date: 'About a week before', crit: false, txt: 'Data from the US Air Force 18th Space Control Squadron flag a potential conjunction at 11:02 UTC on 2 September between Aeolus (ESA Earth-observation mission) and Starlink-44 (SpaceX) — ‘about a week’ before the event, according to ESA.', prob: null },
       { date: '28 Aug 2019', crit: false, txt: 'With the probability rising but still below threshold (SpaceX puts it at about 1 in 50,000), ESA emails the Starlink team to discuss options. Within a day SpaceX replies that it has no plan to act at that point.', prob: 'P ≈ 1/50,000 · operators in contact' },
       { date: '29 Aug 2019 (evening)', crit: true, txt: 'Collision probability exceeds ESA’s 1-in-10,000 manoeuvre threshold for the first time. ESA prepares a manoeuvre that would raise Aeolus by about 350 m and keeps monitoring.', prob: 'P > 1/10,000 · ESA threshold crossed' },
       { date: '29 Aug – 1 Sep 2019', crit: true, txt: 'US data show the probability still rising (SpaceX later cites 1.69 × 10⁻³). A bug in SpaceX’s on-call paging system means the Starlink operator never sees ESA’s follow-up emails. On Sunday 1 September, with P ≈ 1 in 1,000 (ten times ESA’s threshold), ESA decides to manoeuvre alone, relying on SpaceX’s earlier statement that Starlink-44 would not move.', prob: 'P ≈ 1/1,000 · follow-ups unseen' },
       { date: '2 Sep 2019 · 10:14 UTC', crit: true, txt: 'Aeolus fires its thrusters at 10:14, 10:17 and 10:18 UTC, half an orbit before the predicted 11:02 UTC conjunction, raising its altitude by about 350 m — ESA’s first collision-avoidance manoeuvre to protect one of its spacecraft from a satellite in a large constellation.', prob: 'Manoeuvre executed · T-½ orbit' }
     ],
-    caption: '<strong>Article IX OST.</strong> The consultation clause of Article IX applies where a State Party ‘has reason to believe’ that an activity or experiment planned by it or its nationals in outer space ‘would cause potentially harmful interference’ with activities of other States Parties. <strong>Fact pattern.</strong> The predicted conjunction was knowable from US tracking data about a week in advance (c. 26–27 August 2019). ESA and SpaceX were in contact by email from 28 August. ESA’s manoeuvre threshold was first crossed on the evening of 29 August; ESA decided on 1 September and manoeuvred at 10:14 UTC on 2 September, about 48 minutes before the predicted 11:02 UTC conjunction. The window from first warning to manoeuvre was about a week; from threshold crossing to manoeuvre, under four days.',
+    caption: '<strong>Article IX OST.</strong> The consultation clause of Article IX applies where a State Party ‘has reason to believe’ that an activity or experiment planned by it or its nationals in outer space ‘would cause potentially harmful interference’ with activities of other States Parties. <strong>Fact pattern.</strong> The predicted conjunction was knowable from US tracking data about a week in advance, according to ESA. ESA and SpaceX were in contact by email from 28 August. ESA’s manoeuvre threshold was first crossed on the evening of 29 August; ESA decided on 1 September and manoeuvred at 10:14 UTC on 2 September, about 48 minutes before the predicted 11:02 UTC conjunction. The window from first warning to manoeuvre was about a week; from threshold crossing to manoeuvre, under four days.',
     viz: { mode: 'pair' }
   },
   {
@@ -2199,7 +2199,6 @@ function buildProvenance() {
         ['Jeff Foust, ‘ESA Spacecraft Dodges Potential Collision with Starlink Satellite’ (<i>SpaceNews</i>, 2 September 2019)' + acc, 'https://spacenews.com/esa-spacecraft-dodges-potential-collision-with-starlink-satellite/'],
         ['Mike Wall, ‘European Satellite Dodges Potential Collision with SpaceX Starlink Craft’ (<i>Space.com</i>, 3 September 2019)' + acc, 'https://www.space.com/spacex-starlink-esa-satellite-collision-avoidance.html']] },
       { t: 'Iridium 33 / Cosmos 2251 (2009)', links: [
-        ['TS Kelso, ‘Analysis of the Iridium 33–Cosmos 2251 Collision’ (AAS/AIAA Astrodynamics Specialist Conference, Pittsburgh, August 2009) AAS 09-368', 'https://celestrak.org/publications/AAS/09-368/AAS-09-368.pdf'],
         ['Phillip D Anz-Meador and J-C Liou, ‘Analysis and Consequences of the Iridium 33–Cosmos 2251 Collision’ (38th COSPAR Scientific Assembly, Bremen, July 2010)', 'https://ntrs.nasa.gov/citations/20100008433'],
         ['‘Satellite Collision Leaves Significant Debris Clouds’ (2009) 13(2) <i>Orbital Debris Quarterly News</i> 1', 'https://orbitaldebris.jsc.nasa.gov/quarterly-news/pdfs/ODQNv13i2.pdf'],
         ['Ryan Shepperd, ‘Subsequent Assessment of the Collision between Iridium 33 and COSMOS 2251’ (Advanced Maui Optical and Space Surveillance Technologies Conference, Maui, September 2023)', 'https://amostech.com/TechnicalPapers/2023/Conjunction-RPO/Shepperd.pdf'],
@@ -2216,14 +2215,11 @@ function buildProvenance() {
         ['UNGA Verbatim Record (7 December 2022) UN Doc A/77/PV.46', 'https://undocs.org/A/77/PV.46']] },
       { t: 'Luch / Olymp GEO proximity operations (2014–26)', links: [
         ['Mike Gruss, ‘Russian Satellite Maneuvers, Silence Worry Intelsat’ (<i>SpaceNews</i>, 9 October 2015)' + acc, 'https://spacenews.com/russian-satellite-maneuvers-silence-worry-intelsat/'],
-        ['John Leicester, Sylvie Corbet and Aaron Mehta, ‘“Espionage”: French Defense Head Charges Russia of Dangerous Games in Space’ (<i>Defense News</i>, 7 September 2018)' + acc, 'https://www.defensenews.com/space/2018/09/07/espionage-french-defense-head-charges-russia-of-dangerous-games-in-space/'],
-        ['Anatoly Zak, ‘Olymp-K’ (<i>RussianSpaceWeb</i>)' + acc, 'http://www.russianspaceweb.com/olymp.html'],
         ['Andrew Jones, ‘Russian “Inspector” Satellite Appears to Break Apart in Orbit, Raising Debris Concerns’ (<i>Space.com</i>, 30 January 2026)' + acc, 'https://www.space.com/space-exploration/launches-spacecraft/russian-inspector-satellite-appears-to-break-apart-in-orbit-raising-debris-concerns']] },
       { t: 'Article IX: text and practice', links: [
         ['Treaty on Principles Governing the Activities of States in the Exploration and Use of Outer Space, including the Moon and Other Celestial Bodies (opened for signature 27 January 1967, entered into force 10 October 1967) 610 UNTS 205, art IX', 'https://www.unoosa.org/oosa/en/ourwork/spacelaw/treaties/outerspacetreaty.html'],
         ['Kai-Uwe Schrogl, ‘“Due Regard” in Outer Space – a Lost Cause?’ (<i>Geneva Centre for Security Policy</i>, In Focus, 13 February 2026)' + acc, 'https://www.gcsp.ch/sites/default/files/2026-02/In%20Focus_26_Schrogl.pdf']] },
       { t: 'Starlink autonomous collision avoidance', links: [
-        ['Tereza Pultarova, ‘SpaceX Starlink Satellites Made 50,000 Collision-Avoidance Maneuvers in the Past 6 Months’ (<i>Space.com</i>, 23 July 2024)' + acc, 'https://www.space.com/spacex-starlink-50000-collision-avoidance-maneuvers-space-safety'],
         ['‘SpaceX Destroyed 260 Starlink Satellites in the Atmosphere within Six Months, According to Its Semi-annual Report Filed with the FCC’ (<i>Gigazine</i>, 6 July 2026) [reporting 65,137 and 142,015 manoeuvres by first- and second-generation satellites]' + acc, 'https://gigazine.net/gsc_news/en/20260706-spacex-starlink-satelite']] }
     ];
     casesEl.innerHTML = cases.map(c =>
@@ -2291,10 +2287,7 @@ function wireUI() {
 
   // support / donation UI (hidden until SUPPORT_URL is configured)
   if (SUPPORT_URL) {
-    $('#footSupport').style.display = '';
-    $('#footSupportLink').href = SUPPORT_URL;
-    $('#supportBox').style.display = '';
-    $('#supportBtn').href = SUPPORT_URL;
+    const as = $('#aboutSupport'); if (as) as.href = SUPPORT_URL;
     const ts = $('#topSupport'); if (ts) { ts.href = SUPPORT_URL; ts.style.display = ''; }
   }
 
@@ -2322,24 +2315,26 @@ function citeForms() {
   // the manifest's snapshot only if the dataset carried no date).
   const loaded = ((state.data && state.data.generated) || '').substring(0, 10);
   const snapISO = loaded || c.snapshot_date;
-  const D = oscolaDate(snapISO), V = c.version, Y = c.publisher_year, DOI = c.version_doi;
-  // OSCOLA 5 §3.7.1 / §3.1.3: a pinpoint comes at the end of the citation and
-  // before the DOI, after the closing bracket with no comma.
-  const footPin = (pin) => `Hallam Burnapp, 'STARS Observatory' (version ${V}, data snapshot ${D}, University of Aberdeen ${Y})${pin ? ' ' + pin : ''} DOI: ${DOI}.`;
+  // Accessed = the day the reader consults the instrument (their UTC date).
+  const accISO = new Date().toISOString().substring(0, 10);
+  const D = oscolaDate(snapISO), V = c.version, DOI = c.version_doi, A = oscolaDate(accISO);
+  const URL_ = 'https://starsobservatory.org';
+  // Author, title, version, snapshot date, URL and accessed date, then the DOI;
+  // a pinpoint, if any, comes before the URL (OSCOLA 5 §3.7.1).
+  const footPin = (pin) => `Hallam Burnapp, 'STARS Observatory' (version ${V}, data snapshot ${D})${pin ? ' ' + pin : ''} <${URL_}> accessed ${A}, DOI: ${DOI}.`;
   return {
     foot: footPin(''),
     footPin,
-    bib: `Burnapp H, 'STARS Observatory' (version ${V}, data snapshot ${D}, University of Aberdeen ${Y}) DOI: ${DOI}`,
-    bibtex: `@software{burnapp_stars_${Y},
+    bib: `Burnapp H, 'STARS Observatory' (version ${V}, data snapshot ${D}) <${URL_}> accessed ${A}, DOI: ${DOI}`,
+    bibtex: `@software{burnapp_stars_${c.date_released.substring(0, 4)},
   author        = {Burnapp, Hallam},
   title         = {STARS Observatory},
   version       = {${V}},
   date          = {${c.date_released}},
-  year          = {${Y}},
-  organization  = {University of Aberdeen},
   license       = {MIT},
   note          = {Data: CelesTrak GP/SATCAT and McDowell GCAT; data snapshot of ${snapISO}},
-  url           = {https://starsobservatory.org},
+  url           = {${URL_}},
+  urldate       = {${accISO}},
   doi           = {${DOI}}
 }`,
     snapLoaded: loaded, snapManifest: c.snapshot_date
@@ -2370,6 +2365,14 @@ function setCiteForm(form) {
   });
 }
 
+// The displayed version is the latest GitHub release tag, resolved at build time
+// by pipeline/build_citation.py — never a literal in this file.
+function aboutVersionText(c) {
+  const tag = c && c.release_tag;
+  if (!tag) return 'Version unavailable';
+  const cff = c.version ? 'v' + c.version : '';
+  return cff && cff !== tag ? `${tag} (latest release; ${cff} in preparation)` : tag;
+}
 function fillCitations() {
   const os = $('#citeOscola'), bib = $('#citeBibtex'), db = $('#doiBlock'), g = $('#citeGuide');
   const c = state.citation, f = citeForms();
@@ -2391,8 +2394,9 @@ function fillCitations() {
     `Concept DOI <a href="https://doi.org/${c.concept_doi}" target="_blank" rel="noopener">${c.concept_doi}</a> — always resolves to the latest archived version · ` +
     `<a href="https://github.com/hallamburnapp-cloud/stars-observatory" target="_blank" rel="noopener">source &amp; data pipeline</a> · ` +
     `<a href="https://github.com/hallamburnapp-cloud/stars-observatory-data/releases/tag/data-archive" target="_blank" rel="noopener">daily data archive</a> — every cited snapshot stays retrievable`;
-  const fdv = $('#footDoiVal'); if (fdv) fdv.textContent = c.version_doi;
-  const fda = $('#footDoi'); if (fda) fda.href = 'https://doi.org/' + c.version_doi;
+  $$('[data-cite="doi"]').forEach(el => { el.textContent = c.version_doi; });
+  $$('[data-cite-href="doi"]').forEach(el => { el.href = 'https://doi.org/' + c.version_doi; });
+  const av = $('#aboutVersion'); if (av) av.textContent = aboutVersionText(c);
   // If the dataset the browser loaded disagrees with the deployed manifest
   // (e.g. a stale cache), say so — the citation always follows the loaded data.
   const w = $('#citeWarn');
@@ -2408,14 +2412,11 @@ function wireUITail() {
   $$('.tabbar button').forEach(btn => btn.addEventListener('click', () => openPanel(btn.dataset.panel)));
   $$('#drawerNav button').forEach(btn => btn.addEventListener('click', () => openPanel(btn.dataset.panel)));
   $('#drawerClose').addEventListener('click', closeDrawer);
-  $('#footProv').addEventListener('click', () => openPanel('prov'));
-  $('#footCite').addEventListener('click', () => {
-    openPanel('prov');
-    setTimeout(() => {
-      const el = $('#citeSec'); const body = el && el.closest('.drawer-body');
-      if (el && body) body.scrollTo({ top: el.getBoundingClientRect().top - body.getBoundingClientRect().top + body.scrollTop - 10, behavior: 'smooth' });
-    }, 350);
-  });
+  // About: top-bar link, footer link, any [data-open] link, and #about / /about
+  const openAbout = (e) => { if (e) e.preventDefault(); openPanel('about'); };
+  ['#topAbout', '#footAbout'].forEach(id => { const el = $(id); if (el) el.addEventListener('click', openAbout); });
+  $$('[data-open]').forEach(el => el.addEventListener('click', () => openPanel(el.dataset.open)));
+  if (location.hash === '#about' || INITIAL_QUERY.has('about')) openPanel('about');
   fillCitations();
   // Citation form switch — selecting a form renders AND copies it.
   const csF = $('#csFoot'), csB = $('#csBib');
@@ -2548,6 +2549,7 @@ const PANEL_META = {
   art6: { tag: 'Analytical panel · 01', title: 'Article VI — Supervision burden' },
   reggap: { tag: 'Analytical panel · 02', title: 'Registration lag' },
   art9: { tag: 'Analytical panel · 03', title: 'Article IX — Incident replays' },
+  about: { tag: 'About', title: 'About STARS Observatory' },
   prov: { tag: 'Analytical panel · 04', title: 'Provenance & limitations' }
 };
 function openPanel(name) {

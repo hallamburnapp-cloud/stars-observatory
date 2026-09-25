@@ -70,7 +70,7 @@ Live catalogue data are drawn from CelesTrak (GP and SATCAT, OMM formats). Regis
 - **[GCAT](https://planet4589.org/space/gcat/)** — J. McDowell, General Catalog of Artificial Space Objects, used under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
 - **[UNOOSA, Status of International Agreements relating to activities in outer space as at 1 January 2026](https://www.unoosa.org/unoosa/uploads/res/oosadoc/data/documents/2026/aac_105c_22026crp/aac_105c_22026crp_9rev_1_0_html/AC105_C2_2026_CRP09Rev01E.pdf)** — UN Doc A/AC.105/C.2/2026/CRP.9/Rev.1; sole source of treaty party status.
 - **[NASA Blue Marble](https://visibleearth.nasa.gov/collection/1484/blue-marble)** — Earth surface texture, courtesy NASA Earth Observatory.
-- **[NASA Black Marble / Earth at Night](https://earthobservatory.nasa.gov/features/NightLights)** — night-lights texture, courtesy NASA Earth Observatory.
+- **NASA Black Marble / Earth at Night** — night-lights texture, courtesy NASA Earth Observatory.
 - **[Space-Track GP history mirror (oxzoid/space-track-tle-history, Hugging Face)](https://huggingface.co/datasets/oxzoid/space-track-tle-history)** — archival general-perturbations element sets (US Space Surveillance Network via Space-Track.org) used to reconstruct the historical event replays.
 
 ### Third-party libraries and fonts
