@@ -793,6 +793,7 @@ function onPointerDown(e) {
   downSnapT = performance.now();
 }
 let lastUp = null; // last pointerup's classification (read by the QA gate)
+let lastClose = null; // how the object card was last closed (read by the QA gate)
 renderPickBind();
 function renderPickBind() {
   document.addEventListener('pointerup', (e) => {
@@ -805,7 +806,9 @@ function renderPickBind() {
     if (e.target !== renderer?.domElement) return;
     setPointerFromClient(e.clientX, e.clientY);
     pickAt(e.clientX, e.clientY);
-    if (pickEl) swallowClickUntil = performance.now() + 700;
+    // the click this tap produces lands after the card / chooser has opened,
+    // possibly on it — see the capture listener below
+    swallowClickUntil = performance.now() + 700;
   });
 }
 
@@ -903,10 +906,15 @@ function placePickChooser(el, sx, sy) {
   el.style.left = clamp(sx - W / 2, M, vw - W - M) + 'px';
   el.style.top = (below >= above ? sy + G : sy - G - H) + 'px';
 }
-// Swallow the one click event that the opening tap/click itself produces.
+// Swallow the one click event that the picking tap/click itself produces
+// when it lands anywhere but the globe — e.g. on the chooser or the object
+// card that the tap has just opened under the finger (on phones the card's
+// close button sits over the right-hand edge of the globe).
 let swallowClickUntil = 0;
+// a new touch or press anywhere else is a deliberate action — never swallow it
+document.addEventListener('pointerdown', (e) => { if (e.target !== renderer?.domElement) swallowClickUntil = 0; }, true);
 document.addEventListener('click', (e) => {
-  if (performance.now() < swallowClickUntil && pickEl && pickEl.contains(e.target)) {
+  if (performance.now() < swallowClickUntil && e.target !== renderer?.domElement) {
     e.stopPropagation(); e.preventDefault();
   }
   swallowClickUntil = 0;
@@ -2320,7 +2328,7 @@ function wireUI() {
   }
 
   // detail close
-  $('#dClose').addEventListener('click', () => { $('#detail').classList.remove('show'); selectedIndex = -1; if(!state._scenIsolate) updateColors(); selMarker.visible=false; clearSelOrbit(); syncURL(); });
+  $('#dClose').addEventListener('click', (e) => { lastClose = { t: Math.round(performance.now()), trusted: e.isTrusted, x: Math.round(e.clientX), y: Math.round(e.clientY) }; $('#detail').classList.remove('show'); selectedIndex = -1; if(!state._scenIsolate) updateColors(); selMarker.visible=false; clearSelOrbit(); syncURL(); });
 
   // catalogue search (name / NORAD / international designator)
   wireSearch();
@@ -3104,6 +3112,7 @@ window.__QA = {
   detailNorad() { const d = $('#detail'); return (d && d.classList.contains('show') && $('#dRows')) ? $('#dRows').textContent : ''; },
   chooserOpen() { return !!pickEl; },
   get lastUp() { return lastUp; },
+  get lastClose() { return lastClose; },
   chooserPick(idx) { const b = pickEl && pickEl.querySelector(`.sr[data-i="${idx}"]`); if (b) { b.click(); return true; } return false; },
   // Dense-cluster chooser test: find two rendered objects that project within
   // a few pixels of each other, click between them, and assert the chooser
