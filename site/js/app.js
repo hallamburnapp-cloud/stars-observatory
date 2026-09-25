@@ -46,7 +46,7 @@ const CONST_COLORS = {
 };
 
 const state = {
-  data: null, stats: null, lag: null, natlaw: null,
+  data: null, stats: null, lag: null,
   N: 0,
   // per-sat static arrays
   objType: null, ownerIdx: null, constIdx: null, registered: null,
@@ -111,14 +111,13 @@ function _legacyCopy(txt) {
 // ============================================================
 async function loadData() {
   setLoad('Loading orbital catalogue…', 10);
-  const [sats, stats, lag, natlaw, citation] = await Promise.all([
+  const [sats, stats, lag, citation] = await Promise.all([
     loadCatalog(),
     fetch('./data/stats.json', { cache: 'no-cache' }).then(r => r.json()),
     fetch('./data/lag.json', { cache: 'no-cache' }).then(r => r.json()).catch(() => null),
-    fetch('./data/national_law.json', { cache: 'no-cache' }).then(r => r.json()).catch(() => null),
     fetch('./data/citation.json', { cache: 'no-cache' }).then(r => r.json()).catch(() => null)
   ]);
-  state.data = sats; state.stats = stats; state.lag = lag; state.natlaw = natlaw;
+  state.data = sats; state.stats = stats; state.lag = lag;
   state.citation = citation;
   const arr = sats.sats;
   const N = arr.length;
@@ -1024,7 +1023,7 @@ function showDetail(i) {
   rows.innerHTML = `
     <div class="drow"><span class="k">NORAD ID</span><span class="v">${state.norad[i]}</span></div>
     <div class="drow"><span class="k">Intl designator</span><span class="v">${state.intl[i]}</span></div>
-    <div class="drow"><span class="k">Attributed State / owner</span><span class="v"><button class="dlink" id="dDossier" title="Open the State dossier">${state.ownerName[i]} (${state.ownerCode[i]})</button></span></div>
+    <div class="drow"><span class="k">Attributed State / owner</span><span class="v">${state.ownerName[i]} (${state.ownerCode[i]})</span></div>
     <div class="drow"><span class="k">Constellation</span><span class="v">${state.constLabel[i] || '—'}</span></div>
     <div class="drow"><span class="k">UN registration</span><span class="v">${regBadge}</span></div>
     <div class="drow"><span class="k">Launch year</span><span class="v">${state.launchYear[i] || '—'}</span></div>
@@ -1041,8 +1040,6 @@ function showDetail(i) {
       </div>
       <button class="dcopy" id="dCopy">Copy link to this object</button>
     </div>`;
-  const dd = $('#dDossier');
-  if (dd) dd.addEventListener('click', () => openDossier(state.ownerCode[i]));
   const cp = $('#dCopy');
   if (cp) cp.addEventListener('click', () => {
     const url = location.origin + location.pathname + '?sat=' + state.norad[i];
@@ -2142,76 +2139,10 @@ function buildLagIndex() {
 }
 
 // ============================================================
-// 11c. Supervisory machinery — national space legislation (Task B)
-// ============================================================
-// Joins site/data/national_law.json (UNOOSA national space-law database, keyed
-// by SATCAT owner code) with the live payload populations in stats.json. All
-// counts are computed at runtime; a daily refresh of either file re-derives them.
-function buildSupervision() {
-  const nl = state.natlaw;
-  const heroEl = $('#supHero'), barEl = $('#supBar'), legEl = $('#supLegend');
-  const noLawEl = $('#supNoLaw'), footEl = $('#supFoot');
-  if (!nl || !state.stats) {
-    if (heroEl) heroEl.innerHTML = '';
-    if (footEl) footEl.textContent = 'National space-law dataset unavailable.';
-    return;
-  }
-  const pay = state.stats.by_owner_payloads || {};
-  const names = state.stats.owner_names || {};
-  // Classify every owner's payloads by the supervising State's legislation.
-  const cat = { yes: 0, no: 0, consortium: 0, unknown: 0 };
-  const noLawOwners = [];
-  let classified = 0, total = 0;
-  for (const [code, n] of Object.entries(pay)) {
-    total += n;
-    const rec = nl.states[code];
-    let law = rec ? rec.law : 'unknown';
-    if (!['yes','no','consortium','unknown'].includes(law)) law = 'unknown';
-    cat[law] += n; classified += n;
-    if (law === 'no') noLawOwners.push({ code, n, name: (rec && rec.state) || names[code] || code, rec });
-  }
-  const COL = { yes: '#55d18b', consortium: '#4fd1e0', unknown: '#8a9bb5', no: '#ff6b6b' };
-  const LAB = { yes: 'Dedicated national space law', consortium: 'Consortium / delegated regime', unknown: 'No data / unattributed', no: 'No dedicated space law' };
-
-  const pct = (v) => total ? (v / total * 100) : 0;
-  heroEl.innerHTML = `
-    <div class="big">${Math.round(pct(cat.no)).toLocaleString('en-GB')}%</div>
-    <div class="cap" style="margin-top:6px">of catalogued payloads are attributed to a State that has <strong>no authorisation regime in binding domestic law</strong> — the domestic machinery through which Article VI’s requirement of ‘authorization and continuing supervision’ is usually discharged. ${cat.no.toLocaleString('en-GB')} of ${total.toLocaleString('en-GB')} payloads.</div>`;
-
-  const order = ['yes','consortium','unknown','no'];
-  barEl.innerHTML = `<div class="stack-bar">${order.map(k =>
-    `<span style="width:${pct(cat[k]).toFixed(2)}%;background:${COL[k]}" title="${LAB[k]}: ${cat[k].toLocaleString('en-GB')} (${pct(cat[k]).toFixed(1)}%)"></span>`).join('')}</div>`;
-  legEl.innerHTML = order.map(k =>
-    `<span><i style="background:${COL[k]}"></i>${LAB[k]} · ${cat[k].toLocaleString('en-GB')} (${pct(cat[k]).toFixed(1)}%)</span>`).join('');
-
-  // Largest payload populations under a State with no dedicated space law.
-  noLawOwners.sort((a,b) => b.n - a.n);
-  const top = noLawOwners.slice(0, 8);
-  if (top.length === 0) {
-    noLawEl.innerHTML = '<div class="cap">No owner with a substantial payload population currently falls in the "no dedicated space law" category.</div>';
-  } else {
-    const rows = top.map(o => {
-      const instr = o.rec && o.rec.instrument ? o.rec.instrument : 'No comprehensive space act in force';
-      return `<tr><td>${o.name}</td><td class="num hl">${o.n.toLocaleString('en-GB')}</td><td style="font-size:11px;color:var(--txt-dim)">${instr}</td></tr>`;
-    }).join('');
-    noLawEl.innerHTML = `<div class="lag-scroll"><table class="dt"><thead><tr>
-      <th>State (owner)</th><th class="num">Payloads</th><th>Statutory position</th>
-      </tr></thead><tbody>${rows}</tbody></table></div>`;
-  }
-  footEl.innerHTML = `<strong>Method.</strong> Payload populations from the live catalogue are joined to the UNOOSA national space-law database by SATCAT owner code. ‘No dedicated space law’ means the attributed State has no authorisation regime for non-governmental space activities in binding domestic law — statute or binding regulation — in force; agency-creation, registration-only, telecoms-only and non-binding policy regimes are counted as ‘no dedicated space law’, while binding administrative regimes without a framework statute (eg China’s 2001–02 Measures) and remote-sensing-only regimes are counted as a regime and flagged in the dossier. Entries whose SATCAT owner is not a single State are shown separately: intergovernmental organisations (eg ESA, EUMETSAT, Arabsat), for which Article VI’s third sentence applies; commercial operators coded by company (eg Intelsat, Eutelsat, SES, Globalstar), whose activities are authorised by a licensing State named in each dossier; and joint multi-State programmes. Source: <a href="${nl.source_url}" target="_blank" rel="noopener">${nl.source}</a>.`;
-}
-
-// ============================================================
 // 11e. Provenance additions (Phase 2 · Task E)
 // ============================================================
 function buildProvenance() {
-  const nl = state.natlaw;
-  const natEl = $('#provNatlaw'), ledEl = $('#provLedger'), casesEl = $('#provCases');
-  if (natEl) {
-    natEl.innerHTML = nl
-      ? `<div class="pc-h">National space law</div><a href="${nl.source_url}" target="_blank" rel="noopener">${nl.source}</a> — ${Object.keys(nl.states).length} States/entities classified by statutory position. Snapshot generated ${oscolaDate(nl.generated)}. Joined to live payload populations by SATCAT owner code.`
-      : `<div class="pc-h">National space law</div>Dataset unavailable.`;
-  }
+  const ledEl = $('#provLedger'), casesEl = $('#provCases');
   if (ledEl) {
     const lag = state.lag;
     ledEl.innerHTML = lag
@@ -2577,8 +2508,7 @@ const PANEL_META = {
   art6: { tag: 'Analytical panel · 01', title: 'Article VI — Supervision burden' },
   reggap: { tag: 'Analytical panel · 02', title: 'UN registration gap' },
   art9: { tag: 'Analytical panel · 03', title: 'Article IX — Decision-time compression' },
-  prov: { tag: 'Analytical panel · 04', title: 'Provenance & limitations' },
-  dossier: { tag: 'Analytical panel · 05', title: 'State dossier' }
+  prov: { tag: 'Analytical panel · 04', title: 'Provenance & limitations' }
 };
 function openPanel(name) {
   $$('.panel').forEach(p => p.classList.remove('active'));
@@ -2589,7 +2519,6 @@ function openPanel(name) {
   $('#drawer').querySelector('.drawer-body').scrollTop = 0;
   $('#drawer').classList.add('open');
   dismissFirstHint();
-  if (name === 'dossier') { if (!dossierCode) { openDossier(); return; } populateDossierSelect(); $('#dosState').value = dossierCode; renderDossier(); }
   syncURL();
   // Defensive: some browsers scroll fixed-layout ancestors on focus/scrollIntoView,
   // which has no scrollbar to recover from. Pin them back to the origin.
@@ -2601,22 +2530,20 @@ function closeDrawer() { $('#drawer').classList.remove('open'); syncURL(); }
 
 
 // ============================================================
-// 13. Shareable views, CSV export, State dossier
+// 13. Shareable views, CSV export
 // ============================================================
 // The address bar always describes the current view (colour mode, filters,
-// selected object, open dossier), so any view can be shared or cited as-is.
+// selected object), so any view can be shared or cited as-is.
 const FILTER_KEYS = ['state', 'type', 'const', 'reg', 'regime'];
 // The query as the page was opened: read by applyViewFromURL/applyPermalink,
 // which run after syncURL may already have rewritten location.search.
 const INITIAL_QUERY = new URLSearchParams(location.search);
-let dossierCode = '';
 let viewReady = false; // no URL writes until the URL's own view has been applied
 function viewQuery() {
   const q = new URLSearchParams();
   if (state.colorMode !== 'type') q.set('color', state.colorMode);
   for (const k of FILTER_KEYS) if (state.filters[k] !== '') q.set(k, state.filters[k]);
   if (selectedIndex >= 0) q.set('sat', String(state.norad[selectedIndex]));
-  if (dossierCode && $('#drawer').classList.contains('open') && $('#panel-dossier').classList.contains('active')) q.set('dossier', dossierCode);
   return q;
 }
 function viewURL() {
@@ -2630,12 +2557,6 @@ function syncURL() {
     const next = location.pathname + (q ? '?' + q : '') + location.hash;
     if (next !== location.pathname + location.search + location.hash) history.replaceState(null, '', next);
   } catch (e) { /* sandboxed iframes may forbid history writes */ }
-  const d = $('#vDossier');
-  if (d) {
-    const code = state.filters.state;
-    d.hidden = !code;
-    if (code) d.textContent = `State dossier: ${state.stats.owner_names[code] || code} →`;
-  }
 }
 function setColorMode(mode) {
   const btn = document.querySelector(`#colorModes .chip[data-mode="${mode}"]`);
@@ -2646,7 +2567,7 @@ function setColorMode(mode) {
   renderLegend();
   return true;
 }
-// Apply ?color= &state= &type= &const= &reg= &regime= &dossier= (and ?sat=
+// Apply ?color= &state= &type= &const= &reg= &regime= (and ?sat=
 // via applyPermalink). Unknown values are ignored rather than half-applied.
 function applyViewFromURL() {
   const q = INITIAL_QUERY;
@@ -2663,8 +2584,6 @@ function applyViewFromURL() {
     if (chip) { $$('#fRegime .chip').forEach(b => b.classList.toggle('active', b === chip)); state.filters.regime = r; }
   }
   refreshFilters();
-  const dos = q.get('dossier');
-  if (dos && state.stats.owner_names[dos] !== undefined) openDossier(dos);
   viewReady = true;
   syncURL();
 }
@@ -2709,137 +2628,7 @@ function flashButton(btn, msg, back) {
   clearTimeout(btn._t); btn._t = setTimeout(() => { btn.textContent = back; }, 1800);
 }
 
-// ---- State dossier ---------------------------------------------------------
-function populateDossierSelect() {
-  const sel = $('#dosState'); if (!sel || sel.options.length) return;
-  const pay = state.stats.by_owner_payloads || {}, all = state.stats.by_owner_all || {};
-  const codes = Object.keys(state.stats.owner_names).filter(c => (all[c] || 0) > 0)
-    .sort((a, b) => (pay[b] || 0) - (pay[a] || 0) || (all[b] || 0) - (all[a] || 0));
-  sel.innerHTML = codes.map(c => `<option value="${c}">${escapeHTML(state.stats.owner_names[c])} (${c})</option>`).join('');
-  sel.addEventListener('change', () => { dossierCode = sel.value; renderDossier(); syncURL(); });
-}
 function escapeHTML(s) { return String(s).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch])); }
-function openDossier(code) {
-  populateDossierSelect();
-  const pay = state.stats.by_owner_payloads || {};
-  dossierCode = code || dossierCode || state.filters.state || Object.entries(pay).sort((a, b) => b[1] - a[1])[0][0];
-  $('#dosState').value = dossierCode;
-  openPanel('dossier');
-}
-function dossierFacts(code) {
-  const st = state.stats, pay = st.by_owner_payloads || {};
-  const payN = pay[code] || 0;
-  const payTotal = Object.values(pay).reduce((a, b) => a + b, 0);
-  const rank = Object.entries(pay).sort((a, b) => b[1] - a[1]).findIndex(([c]) => c === code) + 1;
-  const [reg, unreg] = (st.registration_by_owner || {})[code] || [0, 0];
-  let wr = 0, wu = 0; for (const [r, u] of Object.values(st.registration_by_owner || {})) { wr += r; wu += u; }
-  const lagO = state.lag && state.lag.lag_by_owner ? state.lag.lag_by_owner[code] : null;
-  const law = state.natlaw && state.natlaw.states ? state.natlaw.states[code] : null;
-  const consts = {}; let prop = 0;
-  for (let i = 0; i < state.N; i++) if (state.ownerCode[i] === code) { prop++; const l = state.constLabel[i]; if (l) consts[l] = (consts[l] || 0) + 1; }
-  return { name: st.owner_names[code] || code, payN, payTotal, rank, all: (st.by_owner_all || {})[code] || 0,
-    active: (st.by_owner_active || {})[code] || 0, reg, unreg, worldUnregPct: (wr + wu) ? wu / (wr + wu) * 100 : 0,
-    lagO, law, consts: Object.entries(consts).sort((a, b) => b[1] - a[1]), prop };
-}
-// Footnote pinpoints the dossier (OSCOLA 5 §3.7.1: pinpoint before the DOI);
-// a bibliography lists the instrument as a whole, so it carries no pinpoint
-// and no final full stop (OSCOLA 5 §1.7).
-function dossierCitation(name) {
-  const f = citeForms(); if (!f) return { foot: '', bib: '' };
-  return { foot: f.footPin(`State dossier: ${name}`), bib: f.bib };
-}
-// Full legal framework of a State: every relevant instrument with its status,
-// functions (authorisation, registration, liability …) and relevance to the
-// Article VI/VII/VIII/IX machinery STARS measures; pending bills and items
-// judged not relevant are listed separately so the reader sees the reasoning.
-const FN_LABEL = { 'authorisation': 'authorisation', 'continuing-supervision': 'supervision', 'registration': 'registration',
-  'liability-insurance': 'liability / insurance', 'launch-reentry': 'launch / re-entry', 'remote-sensing': 'remote sensing',
-  'spectrum-space-stations': 'spectrum / space stations', 'debris-safety': 'debris / safety', 'space-resources': 'space resources',
-  'institutional': 'institutional', 'security-foreign-ownership': 'security / foreign ownership' };
-function renderInstruments(L) {
-  const list = Array.isArray(L.instruments) ? L.instruments : [];
-  if (!list.length) return '';
-  const item = (x) => {
-    const link = x.source_url ? ` <a href="${escapeHTML(x.source_url)}" target="_blank" rel="noopener">source ↗</a>` : '';
-    const fns = (x.functions || []).map(f => `<span class="ins-fn">${escapeHTML(FN_LABEL[f] || f)}</span>`).join('');
-    const status = x.status && x.status !== 'in force' ? `<span class="ins-st">${escapeHTML(x.status)}</span>` : '';
-    return `<li class="ins"><div class="ins-n">${escapeHTML(x.name)}${link}</div>
-      <div class="ins-m">${status}${fns}</div>${x.note ? `<div class="ins-note">${escapeHTML(x.note)}</div>` : ''}</li>`;
-  };
-  const live = list.filter(x => !/pending|lapsed|repealed/.test(x.status || ''));
-  const pend = list.filter(x => /pending/.test(x.status || ''));
-  const core = live.filter(x => x.relevance === 'core'), sup = live.filter(x => x.relevance !== 'core');
-  const nr = Array.isArray(L.considered_not_relevant) ? L.considered_not_relevant : [];
-  return `
-    ${core.length ? `<h4 class="ins-h">Core instruments (authorisation, supervision, registration, liability)</h4><ul class="ins-list">${core.map(item).join('')}</ul>` : ''}
-    ${sup.length ? `<h4 class="ins-h">Supporting instruments</h4><ul class="ins-list">${sup.map(item).join('')}</ul>` : ''}
-    ${pend.length ? `<h4 class="ins-h">Pending legislation (not in force)</h4><ul class="ins-list">${pend.map(item).join('')}</ul>` : ''}
-    ${nr.length ? `<details class="ins-nr"><summary>Considered and judged not relevant (${nr.length})</summary><ul>${nr.map(x => `<li><strong>${escapeHTML(x.name)}</strong> — ${escapeHTML(x.reason)}</li>`).join('')}</ul></details>` : ''}`;
-}
-function renderDossier() {
-  const el = $('#dosBody'); if (!el || !dossierCode) return;
-  const code = dossierCode, F = dossierFacts(code);
-  const fmt = n => Number(n).toLocaleString('en-GB');
-  const pct = (a, b) => b ? (a / b * 100).toFixed(1) + '%' : '—';
-  const lawTxt = { yes: 'National authorisation regime in binding law (statute or regulation)', no: 'No dedicated national space law', consortium: 'Non-State or multi-State owner (IGO, company or joint programme) — see the supervising State(s) below', unknown: 'Not determined' };
-  const L = F.law;
-  const lawSrc = L && L.source_url ? `<a href="${escapeHTML(L.source_url)}" target="_blank" rel="noopener">source ↗</a>` : '';
-  const regTot = F.reg + F.unreg;
-  el.innerHTML = `
-    <div class="dos-h">${escapeHTML(F.name)}</div>
-    <div class="dos-sub">SATCAT owner code ${escapeHTML(code)} · data snapshot ${escapeHTML(oscolaDate(((state.data && state.data.generated) || '').substring(0, 10)))}</div>
-    <h3 class="section">Article VI — supervision burden</h3>
-    <div class="dos-kv">
-      <span class="k">Payloads on orbit</span><span class="v">${fmt(F.payN)}</span>
-      <span class="k">Share of all payloads on orbit</span><span class="v">${pct(F.payN, F.payTotal)}</span>
-      <span class="k">Rank among attributed owners</span><span class="v">${F.rank > 0 ? '#' + F.rank : '—'}</span>
-      <span class="k">Active payloads</span><span class="v">${fmt(F.active)}</span>
-      <span class="k">All catalogued objects (incl. debris, rocket bodies)</span><span class="v">${fmt(F.all)}</span>
-    </div>
-    <h3 class="section">UN registration (Registration Convention, art IV; UNGA Res 1721 B (XVI))</h3>
-    <div class="dos-kv">
-      <span class="k">Payloads with a UN registration record</span><span class="v">${fmt(F.reg)}</span>
-      <span class="k">Payloads with no UN record</span><span class="v">${fmt(F.unreg)} (${pct(F.unreg, regTot)})</span>
-      <span class="k">World average with no UN record</span><span class="v">${F.worldUnregPct.toFixed(1)}%</span>
-      <span class="k">Registrations observed by the lag ledger</span><span class="v">${F.lagO ? fmt(F.lagO.flips) : '0'}</span>
-      <span class="k">Median launch → registration lag</span><span class="v">${F.lagO && F.lagO.median_lag_days != null ? fmt(Math.round(F.lagO.median_lag_days)) + ' days' : '—'}</span>
-    </div>
-    <p class="dos-note">Lag ledger running since ${escapeHTML(state.lag && state.lag.started ? oscolaDate(state.lag.started) : '—')}; a median needs observed registrations, so States with few flips have wide uncertainty.</p>
-    <h3 class="section">Supervisory machinery</h3>
-    <div class="dos-kv stack">
-      <span class="k">National space legislation</span><span class="v">${L ? lawTxt[L.law] || escapeHTML(L.law) : '—'}</span>
-    </div>
-    ${L && L.verified ? `<p class="dos-note" style="margin:-4px 0 10px">Legal status last verified ${escapeHTML(oscolaDate(L.verified))} against official sources.</p>` : ''}
-    ${L && L.instrument ? `<div class="dos-kv stack"><span class="k">Principal instrument</span><span class="v">${escapeHTML(L.instrument)}${L.year && !String(L.instrument).includes(String(L.year)) ? ' (' + L.year + ')' : ''} ${lawSrc}</span></div>` : ''}
-    ${L && L.borderline ? `<p class="dos-note"><strong>Classification note.</strong> ${escapeHTML(L.borderline)}</p>` : ''}
-    ${L ? renderInstruments(L) : ''}
-    ${F.consts.length ? `<h3 class="section">Constellations (propagated objects)</h3><div class="dos-kv">${F.consts.slice(0, 8).map(([l, n]) => `<span class="k">${escapeHTML(l)}</span><span class="v">${fmt(n)}</span>`).join('')}</div>` : ''}
-    <h3 class="section">Cite this dossier</h3>
-    <div class="dos-note" style="margin:0 0 4px">Footnote (OSCOLA 5, pinpointed to this dossier)</div>
-    <div class="dos-cite" id="dosCite">${escapeHTML(dossierCitation(F.name).foot)}</div>
-    <div class="dos-note" style="margin:10px 0 4px">Bibliography (the instrument as a whole — no pinpoint)</div>
-    <div class="dos-cite" id="dosCiteBib">${escapeHTML(dossierCitation(F.name).bib)}</div>
-    <div class="dos-actions">
-      <button class="dcopy" id="dosCopyCite">Copy footnote</button>
-      <button class="dcopy" id="dosCopyLink">Copy link to this dossier</button>
-      <button class="dcopy" id="dosShow">Show on globe (${fmt(F.prop)})</button>
-      <button class="dcopy" id="dosCsv">Download objects (CSV)</button>
-    </div>
-    <p class="dos-note">Attribution follows the 18 SDS/CelesTrak owner convention — an evidentiary proxy for the Article VI ‘appropriate State’, not a legal determination. Catalogue-wide counts include every on-orbit object in the SATCAT; the globe and CSV cover only the propagated set (CelesTrak’s active satellites and four debris clouds).</p>`;
-  $('#dosCopyCite').addEventListener('click', e => copyText($('#dosCite').textContent).then(ok => flashButton(e.target, ok ? 'Footnote copied ✓' : 'Select the text above', 'Copy footnote')));
-  $('#dosCopyLink').addEventListener('click', e => {
-    const u = location.origin + location.pathname + '?dossier=' + encodeURIComponent(code);
-    copyText(u).then(ok => flashButton(e.target, ok ? 'Link copied ✓' : u, 'Copy link to this dossier'));
-  });
-  $('#dosShow').addEventListener('click', () => {
-    $('#fState').value = code; state.filters.state = code; refreshFilters(); closeDrawer(); syncURL();
-  });
-  $('#dosCsv').addEventListener('click', e => {
-    const idx = []; for (let i = 0; i < state.N; i++) if (state.ownerCode[i] === code) idx.push(i);
-    const n = exportCSV(idx, 'state-' + code.replace(/[^A-Za-z0-9-]/g, ''));
-    flashButton(e.target, `Downloaded ${fmt(n)} rows ✓`, 'Download objects (CSV)');
-  });
-}
 // ---- First-visit hint --------------------------------------------------------
 // Shown once per browser until the visitor dismisses it or opens any object.
 const HINT_KEY = 'stars.hintSeen';
@@ -2863,7 +2652,6 @@ function wireViewTools() {
     const n = exportCSV(filteredIndices(), viewLabel());
     flashButton(e.target, `Downloaded ${n.toLocaleString('en-GB')} rows ✓`, 'Download these objects (CSV)');
   });
-  $('#vDossier').addEventListener('click', () => openDossier(state.filters.state));
   ['#fState', '#fType', '#fConst', '#fReg'].forEach(id => $(id).addEventListener('change', syncURL));
   $$('#fRegime .chip, #colorModes .chip').forEach(b => b.addEventListener('click', syncURL));
 }
@@ -2882,7 +2670,6 @@ async function boot() {
     buildArt6();
     buildRegGap();
     buildLagIndex();
-    buildSupervision();
     buildThreeClocks();
     buildScenarioCards();
     selectScenario(0);

@@ -45,7 +45,7 @@
   "@context": "https://schema.org",
   "@type": "Dataset",
   "name": "STARS Observatory — orbital catalogue fused with Article VI & IX Outer Space Treaty obligations",
-  "description": "Daily dataset of the active satellite population plus four historical debris clouds (~19,000 objects propagated from CelesTrak GP data), with catalogue-wide statistics for all on-orbit objects, each joined to its SATCAT owner attribution (an indicative proxy for the Article VI 'appropriate State'), its UN registration status (cross-referenced against GCAT), and the existence of national space legislation (UNOOSA). Includes a longitudinal registration-lag ledger running since July 2026. Demonstrative evidence instrument; not an operational space situational awareness system.",
+  "description": "Daily dataset of the active satellite population plus four historical debris clouds (~19,000 objects propagated from CelesTrak GP data), with catalogue-wide statistics for all on-orbit objects, each joined to its SATCAT owner attribution (an indicative proxy for the Article VI 'appropriate State'), its UN registration status (cross-referenced against GCAT). Includes a longitudinal registration-lag ledger running since July 2026. Demonstrative evidence instrument; not an operational space situational awareness system.",
   "url": "https://starsobservatory.org/",
   "sameAs": "https://doi.org/10.5281/zenodo.22662848",
   "identifier": "https://doi.org/10.5281/zenodo.22662848",
@@ -55,7 +55,7 @@
   "creator": { "@type": "Person", "name": "Hallam Burnapp", "affiliation": { "@type": "Organization", "name": "University of Aberdeen" } },
   "temporalCoverage": "2026-07-11/..",
   "spatialCoverage": "Earth orbit",
-  "isBasedOn": ["https://celestrak.org/", "https://planet4589.org/space/gcat/", "https://www.unoosa.org/oosa/en/ourwork/spacelaw/nationalspacelaw/index.html"],
+  "isBasedOn": ["https://celestrak.org/", "https://planet4589.org/space/gcat/"],
   "distribution": [
     { "@type": "DataDownload", "encodingFormat": "application/json", "contentUrl": "https://starsobservatory.org/data/sats.json" },
     { "@type": "DataDownload", "encodingFormat": "application/json", "contentUrl": "https://starsobservatory.org/data/stats.json" },
@@ -170,7 +170,6 @@
           </div>
           <div class="count-badge" id="visibleCount">—</div>
           <div class="view-actions">
-            <button class="dcopy" id="vDossier" hidden>State dossier →</button>
             <button class="dcopy" id="vCopy">Copy link to this view</button>
             <button class="dcopy" id="vCsv">Download these objects (CSV)</button>
           </div>
@@ -256,7 +255,6 @@
         <button data-panel="reggap">02 · Registration</button>
         <button data-panel="art9">03 · Art IX</button>
         <button data-panel="prov">04 · Provenance</button>
-        <button data-panel="dossier">05 · Dossier</button>
       </nav>
       <div class="drawer-body">
         <!-- Panel: Article VI -->
@@ -275,29 +273,9 @@
           <h3 class="section">Payloads on orbit per attributed State or owner (SATCAT)</h3>
           <div id="art6bars"></div>
 
-          <!-- Supervisory machinery (Phase 2 · Task B) -->
-          <h3 class="section">Supervisory machinery — national space legislation</h3>
-          <div class="stat-hero" id="supHero"></div>
-          <div class="chart-wrap">
-            <div id="supBar"></div>
-            <div class="chart-legend" id="supLegend"></div>
-          </div>
-          <h4 class="section" style="margin-top:16px">Largest payload populations attributed to a State with no authorisation regime in binding law</h4>
-          <div id="supNoLaw"></div>
-          <div class="note" id="supFoot"></div>
-
           <div class="legal-caption">
             <strong>Article VI OST.</strong> States Parties bear international responsibility for national activities in outer space, ‘whether such activities are carried on by governmental agencies or by non-governmental entities’, and the activities of non-governmental entities ‘shall require authorization and <em>continuing supervision</em> by the appropriate State Party to the Treaty’ (emphasis added). The chart quantifies the supervisory burden: a doctrine written for a handful of State programmes now attaches to well over ten thousand privately operated, software-defined objects concentrated under a few licensing States. Attribution here follows the 18&nbsp;SDS/CelesTrak owner convention — an evidentiary proxy for the ‘appropriate State’, not a legal determination of responsibility (see Provenance → Limitations).
           </div>
-        </section>
-
-        <!-- Panel: State dossier — one citable card per responsible State -->
-        <section class="panel" id="panel-dossier">
-          <div class="field">
-            <label for="dosState">Attributed State / owner (SATCAT)</label>
-            <select id="dosState"></select>
-          </div>
-          <div id="dosBody"></div>
         </section>
 
         <!-- Panel: Registration gap -->
@@ -409,7 +387,6 @@
             <div class="ps-desc">Historical general-perturbations element sets from the US Space Surveillance Network, used only for the case-study event replays. Static archival data, validated at build time: propagating the final published element sets for Iridium 33 and Cosmos 2251 reproduces the 10 February 2009 collision to within <span id="hvValid">≈700 m</span> at 16:55:59.8 UTC. Reproducible via <code>pipeline/build_histevents.py</code>.</div>
             <div class="ps-date">Static · historical events do not change</div>
           </div>
-          <div class="prov-source" id="provNatlaw"></div>
           <div class="prov-source" id="provLedger"></div>
           <h3 class="section">Legal instruments</h3>
           <div class="prov-source"><div class="ps-desc" style="line-height:1.6">
@@ -417,8 +394,7 @@
             Convention on International Liability for Damage Caused by Space Objects (opened for signature 29 March 1972, entered into force 1 September 1972) 961 UNTS 187 (‘Liability Convention’).<br>
             Convention on Registration of Objects Launched into Outer Space (opened for signature 14 January 1975, entered into force 15 September 1976) 1023 UNTS 15 (‘Registration Convention’).<br>
             UNGA Res 1721 (XVI) B (20 December 1961) UN Doc A/RES/1721(XVI).<br>
-            UNGA Res 77/41 (7 December 2022) UN Doc A/RES/77/41.<br>
-            National legislation: each State dossier (panel 05) lists the instruments relied on, with official sources and the date of verification.
+            UNGA Res 77/41 (7 December 2022) UN Doc A/RES/77/41.
           </div></div>
           <h3 class="section">Case-study sources</h3>
           <div class="prov-cases" id="provCases"></div>

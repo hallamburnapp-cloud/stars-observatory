@@ -386,8 +386,8 @@ await groundTruth(page, { n: QUICK ? 6 : 12, cam: [40, 60, 160], label: 'desktop
   await ctx.close();
 }
 
-// ---------- 4d. research tools: view links, CSV export, State dossier ----------
-console.log('[4d] View links, CSV export, State dossier');
+// ---------- 4d. research tools: view links, CSV export ----------
+console.log('[4d] View links, CSV export');
 {
   await loadApp(`http://127.0.0.1:${PORT}/?color=state&state=PRC&type=PAY`);
   const v = await page.evaluate(() => ({ st: document.querySelector('#fState').value, ty: document.querySelector('#fType').value,
@@ -411,20 +411,10 @@ console.log('[4d] View links, CSV export, State dossier');
   const rec = sats.sats.find(r => String(r[0]) === first[0]);
   check(rec && csv[1].includes(rec[2]) && csv[1].includes(rec[3]), 'CSV TLE lines are the canonical sats.json element sets');
 
-  await loadApp(`http://127.0.0.1:${PORT}/?dossier=CIS`);
-  await page.waitForSelector('#panel-dossier.active .dos-h', { timeout: 15000 });
-  const d = await page.evaluate(() => ({ h: document.querySelector('.dos-h').textContent, cite: document.querySelector('#dosCite').textContent,
-    bib: document.querySelector('#dosCiteBib').textContent,
-    open: document.querySelector('#drawer').classList.contains('open'), search: location.search,
-    pay: [...document.querySelectorAll('#dosBody .dos-kv')][0].textContent }));
-  check(d.open && d.h.length > 0, 'dossier link opens the State dossier', d.h);
-  // OSCOLA 5 §3.7.1: pinpoint after the closing bracket, before the DOI, no comma.
-  const expDosFoot = expFoot.replace(/\) DOI: /, `) State dossier: ${d.h} DOI: `);
-  check(d.cite === expDosFoot, 'dossier footnote = canonical footnote with the pinpoint before the DOI (OSCOLA 5 §3.7.1)', `\n    expected: ${expDosFoot}\n    got:      ${d.cite}`);
-  check(d.bib === expBib, 'dossier bibliography = canonical bibliography entry, no pinpoint (OSCOLA 5 §1.7)', d.bib);
-  const cisPay = JSON.parse(readFileSync(join(SITE, 'data', 'stats.json'), 'utf8')).by_owner_payloads.CIS;
-  check(d.pay.includes(cisPay.toLocaleString('en-GB')), `dossier payload count equals stats.json (${cisPay})`);
-  check(/dossier=CIS/.test(d.search), 'address bar keeps the open dossier', d.search);
+  // scope freeze (v1.8.0): the national-legislation layer and State dossier are withdrawn
+  const gone = await page.evaluate(async () => ({ panel: !!document.querySelector('#panel-dossier'),
+    law: (await fetch('./data/national_law.json')).status }));
+  check(!gone.panel && gone.law === 404, 'State dossier and national_law.json are absent from the release', JSON.stringify(gone));
 }
 
 // ---------- 5. permalinks ----------
