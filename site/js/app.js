@@ -237,6 +237,14 @@ function fillStats() {
     const k = el.getAttribute('data-stat');
     if (vals[k] !== undefined) el.textContent = vals[k];
   });
+  // registration-lag ledger spread (median, interquartile range, maximum)
+  const lg = state.lag;
+  if (lg) {
+    const f = n => (n == null ? '—' : Math.round(n).toLocaleString('en-GB'));
+    const lv = { n: f(lg.flips_observed), started: lg.started ? oscolaDate(lg.started) : '—', median: f(lg.median_lag_days),
+      q1: f(lg.lag_quartiles_days && lg.lag_quartiles_days[0]), q3: f(lg.lag_quartiles_days && lg.lag_quartiles_days[1]), max: f(lg.max_lag_days) };
+    $$('[data-lag]').forEach(el => { const k = el.getAttribute('data-lag'); if (lv[k] !== undefined) el.textContent = lv[k]; });
+  }
 }
 
 // Catalogue numbers above 99,999 (issued since 11 July 2026) do not fit the
@@ -1311,7 +1319,7 @@ const SCENARIOS = [
     steps: [
       { date: '11 Jan 2007 · 22:26 UTC', crit: true, txt: 'A direct-ascent kinetic-kill vehicle strikes Fengyun-1C at ~860 km altitude at ~9 km/s, destroying the satellite.', prob: 'Impact · ~8–9 km/s' },
       { date: '17–18 Jan 2007', crit: false, txt: 'Aviation Week first reports the test; the US National Security Council publicly confirms it on 18 January.', prob: null },
-      { date: '19–22 Jan 2007', crit: true, txt: 'The US lodges a formal protest, and Japan, Australia, Canada, the UK and others publicly raise concerns; China does not yet confirm the test.', prob: 'Diplomatic protests' },
+      { date: 'Following days', crit: true, txt: 'The US lodges a formal protest, and Japan, Australia, Canada, the UK and others publicly raise concerns; China does not yet confirm the test.', prob: 'Diplomatic protests' },
       { date: '23 Jan 2007', crit: false, txt: 'China confirms the test; its foreign ministry spokesperson states that ‘this experiment is not targeted at any country, nor will it pose threat to any country’.', prob: null },
       { date: 'Ongoing', crit: true, txt: 'By mid-September 2010 the catalogue held 3,037 fragments (97% still on orbit). CSET (November 2025) reported nearly 2,500 still on orbit — almost 19% of all tracked debris, still the single largest contributor of any event.', prob: '≈2,500 fragments still on orbit (CSET, 2025)' }
     ],
@@ -2186,36 +2194,40 @@ function buildProvenance() {
     const acc = ' accessed 24 September 2026';
     const cases = [
       { t: 'Aeolus / Starlink-44 (2019)', links: [
-        ['‘ESA Spacecraft Dodges Large Constellation’ (<i>European Space Agency</i>, 3 September 2019) <https://www.esa.int/Safety_Security/Space_Debris/ESA_spacecraft_dodges_large_constellation>' + acc, 'https://www.esa.int/Safety_Security/Space_Debris/ESA_spacecraft_dodges_large_constellation'],
+        ['‘ESA Spacecraft Dodges Large Constellation’ (European Space Agency, 3 September 2019) <https://www.esa.int/Safety_Security/Space_Debris/ESA_spacecraft_dodges_large_constellation>' + acc, 'https://www.esa.int/Safety_Security/Space_Debris/ESA_spacecraft_dodges_large_constellation'],
         ['Jeff Foust, ‘ESA Spacecraft Dodges Potential Collision with Starlink Satellite’ (<i>SpaceNews</i>, 2 September 2019)' + acc, 'https://spacenews.com/esa-spacecraft-dodges-potential-collision-with-starlink-satellite/'],
-        ['Mike Wall, ‘European Satellite Dodges Potential Collision with SpaceX Starlink Craft’ (<i>Space.com</i>, 3 September 2019)' + acc, 'https://www.space.com/spacex-starlink-esa-satellite-collision-avoidance.html']] },
+        ['Mike Wall, ‘European Satellite Dodges Potential Collision with SpaceX Starlink Craft’ (Space.com, 3 September 2019)' + acc, 'https://www.space.com/spacex-starlink-esa-satellite-collision-avoidance.html']] },
       { t: 'Iridium 33 / Cosmos 2251 (2009)', links: [
         ['TS Kelso, ‘Analysis of the Iridium 33-Cosmos 2251 Collision’ (19th AIAA/AAS Astrodynamics Specialist Conference, Pittsburgh, 11 August 2009) AAS 09-368', 'https://celestrak.org/publications/AAS/09-368/'],
         ['Phillip D Anz-Meador and J-C Liou, ‘Analysis and Consequences of the Iridium 33–Cosmos 2251 Collision’ (38th COSPAR Scientific Assembly, Bremen, July 2010)', 'https://ntrs.nasa.gov/citations/20100008433'],
-        ['‘Satellite Collision Leaves Significant Debris Clouds’ (2009) 13(2) <i>Orbital Debris Quarterly News</i> 1', 'https://orbitaldebris.jsc.nasa.gov/quarterly-news/pdfs/ODQNv13i2.pdf'],
+        ['‘Satellite Collision Leaves Significant Debris Clouds’ (2009) 13(2) Orbital Debris Quarterly News 1', 'https://orbitaldebris.jsc.nasa.gov/quarterly-news/pdfs/ODQNv13i2.pdf'],
         ['Ryan Shepperd, ‘Subsequent Assessment of the Collision between Iridium 33 and COSMOS 2251’ (Advanced Maui Optical and Space Surveillance Technologies Conference, Maui, September 2023)', 'https://amostech.com/TechnicalPapers/2023/Conjunction-RPO/Shepperd.pdf'],
         ['Convention on International Liability for Damage Caused by Space Objects (opened for signature 29 March 1972, entered into force 1 September 1972) 961 UNTS 187', 'https://www.unoosa.org/oosa/en/ourwork/spacelaw/treaties/liability-convention.html']] },
       { t: 'Fengyun-1C ASAT test (2007)', links: [
+        ['Shirley A Kan, <i>China’s Anti-Satellite Weapon Test</i> (Congressional Research Service, RS22652, 23 April 2007)' + ' accessed 25 September 2026', 'https://www.everycrsreport.com/reports/RS22652.html'],
+        ['‘Foreign Ministry Spokesperson Liu Jianchao’s Regular Press Conference on 23 January, 2007’ (Consulate-General of the People’s Republic of China in Los Angeles)' + ' accessed 25 September 2026', 'http://losangeles.china-consulate.gov.cn/eng/confenrence/200701/t20070124_4981689.htm'],
         ['Nicholas L Johnson and others, ‘The Characteristics and Consequences of the Break-up of the Fengyun-1C Spacecraft’ (58th International Astronautical Congress, Hyderabad, September 2007) IAC-07-A6.3.01', 'https://ntrs.nasa.gov/citations/20070007324'],
-        ['‘Chinese Anti-satellite Test Creates Most Severe Orbital Debris Cloud in History’ (2007) 11(2) <i>Orbital Debris Quarterly News</i> 2', 'https://orbitaldebris.jsc.nasa.gov/quarterly-news/pdfs/ODQNv11i2.pdf'],
-        ['(2010) 14(4) <i>Orbital Debris Quarterly News</i> 3 [Fengyun-1C catalogue tally, mid-September 2010]', 'https://orbitaldebris.jsc.nasa.gov/quarterly-news/pdfs/ODQNv14i4.pdf'],
-        ['‘Mapping Space Debris’ (<i>Center for Security and Emerging Technology</i>, 3 November 2025)' + acc, 'https://cset.georgetown.edu/publication/mapping-space-debris/']] },
+        ['‘Chinese Anti-satellite Test Creates Most Severe Orbital Debris Cloud in History’ (2007) 11(2) Orbital Debris Quarterly News 2', 'https://orbitaldebris.jsc.nasa.gov/quarterly-news/pdfs/ODQNv11i2.pdf'],
+        ['(2010) 14(4) Orbital Debris Quarterly News 3 [Fengyun-1C catalogue tally, mid-September 2010]', 'https://orbitaldebris.jsc.nasa.gov/quarterly-news/pdfs/ODQNv14i4.pdf'],
+        ['‘Mapping Space Debris’ (Center for Security and Emerging Technology, 3 November 2025)' + acc, 'https://cset.georgetown.edu/publication/mapping-space-debris/']] },
       { t: 'Cosmos 1408 ASAT test (2021)', links: [
-        ['‘The Intentional Destruction of Cosmos 1408’ (2022) 26(1) <i>Orbital Debris Quarterly News</i> 1', 'https://orbitaldebris.jsc.nasa.gov/quarterly-news/pdfs/ODQNv26i1.pdf'],
-        ['Antony J Blinken, ‘Russia Conducts Destructive Anti-Satellite Missile Test’ (<i>US Department of State</i>, 15 November 2021)' + acc, 'https://2021-2025.state.gov/russia-conducts-destructive-anti-satellite-missile-test/'],
+        ['Jonathan C McDowell, ‘The 2021 Nudol’ Test’ (Jonathan’s Space Report)' + ' accessed 25 September 2026', 'https://planet4589.org/space/asat/nudol.html'],
+        ['‘ISS Daily Summary Report – 11/15/2021’ (NASA, 15 November 2021)' + ' accessed 25 September 2026', 'https://www.nasa.gov/blogs/stationreport/2021/11/15/iss-daily-summary-report-11-15-2021/'],
+        ['‘The Intentional Destruction of Cosmos 1408’ (2022) 26(1) Orbital Debris Quarterly News 1', 'https://orbitaldebris.jsc.nasa.gov/quarterly-news/pdfs/ODQNv26i1.pdf'],
+        ['Antony J Blinken, ‘Russia Conducts Destructive Anti-Satellite Missile Test’ (US Department of State, 15 November 2021)' + acc, 'https://2021-2025.state.gov/russia-conducts-destructive-anti-satellite-missile-test/'],
         ['UNGA Res 77/41 (7 December 2022) UN Doc A/RES/77/41', 'https://undocs.org/A/RES/77/41'],
         ['UNGA Verbatim Record (7 December 2022) UN Doc A/77/PV.46', 'https://undocs.org/A/77/PV.46']] },
       { t: 'Luch / Olymp GEO proximity operations (2014–26)', links: [
         ['Mike Gruss, ‘Russian Satellite Maneuvers, Silence Worry Intelsat’ (<i>SpaceNews</i>, 9 October 2015)' + acc, 'https://spacenews.com/russian-satellite-maneuvers-silence-worry-intelsat/'],
-        ['Andrew Jones, ‘Russian “Inspector” Satellite Appears to Break Apart in Orbit, Raising Debris Concerns’ (<i>Space.com</i>, 30 January 2026)' + acc, 'https://www.space.com/space-exploration/launches-spacecraft/russian-inspector-satellite-appears-to-break-apart-in-orbit-raising-debris-concerns'],
+        ['Andrew Jones, ‘Russian “Inspector” Satellite Appears to Break Apart in Orbit, Raising Debris Concerns’ (Space.com, 30 January 2026)' + acc, 'https://www.space.com/space-exploration/launches-spacecraft/russian-inspector-satellite-appears-to-break-apart-in-orbit-raising-debris-concerns'],
         ['John Leicester, Sylvie Corbet and Aaron Mehta, ‘“Espionage:” French Defense Head Charges Russia of Dangerous Games in Space’ (<i>Defense News</i>, 7 September 2018)' + ' accessed 25 September 2026', 'https://www.defensenews.com/space/2018/09/07/espionage-french-defense-head-charges-russia-of-dangerous-games-in-space/'],
-        ['Anatoly Zak, ‘Proton Returns to Flight with a Secret Olymp Satellite’ (<i>RussianSpaceWeb</i>)' + ' accessed 25 September 2026', 'http://www.russianspaceweb.com/olymp.html']] },
+        ['Anatoly Zak, ‘Proton Returns to Flight with a Secret Olymp Satellite’ (RussianSpaceWeb)' + ' accessed 25 September 2026', 'http://www.russianspaceweb.com/olymp.html']] },
       { t: 'Article IX: text and practice', links: [
         ['Treaty on Principles Governing the Activities of States in the Exploration and Use of Outer Space, including the Moon and Other Celestial Bodies (opened for signature 27 January 1967, entered into force 10 October 1967) 610 UNTS 205, art IX', 'https://www.unoosa.org/oosa/en/ourwork/spacelaw/treaties/outerspacetreaty.html'],
-        ['Kai-Uwe Schrogl, ‘“Due Regard” in Outer Space – a Lost Cause?’ (<i>Geneva Centre for Security Policy</i>, In Focus, 13 February 2026)' + acc, 'https://www.gcsp.ch/sites/default/files/2026-02/In%20Focus_26_Schrogl.pdf']] },
+        ['Kai-Uwe Schrogl, ‘“Due Regard” in Outer Space – a Lost Cause?’ (Geneva Centre for Security Policy, In Focus, 13 February 2026)' + acc, 'https://www.gcsp.ch/sites/default/files/2026-02/In%20Focus_26_Schrogl.pdf']] },
       { t: 'Starlink autonomous collision avoidance', links: [
-        ['Tereza Pultarova, ‘SpaceX Starlink Satellites Made 50,000 Collision-Avoidance Maneuvers in the Past 6 Months. What Does That Mean for Space Safety?’ (<i>Space.com</i>, 23 July 2024)' + ' accessed 25 September 2026', 'https://www.space.com/spacex-starlink-50000-collision-avoidance-maneuvers-space-safety'],
-        ['‘SpaceX Destroyed 260 Starlink Satellites in the Atmosphere within Six Months, According to Its Semi-annual Report Filed with the FCC’ (<i>Gigazine</i>, 6 July 2026) [reporting 65,137 and 142,015 manoeuvres by first- and second-generation satellites]' + acc, 'https://gigazine.net/gsc_news/en/20260706-spacex-starlink-satelite']] }
+        ['Tereza Pultarova, ‘SpaceX Starlink Satellites Made 50,000 Collision-Avoidance Maneuvers in the Past 6 Months. What Does That Mean for Space Safety?’ (Space.com, 23 July 2024)' + ' accessed 25 September 2026', 'https://www.space.com/spacex-starlink-50000-collision-avoidance-maneuvers-space-safety'],
+        ['‘SpaceX Destroyed 260 Starlink Satellites in the Atmosphere within Six Months, According to Its Semi-annual Report Filed with the FCC’ (Gigazine, 6 July 2026) [reporting 65,137 and 142,015 manoeuvres by first- and second-generation satellites]' + acc, 'https://gigazine.net/gsc_news/en/20260706-spacex-starlink-satelite']] }
     ];
     casesEl.innerHTML = cases.map(c =>
       `<div class="pc"><div class="pc-h">${c.t}</div><ol class="pc-cites">${c.links.map(([n,u]) => `<li><a href="${u}" target="_blank" rel="noopener">${n.replace(/ <https?:[^>]+>/, '')}</a></li>`).join('')}</ol></div>`).join('');

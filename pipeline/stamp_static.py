@@ -37,12 +37,22 @@ def main():
         "unregPct": str(round(unreg / (regd + unreg) * 100)) if (regd + unreg) else "0",
     }
     cites = {"doi": cit.get("version_doi", ""), "release": cit.get("release_tag", "")}
+    from datetime import date
+    lag = json.loads((SITE / "data" / "lag.json").read_text())
+    r = lambda n: "—" if n is None else fmt(round(n))
+    q = lag.get("lag_quartiles_days") or [None, None]
+    st = lag.get("started")
+    lagv = {"n": r(lag.get("flips_observed")), "median": r(lag.get("median_lag_days")), "q1": r(q[0]), "q3": r(q[1]),
+            "max": r(lag.get("max_lag_days")),
+            "started": date.fromisoformat(st).strftime("%-d %B %Y") if st else "—"}
     idx = SITE / "index.html"
     html = idx.read_text()
     out = re.sub(r'(<(span|div)\b[^>]*\bdata-stat="([A-Za-z]+)"[^>]*>)[^<]*(</\2>)',
                  lambda m: m.group(1) + vals[m.group(3)] + m.group(4) if m.group(3) in vals else m.group(0), html)
     out = re.sub(r'(<(span|div)\b[^>]*\bdata-cite="([a-z]+)"[^>]*>)[^<]*(</\2>)',
                  lambda m: m.group(1) + (cites.get(m.group(3)) or '—') + m.group(4), out)
+    out = re.sub(r'(<span data-lag="([a-z0-9]+)">)[^<]*(</span>)',
+                 lambda m: m.group(1) + lagv.get(m.group(2), '—') + m.group(3), out)
     if cites["doi"]:
         out = re.sub(r'(<a data-cite-href="doi" href=")[^"]*(")', r'\g<1>https://doi.org/' + cites["doi"] + r'\2', out)
     left = sorted(set(re.findall(r'data-stat="([A-Za-z]+)"[^>]*>—<', out)))

@@ -9,14 +9,14 @@
     34.7,
     100.3
    ],
-   "cosmos1408_subpoint_at_0247Z": [
-    66.5,
-    45.0
+   "cosmos1408_subpoint_at_0250Z": [
+    76.9,
+    60.9
    ],
    "aeolus_tle_space_min_sep_km_2sep": 2.9,
    "luch_is901_min_sep_km": 36.0
   },
-  "built": "2026-09-24T20:57:31Z"
+  "built": "2026-09-25T16:25:16Z"
  },
  "events": {
   "aeolus": {
@@ -276,7 +276,7 @@
     }
    ],
    "preSteps": [],
-   "note": "At the documented intercept time the element sets place Fengyun-1C at 34.7\u00b0N 100.3\u00b0E, north-west of Xichang and heading south, on a descending (southbound) pass. The interceptor itself was never a catalogued object; only the target is replayed. The debris cloud is a physically derived visualisation \u2014 one particle per catalogued fragment (3,037), released from the true intercept state vector with a modelled velocity spread and propagated by two-body dynamics \u2014 not the catalogued fragment orbits themselves."
+   "note": "At the documented intercept time the element sets place Fengyun-1C at 34.7\u00b0N 100.3\u00b0E, north-north-west of Xichang and heading south, on a descending (southbound) pass. The interceptor itself was never a catalogued object; only the target is replayed. The debris cloud is a physically derived visualisation \u2014 one particle per catalogued fragment (3,037), released from the true intercept state vector with a modelled velocity spread and propagated by two-body dynamics \u2014 not the catalogued fragment orbits themselves."
   },
   "cosmos1408": {
    "kind": "asat",
@@ -284,7 +284,7 @@
     "2021-11-15T00:00:00Z",
     "2021-11-15T13:00:00Z"
    ],
-   "keyTime": "2021-11-15T02:47:00Z",
+   "keyTime": "2021-11-15T02:50:00Z",
    "keyLabel": "Intercept in a 490 \u00d7 465 km orbit \u2014 ISS crew sheltered",
    "slowFinalMin": 25,
    "durationSec": 50,
@@ -317,12 +317,12 @@
    ],
    "milestones": [
     {
-     "t": "2021-11-15T02:47:00Z",
+     "t": "2021-11-15T02:50:00Z",
      "step": 0
     }
    ],
    "preSteps": [],
-   "note": "At the documented intercept time the element sets place Cosmos 1408 at 66.5\u00b0N 45.0\u00b0E over northern Russia. The interceptor was never a catalogued object. The debris cloud is a physically derived visualisation \u2014 one particle per catalogued fragment (1,604), released from the true intercept state vector with a modelled velocity spread and propagated by two-body dynamics \u2014 not the catalogued fragment orbits themselves."
+   "note": "At the documented intercept time the element sets place Cosmos 1408 at 76.9\u00b0N 60.9\u00b0E over northern Russia. The interceptor was never a catalogued object. The debris cloud is a physically derived visualisation \u2014 one particle per catalogued fragment (1,604), released from the true intercept state vector with a modelled velocity spread and propagated by two-body dynamics \u2014 not the catalogued fragment orbits themselves."
   },
   "luch": {
    "kind": "rpo",

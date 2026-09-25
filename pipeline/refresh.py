@@ -65,11 +65,30 @@ def download(url, dst):
 
 
 def normalise_lag(path):
-    """Rename the legacy ledger key (v1.8.0) in a lag.json published before the rename."""
+    """Bring a lag.json published before v1.8.0 up to the v1.8.0 format.
+
+    TEMPORARY migration shim: remove after the first scheduled run following
+    the v1.8.0 release (tracked in CHANGELOG.md). It renames the legacy key and
+    adds the lag spread, computed from the committed ledger exactly as
+    build_dataset.py does.
+    """
+    from datetime import date
+    from statistics import quantiles
     d = json.load(open(path))
     if "watching_unregistered" in d and "watching_no_un_match" not in d:
         d["watching_no_un_match"] = d.pop("watching_unregistered")
-        json.dump(d, open(path, "w"), separators=(",", ":"))
+    if "lag_quartiles_days" not in d:
+        lags = []
+        for e in json.load(open(_ROOT / "data" / "ledger.json"))["payloads"].values():
+            if e.get("fd") and e.get("l"):
+                try:
+                    lags.append((date.fromisoformat(e["fd"]) - date.fromisoformat(e["l"])).days)
+                except ValueError:
+                    pass
+        if len(lags) >= 2:
+            q = quantiles(lags, n=4, method="inclusive")
+            d["lag_quartiles_days"], d["max_lag_days"] = [q[0], q[2]], max(lags)
+    json.dump(d, open(path, "w"), separators=(",", ":"))
 
 def median_epoch_age_days(sats_path):
     from datetime import datetime, timedelta, timezone

@@ -31,3 +31,6 @@ All notable changes to STARS Observatory. Each release is archived on Zenodo wit
 ### Fixed
 - **Objects with 6-digit catalogue numbers now propagate and appear on the globe.** Since 11 July 2026 new objects carry catalogue numbers above 99,999, which the two-line element format cannot hold. In every earlier version these objects failed to propagate and were never drawn on the globe, yet they were still counted in the "propagated" total (637 objects in the 25 September 2026 snapshot: 19,285 counted, 18,648 actually rendered). The browser now re-encodes them in the standard Alpha-5 form for propagation; `sats.json` and the CSV export are unchanged. Data ingestion was audited: every CelesTrak download already uses OMM (JSON) or CSV, never TLE.
 - Phone taps on dots beside a button no longer open the button; the tap that opens an object card can no longer close it; the QA gate's ground-truth click checks no longer fail on too few measurable dots (#12–#14).
+
+### To do after release
+- **Remove the migration shim** `normalise_lag()` in `pipeline/refresh.py` after the first scheduled (06:00 UTC) run following the v1.8.0 release. That run writes `lag.json` in the v1.8.0 format (`watching_no_un_match`, `lag_quartiles_days`, `max_lag_days`), after which the shim has nothing left to convert.

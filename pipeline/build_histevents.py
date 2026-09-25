@@ -12,7 +12,8 @@ Validation (run at build time, results embedded in the JSON):
   - Iridium 33 / Cosmos 2251 propagated to 2009-02-10 16:56:00 UTC must pass
     within < 2 km (published: collision; Kelso AAS 09-368 predicted 584 m miss).
   - Fengyun-1C subpoint at 2007-01-11 22:26 UTC must be over central China.
-  - Cosmos 1408 subpoint at 2021-11-15 02:47 UTC must be over northern Russia.
+  - Cosmos 1408 subpoint at 2021-11-15 02:50 UTC (McDowell: 'possibly at 0250 UTC
+    over about 60E 75N') must be over northern Russia.
 """
 import json, math, sys
 from datetime import datetime, timezone, timedelta
@@ -160,10 +161,10 @@ def main():
                 datetime(2007, 1, 11, 22, 26, tzinfo=UTC))
     la, lo = subpoint(r, jd)
     assert 20 < la < 45 and 90 < lo < 110, f"Fengyun subpoint off: {la},{lo}"
-    r, jd = pos(bb(rows, 13552, datetime(2021, 11, 15, 2, 47, tzinfo=UTC)),
-                datetime(2021, 11, 15, 2, 47, tzinfo=UTC))
+    r, jd = pos(bb(rows, 13552, datetime(2021, 11, 15, 2, 50, tzinfo=UTC)),
+                datetime(2021, 11, 15, 2, 50, tzinfo=UTC))
     la2, lo2 = subpoint(r, jd)
-    assert 55 < la2 < 75 and 25 < lo2 < 60, f"Cosmos1408 subpoint off: {la2},{lo2}"
+    assert 55 < la2 < 82 and 25 < lo2 < 80, f"Cosmos1408 subpoint off: {la2},{lo2}"
 
     # Computed geometry (embedded so the site can cite it)
     aeolus_cut = datetime(2019, 9, 2, 9, 0, tzinfo=UTC)
@@ -264,7 +265,7 @@ def main():
         "milestones": [{"t": "2007-01-11T22:26:00Z", "step": 0}],
         "preSteps": [],
         "note": (f"At the documented intercept time the element sets place Fengyun-1C "
-                 f"at {la:.1f}°N {lo:.1f}°E, north-west of Xichang and heading south, on a "
+                 f"at {la:.1f}°N {lo:.1f}°E, north-north-west of Xichang and heading south, on a "
                  "descending (southbound) pass. The interceptor "
                  "itself was never a catalogued object; only the target is replayed. "
                  "The debris cloud is a physically derived visualisation — one particle "
@@ -275,15 +276,15 @@ def main():
     # -- Cosmos 1408 ----------------------------------------------------------
     t0 = datetime(2021, 11, 15, 0, 0, tzinfo=UTC)
     t1 = datetime(2021, 11, 15, 13, 0, tzinfo=UTC)  # coda: ~10 h of debris-cloud evolution
-    cut_ck = datetime(2021, 11, 15, 2, 47, 0, tzinfo=UTC)
+    cut_ck = datetime(2021, 11, 15, 2, 50, 0, tzinfo=UTC)
     ev["cosmos1408"] = {
         "kind": "asat",
         "window": [iso(t0), iso(t1)],
-        "keyTime": "2021-11-15T02:47:00Z",
+        "keyTime": "2021-11-15T02:50:00Z",
         "keyLabel": "Intercept in a 490 × 465 km orbit — ISS crew sheltered",
         "slowFinalMin": 25, "durationSec": 50, "codaFrac": 0.25,
         "objects": [obj(13552, "Cosmos 1408 (RU, defunct)", "#ff6b6b", t0, t1, cutoff=cut_ck, per_day=4, fragments=1604)],
-        "milestones": [{"t": "2021-11-15T02:47:00Z", "step": 0}],
+        "milestones": [{"t": "2021-11-15T02:50:00Z", "step": 0}],
         "preSteps": [],
         "note": (f"At the documented intercept time the element sets place Cosmos 1408 "
                  f"at {la2:.1f}°N {lo2:.1f}°E over northern Russia. The interceptor was never a catalogued object. The debris "
@@ -328,7 +329,7 @@ def main():
                 "iridium_cosmos_min_sep_km": round(miss, 3),
                 "iridium_cosmos_min_sep_utc": miss_t.strftime("%H:%M:%S.%f")[:-5] + "Z",
                 "fengyun_subpoint_at_2226Z": [round(la, 1), round(lo, 1)],
-                "cosmos1408_subpoint_at_0247Z": [round(la2, 1), round(lo2, 1)],
+                "cosmos1408_subpoint_at_0250Z": [round(la2, 1), round(lo2, 1)],
                 "aeolus_tle_space_min_sep_km_2sep": round(ae_min[0], 1),
                 "luch_is901_min_sep_km": round(lu_min[0], 1),
             },

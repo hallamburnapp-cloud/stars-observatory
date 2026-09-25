@@ -285,6 +285,13 @@ for fpl in flips: by_owner_lag[fpl["owner"]].append(fpl["lag_days"])
 def median(xs):
     xs = sorted(xs); m = len(xs)//2
     return xs[m] if len(xs) % 2 else (xs[m-1]+xs[m])/2
+def lag_spread(xs):
+    """Interquartile range (inclusive method) and maximum of the observed lags."""
+    from statistics import quantiles
+    if len(xs) < 2:
+        return {"lag_quartiles_days": None, "max_lag_days": max(xs) if xs else None}
+    q = quantiles(xs, n=4, method="inclusive")
+    return {"lag_quartiles_days": [q[0], q[2]], "max_lag_days": max(xs)}
 watching = sum(1 for e in lp.values() if e["r"] == 0)
 lag_out = {
     "started": ledger["started"], "updated": today,
@@ -293,7 +300,8 @@ lag_out = {
     "flips_observed": len(flips), "flips_today": flips_today,
     "recent_flips": flips[:200],
     "lag_by_owner": {o: {"flips": len(v), "median_lag_days": median(v)} for o, v in sorted(by_owner_lag.items(), key=lambda x: -len(x[1]))},
-    "median_lag_days": median([fpl["lag_days"] for fpl in flips]) if flips else None
+    "median_lag_days": median([fpl["lag_days"] for fpl in flips]) if flips else None,
+    **lag_spread([fpl["lag_days"] for fpl in flips]),
 }
 json.dump(lag_out, open(f"{OUT}/lag.json", "w"), separators=(",",":"))
 print(f"ledger: {len(lp)} payloads tracked, watching {watching} with no matching UN record, {len(flips)} flips observed")
