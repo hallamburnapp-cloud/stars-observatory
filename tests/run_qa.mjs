@@ -129,7 +129,7 @@ check(bibtex.includes(loadedSnapshotISO), 'BibTeX note carries the loaded snapsh
 const footDoi = (await page.textContent('#footDoiVal')).trim();
 check(footDoi === citation.version_doi, 'footer shows the version DOI', footDoi);
 const footCopy = (await page.textContent('#foot')).trim();
-check(footCopy.includes('© 2026 Hallam Burnapp. All rights reserved.'), 'footer carries the copyright line');
+check(footCopy.includes('© 2026 Hallam Burnapp · Code MIT · Data CC BY 4.0'), 'footer carries the copyright and licence line');
 const warnHidden = await page.$eval('#citeWarn', el => el.hidden || getComputedStyle(el).display === 'none');
 check(citation.snapshot_date === loadedSnapshotISO ? warnHidden : !warnHidden, 'snapshot mismatch warning correctly ' + (citation.snapshot_date === loadedSnapshotISO ? 'hidden' : 'shown'));
 

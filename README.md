@@ -102,6 +102,6 @@ A BibTeX entry with the same metadata is available in the live site's Provenance
 
 ## License
 
-© 2026 Hallam Burnapp. All rights reserved.
+© 2026 Hallam Burnapp.
 
-Code: MIT (see LICENSE). Generated datasets: CC-BY 4.0, inheriting GCAT's attribution requirement.
+Code: MIT (see LICENSE). Generated datasets: CC BY 4.0, inheriting GCAT's attribution requirement.
