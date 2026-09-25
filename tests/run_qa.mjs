@@ -349,7 +349,7 @@ async function groundTruth(pg, { touch = false, n = 10, cam = null, label = '' }
       }
     }
     const card = sel === idx && (await pg.evaluate(() => __QA.detailNorad())).includes(await pg.evaluate(i => __QA.norad(i), idx));
-    if (card) ok++; else { const d = await pg.evaluate(([i,x,y]) => ({ el: document.elementFromPoint(x,y)?.id || document.elementFromPoint(x,y)?.className, now: __QA.screenOf(i), occ: __QA.occluded(i), up: __QA.lastUp, sel: __QA.selected, det: document.querySelector('#detail')?.className }), [idx, g.x, g.y]);
+    if (card) ok++; else { const d = await pg.evaluate(([i,x,y]) => ({ el: document.elementFromPoint(x,y)?.id || document.elementFromPoint(x,y)?.className, now: __QA.screenOf(i), occ: __QA.occluded(i), up: __QA.lastUp, closed: __QA.lastClose, t: Math.round(performance.now()), sel: __QA.selected, det: document.querySelector('#detail')?.className }), [idx, g.x, g.y]);
       fails.push(`${await pg.evaluate(i => __QA.norad(i), idx)}→${sel} g=${g.x.toFixed(1)},${g.y.toFixed(1)} s=${s.x.toFixed(1)},${s.y.toFixed(1)} ${JSON.stringify(d)}`); }
     await pg.keyboard.press('Escape').catch(() => {});
     await pg.evaluate(() => { const c = document.querySelector('#dClose'); if (c) c.click(); });
