@@ -349,7 +349,7 @@ async function groundTruth(pg, { touch = false, n = 10, cam = null, label = '' }
       }
     }
     const card = sel === idx && (await pg.evaluate(() => __QA.detailNorad())).includes(await pg.evaluate(i => __QA.norad(i), idx));
-    if (card) ok++; else { const d = await pg.evaluate(([i,x,y]) => ({ el: document.elementFromPoint(x,y)?.id || document.elementFromPoint(x,y)?.className, now: __QA.screenOf(i), occ: __QA.occluded(i), cam: __QA.cam ? __QA.cam() : null, sel: __QA.selected, det: document.querySelector('#detail')?.className }), [idx, g.x, g.y]);
+    if (card) ok++; else { const d = await pg.evaluate(([i,x,y]) => ({ el: document.elementFromPoint(x,y)?.id || document.elementFromPoint(x,y)?.className, now: __QA.screenOf(i), occ: __QA.occluded(i), up: __QA.lastUp, sel: __QA.selected, det: document.querySelector('#detail')?.className }), [idx, g.x, g.y]);
       fails.push(`${await pg.evaluate(i => __QA.norad(i), idx)}→${sel} g=${g.x.toFixed(1)},${g.y.toFixed(1)} s=${s.x.toFixed(1)},${s.y.toFixed(1)} ${JSON.stringify(d)}`); }
     await pg.keyboard.press('Escape').catch(() => {});
     await pg.evaluate(() => { const c = document.querySelector('#dClose'); if (c) c.click(); });
@@ -368,6 +368,21 @@ await groundTruth(page, { n: QUICK ? 6 : 12, cam: [40, 60, 160], label: 'desktop
   await phone.waitForFunction(() => { const l = document.querySelector('#loader'); return l && getComputedStyle(l).display === 'none'; }, { timeout: 180000 });
   await phone.waitForFunction(() => window.__QA && __QA.eligible().length > 0, { timeout: 60000 });
   await groundTruth(phone, { touch: true, n: QUICK ? 6 : 12, label: 'phone (touch): ' });
+  // A tap on the globe just outside a button must stay on the globe: mobile
+  // touch adjustment otherwise retargets it to the button (a dot next to
+  // 'Controls & Filters' opened the rail instead of the dot).
+  const near = await phone.evaluate(() => { const r = document.querySelector('#railToggle').getBoundingClientRect();
+    return [[r.left + r.width / 2, r.top - 7], [r.right + 7, r.top + r.height / 2]]; });
+  const got = [];
+  for (const [x, y] of near) {
+    const under = await phone.evaluate(([x, y]) => document.elementFromPoint(x, y)?.id, [x, y]);
+    if (under !== 'scene') continue;
+    await phone.evaluate(() => { window.__tapT = null; document.addEventListener('pointerdown', e => { window.__tapT = e.target.id; }, { once: true, capture: true }); });
+    await phone.touchscreen.tap(x, y); await phone.waitForTimeout(150);
+    got.push(await phone.evaluate(() => __tapT));
+    await phone.evaluate(() => { const r = document.querySelector('#rail'); if (r.classList.contains('open')) document.querySelector('#railToggle').click(); document.querySelector('#dClose')?.click(); }).catch(() => {});
+  }
+  check(got.length > 0 && got.every(t => t === 'scene'), 'phone (touch): a tap on the globe beside a button is not retargeted to the button', got.join(', '));
   await ctx.close();
 }
 

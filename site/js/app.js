@@ -444,6 +444,11 @@ function initThree() {
   if (window.ResizeObserver) new ResizeObserver(onResize).observe(canvas.parentElement);
   renderer.domElement.addEventListener('pointerdown', onPointerDown);
   renderer.domElement.addEventListener('pointermove', onPointerMove);
+  // Mobile browsers retarget a tap to any clickable element near the finger
+  // (touch adjustment) unless the element under it is clickable too: without
+  // this listener a dot a few px from the Controls button opened the rail
+  // instead of the dot. Picking itself runs on pointerup.
+  renderer.domElement.addEventListener('click', () => {});
 }
 
 function addStarfield() {
@@ -787,6 +792,7 @@ function onPointerDown(e) {
   downPosSnap = (posAttr && posAttr.array) ? posAttr.array.slice() : null;
   downSnapT = performance.now();
 }
+let lastUp = null; // last pointerup's classification (read by the QA gate)
 renderPickBind();
 function renderPickBind() {
   document.addEventListener('pointerup', (e) => {
@@ -794,6 +800,7 @@ function renderPickBind() {
     const moved = Math.hypot(e.clientX - downXY.x, e.clientY - downXY.y);
     const dt = performance.now() - downXY.t;
     downXY = null;
+    lastUp = { moved, dt, onCanvas: e.target === renderer?.domElement, type: e.pointerType };
     if (moved > 8 || dt > 900) return; // drag, not click
     if (e.target !== renderer?.domElement) return;
     setPointerFromClient(e.clientX, e.clientY);
@@ -860,6 +867,7 @@ function pickAt(sx, sy) {
     // objects; dots dimmed by an active filter rank slightly behind.
     cands.push({ i, d, s: d + depth * 30 + (passesFilter(i) ? 0 : 3), f: passesFilter(i) });
   }
+  if (lastUp) { lastUp.x = sx; lastUp.y = sy; lastUp.cands = cands.length; }
   if (!cands.length) return;
   cands.sort((a, b) => a.s - b.s);
   // Dots under the cursor itself. When two or more objects are drawn on the
@@ -3095,6 +3103,7 @@ window.__QA = {
   filteredOut(i) { return !passesFilter(i); },
   detailNorad() { const d = $('#detail'); return (d && d.classList.contains('show') && $('#dRows')) ? $('#dRows').textContent : ''; },
   chooserOpen() { return !!pickEl; },
+  get lastUp() { return lastUp; },
   chooserPick(idx) { const b = pickEl && pickEl.querySelector(`.sr[data-i="${idx}"]`); if (b) { b.click(); return true; } return false; },
   // Dense-cluster chooser test: find two rendered objects that project within
   // a few pixels of each other, click between them, and assert the chooser
