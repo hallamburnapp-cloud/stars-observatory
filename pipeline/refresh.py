@@ -1,9 +1,19 @@
 #!/usr/bin/env python3
-"""Daily refresh: re-fetch catalog data, rebuild the enriched dataset, and stage it into the site.
-Safe by design: a download only replaces the previous raw file if it parses as valid data.
-Stages the rebuilt sats.json / stats.json / lag.json into site/data/ ready for deployment.
+"""Refresh and stage the site's data.
+
+Two modes:
+  --mode fetch    (the daily 06:00 UTC schedule only) downloads every CelesTrak
+                  and GCAT source once, rebuilds the enriched dataset and the
+                  registration-lag ledger, and stages them into site/data/.
+                  Any failed download, non-200 response or invalid file halts
+                  the run with a logged error: nothing new is staged or
+                  published, and the site keeps its previous snapshot and date.
+  --mode rebuild  (every push and manual run) contacts no data source. It takes
+                  the currently published snapshot from the live site and
+                  re-stages it unchanged, so a code deploy never alters a
+                  snapshot or gives it a date its data does not have.
 """
-import json, re, subprocess, sys, shutil, urllib.request, os
+import argparse, json, re, subprocess, sys, shutil, urllib.request, urllib.error, os
 from pathlib import Path
 
 _ROOT = Path(__file__).resolve().parents[1]
@@ -34,6 +44,32 @@ def valid(path, kind):
         return False
 
 STALE_DAYS = 3.0
+LIVE = "https://starsobservatory.org/data"
+PUBLISHED = ("sats.json", "stats.json", "lag.json")
+
+
+def die(msg):
+    print(f"HALT: {msg}")
+    print("Nothing new was staged; the site keeps its previous snapshot and date.")
+    sys.exit(1)
+
+
+def download(url, dst):
+    """Download url to dst. Any error or non-200 status raises."""
+    req = urllib.request.Request(url, headers={"User-Agent": "stars-observatory-refresh/2.0"})
+    with urllib.request.urlopen(req, timeout=120) as r:
+        if r.status != 200:
+            raise urllib.error.HTTPError(url, r.status, f"HTTP {r.status}", r.headers, None)
+        with open(dst, "wb") as f:
+            shutil.copyfileobj(r, f)
+
+
+def normalise_lag(path):
+    """Rename the legacy ledger key (v1.8.0) in a lag.json published before the rename."""
+    d = json.load(open(path))
+    if "watching_unregistered" in d and "watching_no_un_match" not in d:
+        d["watching_no_un_match"] = d.pop("watching_unregistered")
+        json.dump(d, open(path, "w"), separators=(",", ":"))
 
 def median_epoch_age_days(sats_path):
     from datetime import datetime, timedelta, timezone
@@ -48,41 +84,56 @@ def median_epoch_age_days(sats_path):
         ages.append((now - t).total_seconds() / 86400)
     return median(ages)
 
-def main():
+def fetch_sources():
+    """Download every source once; halt on the first failure."""
     os.makedirs(RAW, exist_ok=True)
-    updated, skipped = [], []
     for fname, url, kind in FETCHES:
         tmp = f"{RAW}/.tmp_{fname}"
         try:
-            req = urllib.request.Request(url, headers={"User-Agent": "orbsim-refresh/1.0"})
-            with urllib.request.urlopen(req, timeout=120) as r, open(tmp, "wb") as f:
-                shutil.copyfileobj(r, f)
+            download(url, tmp)
         except Exception as e:
-            skipped.append((fname, f"fetch error: {e}")); continue
-        if valid(tmp, kind):
-            shutil.move(tmp, f"{RAW}/{fname}"); updated.append(fname)
-        else:
-            # CelesTrak returns a plain-text notice if data hasn't changed in <2h; keep previous file
-            note = open(tmp, errors="replace").read(120).replace("\n", " ")
-            os.remove(tmp); skipped.append((fname, note))
-
-    print("updated:", updated)
-    print("kept previous (not updated):", skipped)
-    missing = [f for f, _, _ in FETCHES if not os.path.exists(f"{RAW}/{f}")]
-    if missing:
-        reasons = {f: why for f, why in skipped}
-        for f in missing:
-            print(f"MISSING SOURCE {f}: not downloadable now and no previous copy — {reasons.get(f, 'unknown')}")
-        sys.exit(1)
+            if os.path.exists(tmp): os.remove(tmp)
+            die(f"DOWNLOAD FAILED {fname} <{url}>: {e}")
+        if not valid(tmp, kind):
+            note = open(tmp, errors="replace").read(160).replace("\n", " ")
+            os.remove(tmp)
+            die(f"INVALID SOURCE {fname} <{url}>: not {kind} catalogue data — {note!r}")
+        shutil.move(tmp, f"{RAW}/{fname}")
+        print(f"downloaded {fname}")
 
     r = subprocess.run([sys.executable, str(_ROOT / "pipeline" / "build_dataset.py")],
                        capture_output=True, text=True)
     if r.returncode != 0:
-        print("BUILD FAILED\n", r.stdout[-2000:], r.stderr[-2000:]); sys.exit(1)
+        print(r.stdout[-2000:], r.stderr[-2000:]); die("BUILD FAILED")
     print(r.stdout.strip().splitlines()[-6:])
-
-    for f in ("sats.json", "stats.json", "lag.json"):
+    for f in PUBLISHED:
         shutil.copy(f"{OUT}/{f}", f"{SITE}/{f}")
+
+
+def restage_published():
+    """Re-stage the snapshot the site currently publishes, unchanged."""
+    for f in PUBLISHED:
+        tmp = f"{SITE}/.tmp_{f}"
+        try:
+            download(f"{LIVE}/{f}", tmp)
+            json.load(open(tmp))
+        except Exception as e:
+            if os.path.exists(tmp): os.remove(tmp)
+            die(f"could not read the published snapshot {LIVE}/{f}: {e}")
+        shutil.move(tmp, f"{SITE}/{f}")
+    normalise_lag(f"{SITE}/lag.json")
+    gen = json.load(open(f"{SITE}/sats.json")).get("generated", "")
+    print(f"re-staged the published snapshot of {gen[:10]} (no data source contacted)")
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--mode", choices=("fetch", "rebuild"), required=True)
+    mode = ap.parse_args().mode
+    if mode == "fetch":
+        fetch_sources()
+    else:
+        restage_published()
 
     # Lossless compact transport copy of sats.json for the app's first load.
     # pack_sats.py verifies the round trip and hard-fails on any mismatch.
@@ -92,15 +143,15 @@ def main():
     if r.returncode != 0:
         print("PACK FAILED\n", r.stdout[-2000:], r.stderr[-2000:]); sys.exit(1)
 
-    # Staleness guard: if CelesTrak keeps serving old element sets (or a fetch
-    # silently fell back to a previous file) the median element-set epoch
-    # drifts back in time. Healthy data sits at ~0.5 days; fail loudly past
+    # Staleness guard: if CelesTrak keeps serving old element sets the median
+    # element-set epoch drifts back in time. Healthy data sits at ~0.5 days; fail loudly past
     # STALE_DAYS so the deploy stops and the failure alert fires, instead of
     # publishing yesterday's sky under today's date.
-    median_age = median_epoch_age_days(f"{SITE}/sats.json")
-    print(f"median element-set epoch age: {median_age:.2f} days")
-    if median_age > STALE_DAYS:
-        print(f"STALE SOURCE DATA: median epoch age {median_age:.1f} d > {STALE_DAYS} d"); sys.exit(1)
+    if mode == "fetch":
+        median_age = median_epoch_age_days(f"{SITE}/sats.json")
+        print(f"median element-set epoch age: {median_age:.2f} days")
+        if median_age > STALE_DAYS:
+            die(f"STALE SOURCE DATA: median epoch age {median_age:.1f} d > {STALE_DAYS} d")
 
     # Regenerate the citation manifest (version from CITATION.cff, DOI from Zenodo,
     # snapshot date from the dataset manifest). Hard-fails the refresh if the

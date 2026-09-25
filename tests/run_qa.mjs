@@ -67,11 +67,12 @@ function oscolaDate(iso) {
   return new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' }).format(d);
 }
 // Templates from the spec — the single source of truth for this test.
-// 9.3 of the v1.8.0 brief: author, title, version, snapshot date, URL, accessed
-// date and DOI; no institution name.
+// OSCOLA 5: author, title, version, snapshot date, DOI; no URL or access date
+// when a DOI is present, and no institution name. URL and access date appear
+// in the BibTeX only.
 const accessedISO = new Date().toISOString().slice(0, 10);
-const expFoot = `Hallam Burnapp, 'STARS Observatory' (version ${citation.version}, data snapshot ${oscolaDate(loadedSnapshotISO)}) <https://starsobservatory.org> accessed ${oscolaDate(accessedISO)}, DOI: ${citation.version_doi}.`;
-const expBib = `Burnapp H, 'STARS Observatory' (version ${citation.version}, data snapshot ${oscolaDate(loadedSnapshotISO)}) <https://starsobservatory.org> accessed ${oscolaDate(accessedISO)}, DOI: ${citation.version_doi}`;
+const expFoot = `Hallam Burnapp, 'STARS Observatory' (version ${citation.version}, data snapshot ${oscolaDate(loadedSnapshotISO)}) DOI: ${citation.version_doi}.`;
+const expBib = `Burnapp H, 'STARS Observatory' (version ${citation.version}, data snapshot ${oscolaDate(loadedSnapshotISO)}) DOI: ${citation.version_doi}`;
 
 console.log(`\nQA gate — version ${cffVersion}, snapshot ${loadedSnapshotISO}${QUICK ? ' (quick mode)' : ''}\n`);
 
@@ -81,6 +82,9 @@ const page = await browser.newPage({ viewport: { width: 1360, height: 900 } });
 const pageErrors = [];
 page.on('pageerror', e => pageErrors.push(String(e)));
 page.on('console', m => { if (m.type() === 'error') pageErrors.push(m.text()); });
+// privacy (About): the page must make no third-party requests
+const foreignHosts = new Set();
+page.on('request', r => { const h = new URL(r.url()).host; if (!/^(127\.0\.0\.1|localhost)(:\d+)?$/.test(h) && !r.url().startsWith('data:') && !r.url().startsWith('blob:')) foreignHosts.add(h); });
 
 async function loadApp(url) {
   await page.goto(url, { timeout: 120000, waitUntil: 'domcontentloaded' });
@@ -118,7 +122,7 @@ const gotBib = (await page.textContent('#citeOscola')).trim();
 check(gotBib === expBib, 'bibliography form matches template, character-for-character', `\n    expected: ${expBib}\n    got:      ${gotBib}`);
 check(!gotBib.endsWith('.'), 'bibliography form has no trailing full stop');
 for (const [name, s] of [['footnote', gotFoot], ['bibliography', gotBib]]) {
-  check(s.includes('<https://starsobservatory.org>') && s.includes(`accessed ${oscolaDate(accessedISO)}`), `${name} form carries the URL and the access date`);
+  check(!/https?:\/\/|<http|\baccessed\b/i.test(s), `${name} form contains no URL and no access date (OSCOLA 5, DOI present)`);
   check(!/Aberdeen|University/i.test(s), `${name} form names no institution`);
   check(s.includes(`data snapshot ${oscolaDate(loadedSnapshotISO)}`), `${name} snapshot date equals the loaded dataset date`);
 }
@@ -415,7 +419,9 @@ console.log('[4d] View links, CSV export');
   const vis = await page.evaluate(() => __QA.vis());
   const [dl] = await Promise.all([page.waitForEvent('download', { timeout: 15000 }), page.click('#vCsv')]);
   const csv = readFileSync(await dl.path(), 'utf8').trim().split(/\r\n/);
-  check(csv[0].startsWith('norad_cat_id,name,intl_designator,object_type,responsible_state_code'), 'CSV header is present', csv[0]);
+  check(csv[0].startsWith('norad_cat_id,name,intl_designator,object_type,attributed_state_code,attributed_state,'), 'CSV header is present', csv[0]);
+  const lagJ = JSON.parse(readFileSync(join(SITE, 'data', 'lag.json'), 'utf8'));
+  check('watching_no_un_match' in lagJ && !('watching_unregistered' in lagJ), 'lag.json uses the watching_no_un_match key', Object.keys(lagJ).join(','));
   check(csv.length - 1 === vis, `CSV row count equals the objects shown (${csv.length - 1} vs ${vis})`);
   const bad = csv.slice(1).filter(r => !/,PAY,PRC,/.test(r) || !/,no UN record,/.test(r)).length;
   check(bad === 0, 'every CSV row matches the active filters (PAY, PRC, no UN record)', `${bad} mismatching rows`);
@@ -449,6 +455,7 @@ for (let k = 0; k < 3; k++) {
 console.log('[6] Console hygiene');
 const realErrors = pageErrors.filter(e => !/favicon|swiftshader|GPU stall|WebGL.*fallback|Automatic fallback/i.test(e));
 check(realErrors.length === 0, 'no page errors or console errors', realErrors.slice(0, 5).join(' | '));
+check(foreignHosts.size === 0, 'the page makes no third-party requests (fonts and libraries are self-hosted)', [...foreignHosts].join(', '));
 
 await browser.close();
 server.close();

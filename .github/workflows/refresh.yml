@@ -26,28 +26,16 @@ jobs:
         with:
           python-version: "3.12"
 
-      # Source files persist between runs. CelesTrak refuses repeat downloads
-      # from the same (shared) runner IP within ~2 h; refresh.py then keeps the
-      # previous file, which only exists if we carried it over. The staleness
-      # guard in refresh.py still fails the run if what we keep is > 3 days old.
-      - name: Restore previous source files
-        uses: actions/cache/restore@v4
-        with:
-          path: data/raw
-          key: raw-${{ github.run_id }}
-          restore-keys: raw-
-
-      - name: Refresh dataset
-        run: python pipeline/refresh.py
-
-      - name: Save source files for the next run
-        if: success()
-        uses: actions/cache/save@v4
-        with:
-          path: data/raw
-          key: raw-${{ github.run_id }}
+      # CelesTrak and GCAT are contacted only by the daily schedule, once per
+      # day. Any failed download halts the run and nothing is deployed, so the
+      # site keeps its previous snapshot and date (and the alert job below
+      # opens an issue). Pushes and manual runs never download: they re-stage
+      # the snapshot the site already publishes, unchanged.
+      - name: Refresh dataset (schedule) or re-stage the published snapshot (push / manual)
+        run: python pipeline/refresh.py --mode ${{ github.event_name == 'schedule' && 'fetch' || 'rebuild' }}
 
       - name: Commit registration lag ledger
+        if: github.event_name == 'schedule'
         run: |
           git config user.name "stars-observatory-bot"
           git config user.email "actions@github.com"

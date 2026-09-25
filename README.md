@@ -64,7 +64,7 @@ python -m http.server -d site 8000  # then open http://localhost:8000
 
 ## Data sources & attribution
 
-Live catalogue data are drawn from CelesTrak (GP and SATCAT, OMM formats). Registration matching uses Jonathan McDowell's General Catalog of Artificial Space Objects (GCAT), CC BY 4.0. Historical element sets used for incident replays are drawn from a publicly hosted mirror of Space-Track history. Earth imagery: NASA Blue Marble. Treaty status: UNOOSA.
+Live catalogue data are drawn from CelesTrak (GP data in OMM JSON; SATCAT in CSV). Registration matching uses Jonathan McDowell's General Catalog of Artificial Space Objects (GCAT), CC BY 4.0. Historical element sets used for incident replays are drawn from a publicly hosted mirror of Space-Track history. Earth imagery: NASA Blue Marble. Treaty status: UNOOSA.
 
 - **[CelesTrak](https://celestrak.org/)** — GP element sets (OMM, JSON) and SATCAT (CSV) (T.S. Kelso), derived from US Space Force 18 SDS tracking data.
 - **[GCAT](https://planet4589.org/space/gcat/)** — J. McDowell, General Catalog of Artificial Space Objects, used under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
@@ -77,7 +77,7 @@ Live catalogue data are drawn from CelesTrak (GP and SATCAT, OMM formats). Regis
 
 - **[three.js](https://threejs.org/)** (incl. OrbitControls) — © 2010–present three.js authors, [MIT](https://github.com/mrdoob/three.js/blob/dev/LICENSE) (vendored).
 - **[satellite.js](https://github.com/shashwatak/satellite-js)** v5.0.0 — SGP4/SDP4 propagation, [MIT](https://github.com/shashwatak/satellite-js/blob/develop/LICENSE.md) (vendored).
-- **[IBM Plex Sans and IBM Plex Mono](https://github.com/IBM/plex)** — served by Google Fonts, [SIL Open Font License 1.1](https://github.com/IBM/plex/blob/master/LICENSE.txt).
+- **[IBM Plex Sans and IBM Plex Mono](https://github.com/IBM/plex)** — self-hosted in `site/fonts`, [SIL Open Font License 1.1](https://github.com/IBM/plex/blob/master/LICENSE.txt).
 
 All other code, design, text, and the debris-cloud and replay engines are original work by the author (MIT). No trademarked assets or restricted imagery are used.
 
@@ -89,17 +89,17 @@ Built and maintained by **Hallam Burnapp**. The instrument supports doctoral res
 
 ## Citation
 
-The instrument generates its own citation — open the **About** panel on the live site for a ready-to-copy OSCOLA citation carrying the exact version, data snapshot date and version DOI of the release you consulted, and the date you accessed it. The OSCOLA templates are:
+The instrument generates its own citation — open the **About** panel on the live site for a ready-to-copy OSCOLA citation carrying the exact version, data snapshot date and version DOI of the release you consulted. The OSCOLA templates are:
 
 **Footnote:**
 
-> Hallam Burnapp, 'STARS Observatory' (version \<VERSION\>, data snapshot \<SNAPSHOT DATE\>) <https://starsobservatory.org> accessed \<ACCESS DATE\>, DOI: \<VERSION DOI\>.
+> Hallam Burnapp, 'STARS Observatory' (version \<VERSION\>, data snapshot \<SNAPSHOT DATE\>) DOI: \<VERSION DOI\>.
 
 **Bibliography** (surname first, no trailing full stop):
 
-> Burnapp H, 'STARS Observatory' (version \<VERSION\>, data snapshot \<SNAPSHOT DATE\>) <https://starsobservatory.org> accessed \<ACCESS DATE\>, DOI: \<VERSION DOI\>
+> Burnapp H, 'STARS Observatory' (version \<VERSION\>, data snapshot \<SNAPSHOT DATE\>) DOI: \<VERSION DOI\>
 
-where `<VERSION>` and `<VERSION DOI>` identify the archived release you used (the site fills these in automatically), `<SNAPSHOT DATE>` is the date of the dataset you consulted, e.g. `13 September 2026`, and `<ACCESS DATE>` is the day you consulted it.
+where `<VERSION>` and `<VERSION DOI>` identify the archived release you used (the site fills these in automatically) and `<SNAPSHOT DATE>` is the date of the dataset you consulted, e.g. `13 September 2026`. Following OSCOLA 5, a citation that carries a DOI gives no URL or access date; the BibTeX entry records both (`url`, `urldate`).
 
 The **concept DOI** [10.5281/zenodo.22662848](https://doi.org/10.5281/zenodo.22662848) always resolves to the latest archived release; each release additionally receives its own **version DOI**, which is what the citation should carry (see `CITATION.cff`). Please also credit the underlying data sources listed above.
 

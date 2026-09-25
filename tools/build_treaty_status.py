@@ -62,7 +62,8 @@ CODE_TO_ROWS = {
 }
 IGO = {'ESA', 'EUME', 'EUTE'}
 NOTES = {
-    'CIS': 'SATCAT code CIS (former USSR) is shown against the Russian Federation, the continuator State of the USSR.',
+    'CIS': 'SATCAT code CIS (former USSR) is shown against the Russian Federation, the continuator State of the USSR. This mapping is for treaty-status display only; it is not an attribution of responsibility.',
+    'EUTE': "Satellites coded EUTE in the catalogue are operated by the privatised company Eutelsat S.A.; the EUTELSAT IGO's art VII declaration does not of itself make the IGO the registering or responsible entity for them.",
     'ROC': 'Taiwan is not listed in the UNOOSA status table.',
     'STCT': 'Joint Singapore/Taiwan code; Taiwan is not listed in the UNOOSA status table.',
 }

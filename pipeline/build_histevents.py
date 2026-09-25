@@ -204,12 +204,12 @@ def main():
             obj(44278, "Starlink-44 (SpaceX)", "#ff6b6b", t0, t1),
         ],
         "milestones": [
-            {"t": "2019-08-26T12:00:00Z", "step": 0},
             {"t": "2019-08-28T12:00:00Z", "step": 1},
             {"t": "2019-08-29T18:00:00Z", "step": 2},
             {"t": "2019-09-01T12:00:00Z", "step": 3},
             {"t": "2019-09-02T10:14:00Z", "step": 4},
         ],
+        "preSteps": [0],  # 'about a week before' (ESA) — shown at the start, not pinned to a date
         "note": ("Aeolus is propagated from its last pre-manoeuvre element sets. "
                  "Starlink-44 is catalogue object 2019-029AV (NORAD 44278; today's "
                  "SATCAT labels it STARLINK-67), one of two early Starlinks SpaceX was "
@@ -235,10 +235,10 @@ def main():
             obj(22675, "Cosmos 2251 (RU, derelict)", "#ff6b6b", t0, t1, cutoff=cut, per_day=4, fragments=1267),
         ],
         "milestones": [
-            {"t": "2009-02-10T15:02:00Z", "step": 2},
-            {"t": "2009-02-10T16:55:59Z", "step": 3},
+            {"t": "2009-02-10T15:02:00Z", "step": 0},
+            {"t": "2009-02-10T16:55:59Z", "step": 1},
         ],
-        "preSteps": [0, 1],
+        "preSteps": [],
         "note": (f"Propagated from the final published element sets, the two objects "
                  f"pass within {miss*1000:.0f} m of each other at {miss_t.strftime('%H:%M:%S.%f')[:-5]} UTC — "
                  "independent confirmation of the collision geometry from public data "
@@ -261,11 +261,11 @@ def main():
         "keyLabel": "Kinetic-kill intercept at ~860 km",
         "slowFinalMin": 30, "durationSec": 50, "codaFrac": 0.25,
         "objects": [obj(25730, "Fengyun-1C (CN, defunct)", "#ffb347", t0, t1, cutoff=cut_fy, per_day=4, fragments=3037)],
-        "milestones": [{"t": "2007-01-11T22:26:00Z", "step": 1}],
-        "preSteps": [0],
+        "milestones": [{"t": "2007-01-11T22:26:00Z", "step": 0}],
+        "preSteps": [],
         "note": (f"At the documented intercept time the element sets place Fengyun-1C "
-                 f"at {la:.1f}°N {lo:.1f}°E, north-west of Xichang and heading south — the "
-                 "descending (southbound) pass the SC-19 interceptor met head-on. The interceptor "
+                 f"at {la:.1f}°N {lo:.1f}°E, north-west of Xichang and heading south, on a "
+                 "descending (southbound) pass. The interceptor "
                  "itself was never a catalogued object; only the target is replayed. "
                  "The debris cloud is a physically derived visualisation — one particle "
                  "per catalogued fragment (3,037), released from the true intercept "
@@ -280,15 +280,13 @@ def main():
         "kind": "asat",
         "window": [iso(t0), iso(t1)],
         "keyTime": "2021-11-15T02:47:00Z",
-        "keyLabel": "Nudol intercept at ~480 km — ISS crew sheltered",
+        "keyLabel": "Intercept in a 490 × 465 km orbit — ISS crew sheltered",
         "slowFinalMin": 25, "durationSec": 50, "codaFrac": 0.25,
         "objects": [obj(13552, "Cosmos 1408 (RU, defunct)", "#ff6b6b", t0, t1, cutoff=cut_ck, per_day=4, fragments=1604)],
-        "milestones": [{"t": "2021-11-15T02:47:00Z", "step": 1}],
-        "preSteps": [0],
+        "milestones": [{"t": "2021-11-15T02:47:00Z", "step": 0}],
+        "preSteps": [],
         "note": (f"At the documented intercept time the element sets place Cosmos 1408 "
-                 f"at {la2:.1f}°N {lo2:.1f}°E over northern Russia, downrange of the "
-                 "Plesetsk launch site — consistent with the published intercept "
-                 "geometry. The interceptor was never a catalogued object. The debris "
+                 f"at {la2:.1f}°N {lo2:.1f}°E over northern Russia. The interceptor was never a catalogued object. The debris "
                  "cloud is a physically derived visualisation — one particle per "
                  "catalogued fragment (1,604), released from the true intercept state "
                  "vector with a modelled velocity spread and propagated by two-body "
@@ -307,8 +305,8 @@ def main():
             obj(40258, "Luch / Olymp-K (RU)", "#ff6b6b", t0, t1, per_day=0.5),
             obj(26824, "Intelsat 901 (ITSO)", "#4fd1e0", t0, t1, per_day=0.5),
         ],
-        "milestones": [{"t": iso(lu_min[1]), "step": 1}],
-        "preSteps": [0],
+        "milestones": [{"t": iso(lu_min[1]), "step": 0}],
+        "preSteps": [],
         "note": (f"A 3½-month time-lapse: Luch/Olymp manoeuvres along the GEO ring and "
                  f"holds station alongside Intelsat 901 at 18°W. Element sets bottom out "
                  f"at ≈{lu_min[0]:.0f} km ({lu_min[1].strftime('%d %b %Y')}); operator "

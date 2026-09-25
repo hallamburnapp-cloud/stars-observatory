@@ -43,6 +43,7 @@ jobs:
           echo "CITATION.cff version: $CFF"
           [ "$CFF" = "$V" ] || { echo "::error::CITATION.cff says $CFF, not $V — bump it on main first"; exit 1; }
           if gh release view "v$V" >/dev/null 2>&1; then echo "::error::release v$V already exists"; exit 1; fi
+          if grep -q "ORCID-TO-BE-SUPPLIED" CITATION.cff .zenodo.json; then echo "::error::replace the ORCID placeholder in CITATION.cff and .zenodo.json first"; exit 1; fi
 
       - name: Publish GitHub release
         run: |

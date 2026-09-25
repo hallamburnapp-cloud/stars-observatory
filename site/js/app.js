@@ -1257,7 +1257,10 @@ function treatyCell(code, key) {
 }
 function treatySourceLine() {
   const t = state.treaty; if (!t || !t.source) return 'Treaty status unavailable.';
-  return `Treaty status: UNOOSA, <a href="${t.source.url}" target="_blank" rel="noopener">UN Doc ${t.source.symbol}</a>, as at ${oscolaDate(t.source.as_at)}. ‘Party’ = ratification, acceptance, approval, accession or succession; ‘declaration’ = an intergovernmental organisation’s declaration of acceptance of rights and obligations.`;
+  const d = t.table_vs_total_row || {};
+  const LAB = { OST: 'Outer Space Treaty', LIAB: 'Liability Convention', REG: 'Registration Convention' }, MK = { R: 'ratifications', S: 'signatures', D: 'declarations' };
+  const disc = Object.entries(d).map(([k, v]) => { const [tr, mk] = k.split(' '); return `${LAB[tr]} ${MK[mk]}: ${v.table_rows} in the table, ${v.document_total_row} in its Total row`; });
+  return `Treaty status: UNOOSA, <a href="${t.source.url}" target="_blank" rel="noopener">UN Doc ${t.source.symbol}</a>, as at ${oscolaDate(t.source.as_at)}, shown as the table prints it. ‘Party’ = ratification, acceptance, approval, accession or succession; ‘declaration’ = an intergovernmental organisation’s declaration of acceptance of rights and obligations.${disc.length ? ` The document’s own Total row differs from its table (${disc.join('; ')}).` : ''}`;
 }
 function treatyBlock(code) {
   const e = treatyEntries(code), t = state.treaty;
@@ -1292,16 +1295,13 @@ const SCENARIOS = [
   {
     id: 'iridium', title: 'Iridium 33 / Cosmos 2251', year: '2009',
     tag: 'First accidental collision of two intact satellites',
-    intro: '<strong style="color:var(--accent-warn)">10 February 2009, 16:56 UTC.</strong> An active Iridium commercial satellite and a defunct Russian Cosmos 2251 collided at 11.6 km/s over Siberia — the first accidental hypervelocity collision between two intact catalogued satellites. The debris clouds shown in the 3D view are still on orbit today.',
+    intro: '<strong style="color:var(--accent-warn)">10 February 2009, 16:56 UTC.</strong> The operating satellite Iridium 33 and the defunct Cosmos 2251 collided at 11.6 km/s over Siberia — the first accidental hypervelocity collision between two intact catalogued satellites.',
     steps: [
-      { date: '1993', crit: false, txt: 'Cosmos 2251, a Russian Strela-2M military communications satellite, is launched; it ceases operating in 1995 and becomes derelict, uncontrolled debris.', prob: null },
-      { date: '14 Sep 1997', crit: false, txt: 'Iridium 33, a US commercial mobile-communications satellite (Iridium LLC), is launched on a Russian Proton from Baikonur into the Iridium constellation.', prob: null },
       { date: '10 Feb 2009 · 15:02 UTC', crit: false, txt: 'CelesTrak’s public SOCRATES report predicts a 584 m close approach at 16:55:59 UTC — one of many sub-kilometre Iridium conjunctions that week; it never makes the Top Ten list and ranks 152nd at the time of the collision.', prob: 'Predicted miss: 584 m · not escalated' },
       { date: '10 Feb 2009 · 16:55:59 UTC', crit: true, txt: 'Collision at 778.6 km altitude over northern Siberia (72.5°N 97.9°E), relative velocity 11.647 km/s, destroying both satellites. The US military’s high-accuracy catalogue was not shared with Iridium, and JSpOC did not know that Iridium 33 had manoeuvred for station-keeping hours earlier.', prob: 'Impact · 11.647 km/s · both destroyed' },
-      { date: '10 Jun 2010', crit: true, txt: 'Catalogue update: Cosmos 2251 produced 1,267 catalogued fragments (1,212 on orbit); Iridium 33 produced 521 (498 on orbit).', prob: 'Catalogued fragments: 1,788' },
-      { date: 'To date', crit: true, txt: 'No claim under the 1972 Liability Convention is publicly recorded, and no Claims Commission was established.', prob: 'No public Liability Convention claim' }
+      { date: '10 Jun 2010', crit: true, txt: 'Catalogue update: Cosmos 2251 produced 1,267 catalogued fragments (1,212 on orbit); Iridium 33 produced 521 (498 on orbit).', prob: 'Catalogued fragments: 1,788' }
     ],
-    caption: '<strong>Article IX OST.</strong> The consultation clause of Article IX applies where a State Party ‘has reason to believe’ that an activity or experiment planned by it or its nationals in outer space ‘would cause potentially harmful interference’ with activities of other States Parties. <strong>Fact pattern.</strong> Cosmos 2251 had been derelict and uncontrolled since 1995; Iridium 33 was an operating commercial satellite. On the day, CelesTrak’s public SOCRATES report (15:02 UTC) predicted a 584 m close approach at 16:55:59 UTC; it was not on the report’s Top Ten list and ranked 152nd at the time of the collision. The collision occurred at 16:55:59 UTC, under two hours after that report.',
+    caption: '<strong>Article IX OST.</strong> The consultation clause of Article IX applies where a State Party ‘has reason to believe’ that an activity or experiment planned by it or its nationals in outer space ‘would cause potentially harmful interference’ with activities of other States Parties. <strong>Fact pattern.</strong> Cosmos 2251 was derelict and uncontrolled; Iridium 33 was operating. On the day, CelesTrak’s public SOCRATES report (15:02 UTC) predicted a 584 m close approach at 16:55:59 UTC; it was not on the report’s Top Ten list and ranked 152nd at the time of the collision. The collision occurred at 16:55:59 UTC, under two hours after that report.',
     viz: { mode: 'names', groups: [{ prefix: 'IRIDIUM 33 DEB', color: 0x4fd1e0, label: 'Iridium 33 debris' }, { prefix: 'COSMOS 2251 DEB', color: 0xff6b6b, label: 'Cosmos 2251 debris' }] }
   },
   {
@@ -1309,27 +1309,24 @@ const SCENARIOS = [
     tag: 'Largest debris-generating event on record',
     intro: '<strong style="color:var(--accent-warn)">11 January 2007.</strong> China destroyed its own defunct Fengyun-1C weather satellite with a direct-ascent kinetic kill vehicle at ~860 km — the single largest debris-generating event in history. The debris cloud in the 3D view is what remains.',
     steps: [
-      { date: '10 May 1999', crit: false, txt: 'Fengyun-1C, a ~960 kg Chinese sun-synchronous weather satellite, is launched from Taiyuan. It works ‘through at least 2005’; by January 2007 it still responds to controllers but no longer provides significant meteorological service.', prob: null },
-      { date: '11 Jan 2007 · 22:26 UTC', crit: true, txt: 'A direct-ascent SC-19 kinetic-kill vehicle strikes Fengyun-1C at ~860 km altitude at ~9 km/s, destroying the satellite.', prob: 'Impact · ~8–9 km/s' },
+      { date: '11 Jan 2007 · 22:26 UTC', crit: true, txt: 'A direct-ascent kinetic-kill vehicle strikes Fengyun-1C at ~860 km altitude at ~9 km/s, destroying the satellite.', prob: 'Impact · ~8–9 km/s' },
       { date: '17–18 Jan 2007', crit: false, txt: 'Aviation Week first reports the test; the US National Security Council publicly confirms it on 18 January.', prob: null },
-      { date: '19–22 Jan 2007', crit: true, txt: 'The US lodges a formal protest, and Japan, Australia, Canada, the UK and others publicly raise concerns; China declines to confirm or deny for 12 days.', prob: 'Diplomatic protests' },
+      { date: '19–22 Jan 2007', crit: true, txt: 'The US lodges a formal protest, and Japan, Australia, Canada, the UK and others publicly raise concerns; China does not yet confirm the test.', prob: 'Diplomatic protests' },
       { date: '23 Jan 2007', crit: false, txt: 'China confirms the test, stating that it ‘was not directed at any country’ and reiterating opposition to the weaponisation of outer space.', prob: null },
       { date: 'Ongoing', crit: true, txt: 'By mid-September 2010 the catalogue held 3,037 fragments (97% still on orbit). CSET (November 2025) reported nearly 2,500 still on orbit — almost 19% of all tracked debris, still the single largest contributor of any event.', prob: '≈2,500 fragments still on orbit (CSET, 2025)' }
     ],
-    caption: '<strong>Article IX OST.</strong> The consultation clause of Article IX applies where a State Party ‘has reason to believe’ that an activity or experiment planned by it or its nationals in outer space ‘would cause potentially harmful interference’ with activities of other States Parties. <strong>Fact pattern.</strong> The intercept took place at 22:26 UTC on 11 January 2007. It was first reported publicly by <i>Aviation Week</i> on 17 January and confirmed by the US National Security Council on 18 January; China confirmed the test on 23 January, 12 days after it. The debris was released at ~860 km, where fragments remain in orbit for many years: nearly 2,500 were still on orbit in November 2025.',
+    caption: '<strong>Article IX OST.</strong> The consultation clause of Article IX applies where a State Party ‘has reason to believe’ that an activity or experiment planned by it or its nationals in outer space ‘would cause potentially harmful interference’ with activities of other States Parties. <strong>Fact pattern.</strong> The intercept took place at 22:26 UTC on 11 January 2007. It was first reported publicly by <i>Aviation Week</i> on 17 January and confirmed by the US National Security Council on 18 January; China confirmed the test on 23 January. The debris was released at ~860 km, where fragments remain in orbit for many years: nearly 2,500 were still on orbit in November 2025.',
     viz: { mode: 'names', groups: [{ prefix: 'FENGYUN 1C DEB', color: 0xffb347, label: 'Fengyun-1C debris' }] }
   },
   {
     id: 'cosmos1408', title: 'Cosmos 1408 ASAT test', year: '2021',
-    tag: 'Nudol test · ISS crew took shelter',
-    intro: '<strong style="color:var(--accent-warn)">15 November 2021.</strong> Russia destroyed the defunct Cosmos 1408 with a PL-19 Nudol interceptor at ~480 km, forcing the seven-member ISS crew to shelter in their return capsules. Most of the debris was at low altitude and has since re-entered — a sharp contrast with the high-altitude Fengyun-1C cloud.',
+    tag: 'Direct-ascent ASAT test · ISS crew sheltered',
+    intro: '<strong style="color:var(--accent-warn)">15 November 2021.</strong> Russia destroyed its own defunct Cosmos 1408, in a 490 × 465 km orbit, with a direct-ascent anti-satellite missile; the ISS crew sheltered in their return vehicles.',
     steps: [
-      { date: '16 Sep 1982', crit: false, txt: 'Cosmos 1408, a 1,750 kg Soviet Tselina-D electronic-intelligence satellite, is launched; derelict for decades, it has decayed to a 490 × 465 km orbit by 2021.', prob: null },
-      { date: '15 Nov 2021 · ~02:47–02:50 UTC', crit: true, txt: 'A Nudol (A-235; US designation PL-19) direct-ascent interceptor launched from Plesetsk strikes Cosmos 1408 in its 490 × 465 km orbit, destroying it — the first satellite destroyed by the Nudol system.', prob: 'Catastrophic breakup · ~480 km' },
-      { date: '15 Nov 2021 (same day)', crit: true, txt: 'The seven-member ISS Expedition 66 crew don suits and shelter in their Soyuz and Crew Dragon capsules. The US State Department reports >1,500 trackable debris pieces and hundreds of thousands of smaller fragments.', prob: 'ISS crew sheltered · >1,500 pieces' },
-      { date: '7 Mar 2022', crit: false, txt: 'By 7 March 2022 the US catalogue has added 1,604 Cosmos 1408 fragments with unique identifications; the catalogue eventually lists 1,806.', prob: '1,604 catalogued fragments' },
-      { date: '7 Dec 2022', crit: false, txt: 'The UN General Assembly adopts Resolution 77/41, calling on States to commit not to conduct destructive direct-ascent ASAT missile tests, by 155 votes to 9 with 9 abstentions (Russia and China against; India abstaining). It is not legally binding.', prob: 'UNGA 77/41 · non-binding' },
-      { date: 'By 2025', crit: true, txt: 'Because the intercept was at low altitude, atmospheric drag self-cleaned the cloud: only a handful of Cosmos 1408 fragments still have public element sets — most have re-entered. High-altitude debris (Fengyun-1C) does not clean itself this way.', prob: 'Low-altitude debris self-cleans' }
+      { date: '15 Nov 2021 · ~02:47–02:50 UTC', crit: true, txt: 'A Russian direct-ascent anti-satellite missile strikes Cosmos 1408 in its 490 × 465 km orbit, destroying it.', prob: 'Catastrophic breakup · 490 × 465 km orbit' },
+      { date: '15 Nov 2021 (same day)', crit: true, txt: 'The ISS crew shelter in their Soyuz and Crew Dragon vehicles. The US State Department reports >1,500 trackable debris pieces and hundreds of thousands of smaller fragments.', prob: 'ISS crew sheltered · >1,500 pieces' },
+      { date: '7 Mar 2022', crit: false, txt: 'By 7 March 2022 the US catalogue has added 1,604 Cosmos 1408 fragments with unique identifications.', prob: '1,604 catalogued fragments' },
+      { date: '7 Dec 2022', crit: false, txt: 'The UN General Assembly adopts Resolution 77/41, calling on States to commit not to conduct destructive direct-ascent ASAT missile tests, by 155 votes to 9 with 9 abstentions (Russia and China against; India abstaining).', prob: 'UNGA 77/41' }
     ],
     caption: '<strong>Article IX OST.</strong> The consultation clause of Article IX applies where a State Party ‘has reason to believe’ that an activity or experiment planned by it or its nationals in outer space ‘would cause potentially harmful interference’ with activities of other States Parties. <strong>Fact pattern.</strong> The intercept took place at about 02:47–02:50 UTC on 15 November 2021. The same day, the ISS crew sheltered in their return vehicles and the US State Department reported more than 1,500 trackable pieces. By 7 March 2022, 1,604 fragments had been catalogued. On 7 December 2022 the UN General Assembly adopted Resolution 77/41 by 155 votes to 9, with 9 abstentions.',
     viz: { mode: 'names', groups: [{ prefix: 'COSMOS 1408 DEB', color: 0xff6b6b, label: 'Cosmos 1408 debris' }] }
@@ -1337,13 +1334,11 @@ const SCENARIOS = [
   {
     id: 'luch', title: 'Luch / Olymp GEO proximity ops', year: '2014–26',
     tag: 'Espionage RPO in the GEO ring',
-    intro: '<strong style="color:var(--accent-warn)">2014–2026.</strong> Russia’s Olymp-K (often called Luch) repeatedly parked beside Western commercial and military satellites in geostationary orbit, at times within about 10 km; Western officials and analysts assess that it was intercepting their communications, and France called its approach to Athena-Fidus ‘an act of espionage’. The manoeuvres themselves generated no debris. The 3D view isolates its successor Luch-5X against the Intelsat (ITSO) GEO ring; the original Olymp, retired to a graveyard orbit and fragmented in January 2026, is not in the live element-set feed.',
+    intro: '<strong style="color:var(--accent-warn)">2014–2026.</strong> Russia’s Olymp-K (often called Luch) repeatedly parked beside Western commercial and military satellites in geostationary orbit, at times within about 10 km; Western officials and analysts assess that it was intercepting their communications, and France called its approach to Athena-Fidus ‘an act of espionage’. The manoeuvres themselves generated no debris. The 3D view isolates the second Luch/Olymp satellite, launched in 2023 (catalogue number 55841), against the Intelsat (ITSO) GEO ring; the original Olymp (NORAD 40258), retired to a graveyard orbit and fragmented in January 2026, is not in the live element-set feed.',
     steps: [
-      { date: '27 Sep 2014 · 20:23 UTC', crit: false, txt: 'Russia launches Olymp-K (often called Luch, NORAD 40258) on a Proton-M from Baikonur into geostationary orbit; it is assessed as an FSB/MoD signals-intelligence platform.', prob: null },
       { date: '2015', crit: true, txt: 'From about 4 April, Olymp-K parks for five months at 18.1°W, directly between Intelsat 901 (18°W) and Intelsat 7 (18.2°W), at times within about 10 km of them. Intelsat General calls it ‘not normal behavior’; Intelsat’s attempts to reach the owner directly and through the US Defense Department go unanswered, and JFCC Space says the satellite has come within 5 km of another satellite three times since launch.', prob: '~10 km approach · calls unanswered' },
       { date: '2017', crit: true, txt: 'Olymp-K approaches the Franco-Italian military communications satellite Athena-Fidus — ‘a bit too close’, France later says, ‘so close that one really could believe that it was trying to capture our communications’.', prob: 'Close approach to Athena-Fidus' },
       { date: '7 Sep 2018', crit: true, txt: 'France’s Minister for the Armed Forces, Florence Parly, publicly declares: ‘Trying to listen to one’s neighbor is not only unfriendly. It’s called an act of espionage’ (Defense News translation).', prob: '‘An act of espionage’' },
-      { date: '12 Mar 2023', crit: false, txt: 'Russia launches a successor, Luch-5X / Olymp-K-2 (NORAD 55841), widely assessed as a signals-intelligence platform continuing the pattern.', prob: 'Successor Luch-5X on station' },
       { date: 'Oct 2025 – 30 Jan 2026', crit: true, txt: 'The original Olymp (NORAD 40258) is decommissioned and moved to a graveyard orbit above GEO in October 2025 — then on 30 January 2026 at 06:09 UTC it fragments there, observed by Swiss SSA firm s2A systems. Analysts suggest an impact by untracked debris as a possible cause, since internal energy sources should have been vented at retirement; incomplete passivation has not been ruled out.', prob: 'Olymp fragments · suspected debris strike' }
     ],
     caption: '<strong>Article IX OST.</strong> The consultation clause of Article IX applies where a State Party ‘has reason to believe’ that an activity or experiment planned by it or its nationals in outer space ‘would cause potentially harmful interference’ with activities of other States Parties. <strong>Fact pattern.</strong> Olymp-K’s station-keeping beside Intelsat 901 and Intelsat 7, from about April 2015, was reported publicly in October 2015. Its 2017 approach to Athena-Fidus was made public by France on 7 September 2018. The approaches produced no debris; the retired Olymp fragmented in its graveyard orbit on 30 January 2026.',
@@ -1597,11 +1592,7 @@ function buildScenIsolation(viz) {
       parts.push(`<span style="color:${hex}">${set.size.toLocaleString('en-GB')}</span> ${g.label}`);
     }
     let note = `<strong>Live catalogue.</strong> Isolating ${parts.join(' and ')} — objects with public element sets still on orbit today. `;
-    if (viz.groups[0].prefix.startsWith('COSMOS 1408')) {
-      note += 'Only a handful of Cosmos 1408 fragments still have public element sets: because the intercept was at low altitude (~480 km), atmospheric drag has re-entered nearly all of the cloud. High-altitude debris (e.g. Fengyun-1C) does not self-clean this way.';
-    } else {
-      note += 'These are the fragments the event left behind — the debris cloud itself is the visual record of the collision.';
-    }
+    note += 'The count is taken from the live catalogue for this data snapshot.';
     const all = [...groups.reduce((a, g) => { g.indices.forEach(x => a.add(x)); return a; }, new Set())];
     return { groups, all, cam: [9, 7, 20], orbitPair: null, note };
   }
@@ -1618,8 +1609,8 @@ function buildScenIsolation(viz) {
     const all = [...new Set([...luch, ...itso])];
     const luchHex = '#' + viz.noradColor.toString(16).padStart(6, '0');
     const itsoHex = '#' + viz.ownerColor.toString(16).padStart(6, '0');
-    const luchName = luch.size ? 'Luch-5X (Olymp-K 2)' : 'the Luch successor';
-    const note = `<strong>Live catalogue · GEO ring.</strong> <span style="color:${luchHex}">${luchName}</span> (NORAD ${viz.norad}) is isolated against the <span style="color:${itsoHex}">${itso.size} Intelsat (ITSO) GEO payloads</span> it and its predecessor shadowed. The original Olymp (NORAD 40258) is no longer intact — it was moved to a graveyard orbit in October 2025 and fragmented there on 30 January 2026, possibly struck by untracked debris, and it is not in the live element-set feed, so it cannot be shown here.`;
+    const luchName = 'the second Luch/Olymp satellite (launched 2023)';
+    const note = `<strong>Live catalogue · GEO ring.</strong> <span style="color:${luchHex}">${luchName}</span> (NORAD ${viz.norad}${luch.size ? '' : ', not in this snapshot'}) is isolated against the <span style="color:${itsoHex}">${itso.size} Intelsat (ITSO) GEO payloads</span> in the live catalogue. The original Olymp (NORAD 40258) is no longer intact — it was moved to a graveyard orbit in October 2025 and fragmented there on 30 January 2026, possibly struck by untracked debris, and it is not in the live element-set feed, so it cannot be shown here.`;
     return { groups, all, cam: [0, 20, 55], orbitPair: null, note };
   }
   return { groups: [], all: [], cam: [9, 7, 20], orbitPair: null, note: '' };
@@ -2156,7 +2147,7 @@ function buildLagIndex() {
     : lag.median_lag_days.toLocaleString('en-GB') + '<span class="l" style="display:inline"> days</span>';
   statsEl.innerHTML = `
     <div class="stat-cell"><div class="n">${(lag.tracked_payloads||0).toLocaleString('en-GB')}</div><div class="l">Payloads tracked</div></div>
-    <div class="stat-cell"><div class="n">${(lag.watching_unregistered||0).toLocaleString('en-GB')}</div><div class="l">No matching UN record — under watch</div></div>
+    <div class="stat-cell"><div class="n">${(lag.watching_no_un_match||0).toLocaleString('en-GB')}</div><div class="l">No matching UN record — under watch</div></div>
     <div class="stat-cell"><div class="n">${(lag.flips_observed||0).toLocaleString('en-GB')}</div><div class="l">Registrations observed since launch of this index</div></div>
     <div class="stat-cell"><div class="n">${median}</div><div class="l">Median observed lag, launch → registration first recorded in GCAT</div></div>`;
 
@@ -2317,15 +2308,16 @@ function citeForms() {
   const snapISO = loaded || c.snapshot_date;
   // Accessed = the day the reader consults the instrument (their UTC date).
   const accISO = new Date().toISOString().substring(0, 10);
-  const D = oscolaDate(snapISO), V = c.version, DOI = c.version_doi, A = oscolaDate(accISO);
+  const D = oscolaDate(snapISO), V = c.version, DOI = c.version_doi;
   const URL_ = 'https://starsobservatory.org';
-  // Author, title, version, snapshot date, URL and accessed date, then the DOI;
-  // a pinpoint, if any, comes before the URL (OSCOLA 5 §3.7.1).
-  const footPin = (pin) => `Hallam Burnapp, 'STARS Observatory' (version ${V}, data snapshot ${D})${pin ? ' ' + pin : ''} <${URL_}> accessed ${A}, DOI: ${DOI}.`;
+  // OSCOLA 5: author, title, version, snapshot date, DOI. With a DOI there is
+  // no URL and no access date (those appear in the BibTeX only); a pinpoint,
+  // if any, comes before the DOI (§3.7.1).
+  const footPin = (pin) => `Hallam Burnapp, 'STARS Observatory' (version ${V}, data snapshot ${D})${pin ? ' ' + pin : ''} DOI: ${DOI}.`;
   return {
     foot: footPin(''),
     footPin,
-    bib: `Burnapp H, 'STARS Observatory' (version ${V}, data snapshot ${D}) <${URL_}> accessed ${A}, DOI: ${DOI}`,
+    bib: `Burnapp H, 'STARS Observatory' (version ${V}, data snapshot ${D}) DOI: ${DOI}`,
     bibtex: `@software{burnapp_stars_${c.date_released.substring(0, 4)},
   author        = {Burnapp, Hallam},
   title         = {STARS Observatory},
@@ -2643,7 +2635,7 @@ function filteredIndices() {
 }
 function exportCSV(indices, label) {
   const snap = ((state.data && state.data.generated) || '').substring(0, 10);
-  const head = ['norad_cat_id', 'name', 'intl_designator', 'object_type', 'responsible_state_code', 'responsible_state',
+  const head = ['norad_cat_id', 'name', 'intl_designator', 'object_type', 'attributed_state_code', 'attributed_state',
     'constellation', 'un_registration', 'launch_year', 'orbital_regime', 'tle_line1', 'tle_line2', 'data_snapshot'];
   const rows = [head.join(',')];
   for (const i of indices) {

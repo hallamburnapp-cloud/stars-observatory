@@ -1,6 +1,7 @@
 # STARS Observatory — © 2026 Hallam Burnapp.
 # Code is licensed under MIT; data and snapshots under CC BY 4.0 (see LICENSE and README).
-# ORCID: to be added once supplied by the author (authors[0].orcid).
+# ORCID placeholder below (ORCID-TO-BE-SUPPLIED) must be replaced with the author's ORCID before release;
+# .github/workflows/release.yml refuses to release while it is present.
 # The version DOI is minted by Zenodo when the GitHub release is published; `doi`
 # below is the concept DOI, which always resolves to the latest archived version.
 cff-version: 1.2.0
@@ -12,6 +13,7 @@ authors:
   - family-names: Burnapp
     given-names: Hallam
     affiliation: "University of Aberdeen"
+    orcid: "https://orcid.org/ORCID-TO-BE-SUPPLIED"
 repository-code: "https://github.com/hallamburnapp-cloud/stars-observatory"
 url: "https://starsobservatory.org/"
 license: MIT
