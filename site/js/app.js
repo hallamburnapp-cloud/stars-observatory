@@ -2428,7 +2428,15 @@ function wireUITail() {
   const openAbout = (e) => { if (e) e.preventDefault(); openPanel('about'); };
   ['#topAbout', '#footAbout'].forEach(id => { const el = $(id); if (el) el.addEventListener('click', openAbout); });
   $$('[data-open]').forEach(el => el.addEventListener('click', () => openPanel(el.dataset.open)));
-  if (location.hash === '#about' || INITIAL_QUERY.has('about')) openPanel('about');
+  // "Cite this instrument": open About at its citation section
+  const openCite = (e) => {
+    if (e) e.preventDefault();
+    openPanel('about');
+    requestAnimationFrame(() => { const s = $('#citeSec'); if (s) s.scrollIntoView({ block: 'start' }); });
+  };
+  const fc = $('#footCite'); if (fc) fc.addEventListener('click', openCite);
+  if (location.hash === '#cite') openCite();
+  else if (location.hash === '#about' || INITIAL_QUERY.has('about')) openPanel('about');
   fillCitations();
   // Citation form switch — selecting a form renders AND copies it.
   const csF = $('#csFoot'), csB = $('#csBib');

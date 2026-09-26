@@ -2,6 +2,14 @@
 
 All notable changes to STARS Observatory. Each release is archived on Zenodo with its own version DOI; the concept DOI [10.5281/zenodo.22662848](https://doi.org/10.5281/zenodo.22662848) always resolves to the latest release. Earlier releases are listed on the [GitHub releases page](https://github.com/hallamburnapp-cloud/stars-observatory/releases).
 
+## Unreleased
+
+### Added
+- **"Cite this instrument" footer link** opens the About panel at its citation section (also reachable at `#cite`).
+
+### Fixed
+- The release workflow's wait for Zenodo now follows the concept record's redirect to the latest version, so it detects the new version DOI (the v1.8.0 run had to be redeployed by hand).
+
 ## v1.8.0 — scope freeze and legal wording pass
 
 ### Scope
