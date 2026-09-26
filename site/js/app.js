@@ -2156,8 +2156,8 @@ function buildLagIndex() {
   statsEl.innerHTML = `
     <div class="stat-cell"><div class="n">${(lag.tracked_payloads||0).toLocaleString('en-GB')}</div><div class="l">Payloads tracked</div></div>
     <div class="stat-cell"><div class="n">${(lag.watching_no_un_match||0).toLocaleString('en-GB')}</div><div class="l">No matching UN record — under watch</div></div>
-    <div class="stat-cell"><div class="n">${(lag.flips_observed||0).toLocaleString('en-GB')}</div><div class="l">Registrations observed since launch of this index</div></div>
-    <div class="stat-cell"><div class="n">${median}</div><div class="l">Median observed lag, launch → registration first recorded in GCAT</div></div>`;
+    <div class="stat-cell"><div class="n">${(lag.flips_observed||0).toLocaleString('en-GB')}</div><div class="l">UN registration matches first seen in GCAT since ${oscolaDate(lag.started)}</div></div>
+    <div class="stat-cell"><div class="n">${median}</div><div class="l">Median days from launch to UN registration match first appearing in GCAT (matches since ${oscolaDate(lag.started)}; not a general registration lag)</div></div>`;
 
   const daysRunning = lag.days_running || 0;
   if (!lag.recent_flips || lag.recent_flips.length === 0) {
@@ -2174,7 +2174,7 @@ function buildLagIndex() {
       <th>Object</th><th>Owner</th><th>Launched</th><th title="Date the UN registration first appeared in GCAT on a daily refresh">Registration observed</th><th class="num">Lag (days)</th>
       </tr></thead><tbody>${rows}</tbody></table></div>`;
   }
-  methodEl.innerHTML = `<strong>Method.</strong> Each daily refresh reads the UN registration field (UNReg) that McDowell's GCAT records for every tracked payload. When a payload that had no UN registration record gains one, the instrument logs the days from launch to the refresh on which the registration first became visible, and updates the running median. The lag is therefore an upper bound, precise to the refresh cadence and to GCAT's own update lag. Figures update automatically: this panel measures what it has observed since it began, not a retrospective estimate.`;
+  methodEl.innerHTML = `<strong>Method.</strong> Each daily refresh reads the UN registration field (UNReg) that McDowell’s GCAT records for every tracked payload. When a payload with no UN registration reference gains one, the ledger logs the days from launch to the refresh on which the reference first appeared in GCAT. This records when a registration first appeared in GCAT, which reflects the State’s submission, the UN’s publication of it and GCAT’s compilation of it; it does not measure the time the State took to register. The matches observed so far come from a small number of batch submissions: as at 25 September 2026, 740 of 765 came from one United States submission (UN Doc ST/SG/SER.E/1302), whose note verbale is dated 29 September 2025 and whose objects were entered in the UN Register on 3 October 2025, but which first appeared in GCAT on 13 July 2026. The median is therefore scoped to payloads whose match first appeared since ${oscolaDate(lag.started)}, and it is not a general measure of registration lag.`;
 }
 
 // ============================================================
@@ -2185,7 +2185,7 @@ function buildProvenance() {
   if (ledEl) {
     const lag = state.lag;
     ledEl.innerHTML = lag
-      ? `<div class="pc-h">Registration Lag Index</div>Longitudinal ledger begun ${oscolaDate(lag.started)}; ${lag.days_running||0} day(s) of observation, ${(lag.flips_observed||0).toLocaleString('en-GB')} registration events recorded so far. Each daily refresh compares the catalogue against the UN registration references recorded in McDowell’s GCAT and appends any launch → first-recorded-registration interval it observes. This is a forward-looking measurement, not a retrospective estimate.`
+      ? `<div class="pc-h">Registration Lag Index</div>Longitudinal ledger begun ${oscolaDate(lag.started)}; ${lag.days_running||0} day(s) of observation, ${(lag.flips_observed||0).toLocaleString('en-GB')} UN registration matches first seen in GCAT so far. Each daily refresh compares the catalogue against the UN registration references recorded in McDowell’s GCAT and records the interval from launch to the refresh on which a reference first appears. This records when a registration first appeared in GCAT, which reflects the State’s submission, the UN’s publication of it and GCAT’s compilation of it; it does not measure the time the State took to register, and it is not a general measure of registration lag.`
       : `<div class="pc-h">Registration Lag Index</div>Dataset unavailable.`;
   }
   if (casesEl) {
