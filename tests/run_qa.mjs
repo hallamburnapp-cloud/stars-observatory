@@ -139,7 +139,20 @@ check(!/Aberdeen|organization/i.test(bibtex), 'BibTeX names no institution');
 const aboutVer = (await page.textContent('#aboutVersion')).trim();
 check(!!citation.release_tag && aboutVer.startsWith(citation.release_tag), 'About shows the version from the release tag', `${aboutVer} vs ${citation.release_tag}`);
 const footCopy = (await page.textContent('#foot')).replace(/\s+/g, ' ').trim();
-check(footCopy === '© 2026 Hallam Burnapp · Code MIT · Data CC BY 4.0 · About', 'footer is exactly the copyright, licence and About line', footCopy);
+check(footCopy === '© 2026 Hallam Burnapp · Code MIT · Data CC BY 4.0 · About · Cite this instrument', 'footer is exactly the copyright, licence, About and citation line', footCopy);
+{
+  // the footer citation link opens About with the citation section in view
+  await page.evaluate(() => { const d = document.querySelector('#drawer .drawer-body'); if (d) d.scrollTop = 0; });
+  await page.click('#footCite');
+  await page.waitForTimeout(700);
+  const citeInView = await page.evaluate(() => {
+    const s = document.querySelector('#citeSec'), a = document.querySelector('#panel-about');
+    if (!s || !a || a.offsetParent === null) return false;
+    const r = s.getBoundingClientRect();
+    return r.top >= 0 && r.top < window.innerHeight;
+  });
+  check(citeInView, 'footer "Cite this instrument" opens About at the citation section');
+}
 const aboutTxt = await page.textContent('#panel-about');
 check(aboutTxt.includes("The author designed this instrument, defined its legal categories and verified its classifications; software and web design was prepared with agentic coding under the author's direction."), 'About carries the verbatim AI statement');
 const provTxt = await page.textContent('#panel-prov');

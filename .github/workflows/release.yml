@@ -54,7 +54,7 @@ jobs:
       - name: Wait for Zenodo to archive v${{ inputs.version }}
         run: |
           for i in $(seq 1 240); do
-            GOT=$(curl -fsS --max-time 60 "https://zenodo.org/api/records/$CONCEPT_RECID" | python3 -c "import json,sys; r=json.load(sys.stdin); print(r['metadata'].get('version',''), r['doi'])" || true)
+            GOT=$(curl -fsSL --max-time 60 "https://zenodo.org/api/records/$CONCEPT_RECID" | python3 -c "import json,sys; r=json.load(sys.stdin); print(r['metadata'].get('version',''), r['doi'])" || true)
             echo "Zenodo latest: $GOT"
             case "$GOT" in "v$V "*|"$V "*) echo "archived"; exit 0;; esac
             sleep 30
