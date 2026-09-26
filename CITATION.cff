@@ -1,9 +1,11 @@
-# STARS Observatory — © 2026 Hallam Burnapp. All rights reserved.
-# Code is licensed under MIT; generated datasets under CC-BY 4.0 (see LICENSE and README).
+# STARS Observatory — © 2026 Hallam Burnapp.
+# Code is licensed under MIT; data and snapshots under CC BY 4.0 (see LICENSE and README).
+# The version DOI is minted by Zenodo when the GitHub release is published; `doi`
+# below is the concept DOI, which always resolves to the latest archived version.
 cff-version: 1.2.0
 message: "If you use STARS Observatory in academic work, please cite it as below."
 title: "STARS Observatory"
-abstract: "A demonstrative evidence instrument for State obligations under Articles VI & IX of the Outer Space Treaty. Fuses the public orbital catalogue (CelesTrak GP / SATCAT, GCAT) with the legal layer that governs it: per-State supervision burden, UN registration gap and lag, and Article IX decision-time compression case studies, propagating ~19,000 objects with SGP4 in the browser."
+abstract: "STARS Observatory is a demonstrative evidence instrument. Each day it takes the public catalogue of objects in Earth orbit and shows the legal layer that governs them: which State the catalogue attributes each object to, whether and when a matching entry appears in the United Nations Register of Objects Launched into Outer Space, and how documented incidents unfolded in time."
 type: software
 authors:
   - family-names: Burnapp
@@ -18,12 +20,11 @@ keywords:
   - Article VI
   - Article IX
   - Registration Convention
-  - space situational awareness
-  - space debris
-  - SGP4
+  - satellite catalogue
+  - registration lag
+  - demonstrative evidence
   - space governance
-# Concept DOI — resolves to the latest archived version. Version DOIs for specific
-# releases are resolved from this concept record at build time (pipeline/build_citation.py).
 doi: 10.5281/zenodo.22662848
-version: 1.7.0
-date-released: 2026-09-24
+# version must equal the release tag (vX.Y.Z); .github/workflows/release.yml refuses to release otherwise.
+version: 1.8.0
+date-released: 2026-09-26

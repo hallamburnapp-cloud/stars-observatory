@@ -202,7 +202,7 @@ onorbit = [r for r in satcat.values() if not r["DECAY_DATE"] and r["ORBIT_CENTER
 stats = {"generated": datetime.utcnow().isoformat()+"Z", "total_onorbit": len(onorbit)}
 by = lambda key: defaultdict(int)
 type_c, owner_c, owner_pay, owner_active = by(1), by(1), by(1), by(1)
-reg_by_owner = defaultdict(lambda: [0,0])   # owner -> [registered, unregistered] payloads on orbit
+reg_by_owner = defaultdict(lambda: [0,0])   # owner -> [UN record matched, no matching UN record] payloads on orbit
 reg_by_year = defaultdict(lambda: [0,0])
 const_c = defaultdict(int)
 active_codes = ("+","P","B","S","X")  # OPS status considered operational-ish; '+' active, 'P' partial
@@ -235,14 +235,14 @@ top = list(stats["by_owner_payloads"].items())[:8]
 print("top payload owners:", top)
 regtot = [0,0]
 for v in reg_by_owner.values(): regtot[0]+=v[0]; regtot[1]+=v[1]
-print("payloads on orbit registered/unregistered:", regtot)
+print("payloads on orbit matched / no matching UN record:", regtot)
 
 # ---------- Registration Lag Ledger ----------
 # Tracks, day by day, when each on-orbit payload first appears in the catalog and
 # when its UN registration first becomes visible in GCAT. Payloads already
 # registered at seeding cannot yield a lag (their registration date is unknown);
-# lag is measured only for payloads observed to FLIP from unregistered to
-# registered after the ledger started. This accrues an original longitudinal
+# lag is measured only for payloads observed to FLIP from no matching UN record
+# to a matching UN record after the ledger started. This accrues an original longitudinal
 # dataset: per-State registration latency distributions.
 LEDGER = str(_ROOT / "data" / "ledger.json")
 today = datetime.utcnow().strftime("%Y-%m-%d")
@@ -285,15 +285,23 @@ for fpl in flips: by_owner_lag[fpl["owner"]].append(fpl["lag_days"])
 def median(xs):
     xs = sorted(xs); m = len(xs)//2
     return xs[m] if len(xs) % 2 else (xs[m-1]+xs[m])/2
+def lag_spread(xs):
+    """Interquartile range (inclusive method) and maximum of the observed lags."""
+    from statistics import quantiles
+    if len(xs) < 2:
+        return {"lag_quartiles_days": None, "max_lag_days": max(xs) if xs else None}
+    q = quantiles(xs, n=4, method="inclusive")
+    return {"lag_quartiles_days": [q[0], q[2]], "max_lag_days": max(xs)}
 watching = sum(1 for e in lp.values() if e["r"] == 0)
 lag_out = {
     "started": ledger["started"], "updated": today,
     "days_running": (datetime.strptime(today, "%Y-%m-%d") - datetime.strptime(ledger["started"], "%Y-%m-%d")).days + 1,
-    "tracked_payloads": len(lp), "watching_unregistered": watching,
+    "tracked_payloads": len(lp), "watching_no_un_match": watching,
     "flips_observed": len(flips), "flips_today": flips_today,
     "recent_flips": flips[:200],
     "lag_by_owner": {o: {"flips": len(v), "median_lag_days": median(v)} for o, v in sorted(by_owner_lag.items(), key=lambda x: -len(x[1]))},
-    "median_lag_days": median([fpl["lag_days"] for fpl in flips]) if flips else None
+    "median_lag_days": median([fpl["lag_days"] for fpl in flips]) if flips else None,
+    **lag_spread([fpl["lag_days"] for fpl in flips]),
 }
 json.dump(lag_out, open(f"{OUT}/lag.json", "w"), separators=(",",":"))
-print(f"ledger: {len(lp)} payloads tracked, watching {watching} unregistered, {len(flips)} flips observed")
+print(f"ledger: {len(lp)} payloads tracked, watching {watching} with no matching UN record, {len(flips)} flips observed")

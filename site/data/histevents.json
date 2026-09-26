@@ -9,14 +9,14 @@
     34.7,
     100.3
    ],
-   "cosmos1408_subpoint_at_0247Z": [
-    66.5,
-    45.0
+   "cosmos1408_subpoint_at_0250Z": [
+    76.9,
+    60.9
    ],
    "aeolus_tle_space_min_sep_km_2sep": 2.9,
    "luch_is901_min_sep_km": 36.0
   },
-  "built": "2026-09-24T20:57:31Z"
+  "built": "2026-09-25T16:25:16Z"
  },
  "events": {
   "aeolus": {
@@ -153,10 +153,6 @@
    ],
    "milestones": [
     {
-     "t": "2019-08-26T12:00:00Z",
-     "step": 0
-    },
-    {
      "t": "2019-08-28T12:00:00Z",
      "step": 1
     },
@@ -173,7 +169,10 @@
      "step": 4
     }
    ],
-   "note": "Aeolus is propagated from its last pre-manoeuvre element sets. Starlink-44 is catalogue object 2019-029AV (NORAD 44278; today's SATCAT labels it STARLINK-67), one of two early Starlinks SpaceX was deliberately de-orbiting, then at ~320 km. Propagated from public element sets, the two pass 2.9 km apart at 11:02:41 UTC \u2014 consistent with ESA's predicted 11:02 UTC conjunction. Public element sets carry km-scale error: the P\u22481/1,000 on which ESA acted came from 18 SPCS conjunction data messages and ESA's own analysis, not from these element sets."
+   "preSteps": [
+    0
+   ],
+   "note": "Aeolus is propagated from its last pre-manoeuvre element sets. Starlink-44 is catalogue object 2019-029AV (NORAD 44278; today's SATCAT labels it STARLINK-67), Propagated from public element sets, the two pass 2.9 km apart at 11:02:41 UTC \u2014 consistent with ESA's predicted 11:02 UTC conjunction. Public element sets carry km-scale error: the P\u22481/1,000 on which ESA acted came from data issued by the 18th Space Control Squadron and ESA's own analysis, not from these element sets."
   },
   "iridium": {
    "kind": "collision",
@@ -182,7 +181,7 @@
     "2009-02-11T04:00:00Z"
    ],
    "keyTime": "2009-02-10T16:55:59Z",
-   "keyLabel": "Collision \u2014 11.647 km/s, both satellites destroyed",
+   "keyLabel": "Collision \u2014 11.647 km/s: Iridium 33 destroyed, Cosmos 2251 broken up",
    "slowFinalMin": 45,
    "durationSec": 55,
    "codaFrac": 0.25,
@@ -227,17 +226,14 @@
    "milestones": [
     {
      "t": "2009-02-10T15:02:00Z",
-     "step": 2
+     "step": 0
     },
     {
      "t": "2009-02-10T16:55:59Z",
-     "step": 3
+     "step": 1
     }
    ],
-   "preSteps": [
-    0,
-    1
-   ],
+   "preSteps": [],
    "note": "Propagated from the final published element sets, the two objects pass within 700 m of each other at 16:55:59.8 UTC \u2014 independent confirmation of the collision geometry from public data alone (SOCRATES had predicted a 584 m miss; TLE-space accuracy is of km order). The debris cloud is a physically derived visualisation: one particle per catalogued fragment (521 from Iridium 33, 1,267 from Cosmos 2251), released from the true collision state vector with a modelled velocity spread and propagated by two-body dynamics \u2014 it shows the real mechanics of ring formation, not the catalogued fragment orbits themselves."
   },
   "fengyun": {
@@ -247,14 +243,14 @@
     "2007-01-12T08:00:00Z"
    ],
    "keyTime": "2007-01-11T22:26:00Z",
-   "keyLabel": "Kinetic-kill intercept at ~860 km \u2014 no advance notification",
+   "keyLabel": "Kinetic-kill intercept at ~860 km",
    "slowFinalMin": 30,
    "durationSec": 50,
    "codaFrac": 0.25,
    "objects": [
     {
      "norad": 25730,
-     "name": "Fengyun-1C (CN, defunct)",
+     "name": "Fengyun-1C (CN)",
      "color": "#ffb347",
      "tles": [
       [
@@ -276,13 +272,11 @@
    "milestones": [
     {
      "t": "2007-01-11T22:26:00Z",
-     "step": 1
+     "step": 0
     }
    ],
-   "preSteps": [
-    0
-   ],
-   "note": "At the documented intercept time the element sets place Fengyun-1C at 34.7\u00b0N 100.3\u00b0E, north-west of Xichang and heading south \u2014 the descending (southbound) pass the SC-19 interceptor met head-on. The interceptor itself was never a catalogued object; only the target is replayed. The debris cloud is a physically derived visualisation \u2014 one particle per catalogued fragment (3,037), released from the true intercept state vector with a modelled velocity spread and propagated by two-body dynamics \u2014 not the catalogued fragment orbits themselves."
+   "preSteps": [],
+   "note": "At the documented intercept time the element sets place Fengyun-1C at 34.7\u00b0N 100.3\u00b0E, north-west of Xichang (Johnson and others, IAC 2007: 'near 35\u00b0 N, 100\u00b0 E, northwest of the vicinity of Xichang'), heading south on a descending (southbound) pass. The interceptor is not shown in the 3D view. The debris cloud is a physically derived visualisation \u2014 one particle per catalogued fragment (3,037), released from the true intercept state vector with a modelled velocity spread and propagated by two-body dynamics \u2014 not the catalogued fragment orbits themselves."
   },
   "cosmos1408": {
    "kind": "asat",
@@ -290,8 +284,8 @@
     "2021-11-15T00:00:00Z",
     "2021-11-15T13:00:00Z"
    ],
-   "keyTime": "2021-11-15T02:47:00Z",
-   "keyLabel": "Nudol intercept at ~480 km \u2014 ISS crew sheltered",
+   "keyTime": "2021-11-15T02:50:00Z",
+   "keyLabel": "Intercept in a 490 \u00d7 465 km orbit \u2014 ISS crew sheltered",
    "slowFinalMin": 25,
    "durationSec": 50,
    "codaFrac": 0.25,
@@ -323,14 +317,12 @@
    ],
    "milestones": [
     {
-     "t": "2021-11-15T02:47:00Z",
-     "step": 1
+     "t": "2021-11-15T02:50:00Z",
+     "step": 0
     }
    ],
-   "preSteps": [
-    0
-   ],
-   "note": "At the documented intercept time the element sets place Cosmos 1408 at 66.5\u00b0N 45.0\u00b0E over northern Russia, downrange of the Plesetsk launch site \u2014 consistent with the published intercept geometry. The interceptor was never a catalogued object. The debris cloud is a physically derived visualisation \u2014 one particle per catalogued fragment (1,604), released from the true intercept state vector with a modelled velocity spread and propagated by two-body dynamics \u2014 not the catalogued fragment orbits themselves."
+   "preSteps": [],
+   "note": "At the documented intercept time the element sets place Cosmos 1408 at 76.9\u00b0N 60.9\u00b0E over northern Russia. The interceptor is not shown in the 3D view. The debris cloud is a physically derived visualisation \u2014 one particle per catalogued fragment (1,604), released from the true intercept state vector with a modelled velocity spread and propagated by two-body dynamics \u2014 not the catalogued fragment orbits themselves."
   },
   "luch": {
    "kind": "rpo",
@@ -683,13 +675,11 @@
    "milestones": [
     {
      "t": "2015-08-05T02:25:00Z",
-     "step": 1
+     "step": 0
     }
    ],
-   "preSteps": [
-    0
-   ],
-   "note": "A 3\u00bd-month time-lapse: Luch/Olymp manoeuvres along the GEO ring and holds station alongside Intelsat 901 at 18\u00b0W. Element sets bottom out at \u224836 km (05 Aug 2015); operator and SSA reporting put the true approaches at ~10 km \u2014 GEO element-set accuracy is tens of km, so the public data shows the pattern, not the precise range."
+   "preSteps": [],
+   "note": "A 3\u00bd-month time-lapse: Luch/Olymp-K (NORAD 40258) manoeuvres along the GEO ring and holds station alongside Intelsat 901 (NORAD 26824) at 18\u00b0W. Element sets bottom out at \u224836 km (05 Aug 2015); operator and SSA reporting put the true approaches at ~10 km; the public element sets show the pattern, not the precise range."
   }
  }
 }

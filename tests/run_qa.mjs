@@ -67,8 +67,12 @@ function oscolaDate(iso) {
   return new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' }).format(d);
 }
 // Templates from the spec — the single source of truth for this test.
-const expFoot = `Hallam Burnapp, 'STARS Observatory' (version ${citation.version}, data snapshot ${oscolaDate(loadedSnapshotISO)}, University of Aberdeen ${citation.publisher_year}) DOI: ${citation.version_doi}.`;
-const expBib = `Burnapp H, 'STARS Observatory' (version ${citation.version}, data snapshot ${oscolaDate(loadedSnapshotISO)}, University of Aberdeen ${citation.publisher_year}) DOI: ${citation.version_doi}`;
+// OSCOLA 5: author, title, version, snapshot date, DOI; no URL or access date
+// when a DOI is present, and no institution name. URL and access date appear
+// in the BibTeX only.
+const accessedISO = new Date().toISOString().slice(0, 10);
+const expFoot = `Hallam Burnapp, 'STARS Observatory' (version ${citation.version}, data snapshot ${oscolaDate(loadedSnapshotISO)}) DOI: ${citation.version_doi}.`;
+const expBib = `Burnapp H, 'STARS Observatory' (version ${citation.version}, data snapshot ${oscolaDate(loadedSnapshotISO)}) DOI: ${citation.version_doi}`;
 
 console.log(`\nQA gate — version ${cffVersion}, snapshot ${loadedSnapshotISO}${QUICK ? ' (quick mode)' : ''}\n`);
 
@@ -78,6 +82,9 @@ const page = await browser.newPage({ viewport: { width: 1360, height: 900 } });
 const pageErrors = [];
 page.on('pageerror', e => pageErrors.push(String(e)));
 page.on('console', m => { if (m.type() === 'error') pageErrors.push(m.text()); });
+// privacy (About): the page must make no third-party requests
+const foreignHosts = new Set();
+page.on('request', r => { const h = new URL(r.url()).host; if (!/^(127\.0\.0\.1|localhost)(:\d+)?$/.test(h) && !r.url().startsWith('data:') && !r.url().startsWith('blob:')) foreignHosts.add(h); });
 
 async function loadApp(url) {
   await page.goto(url, { timeout: 120000, waitUntil: 'domcontentloaded' });
@@ -105,7 +112,7 @@ check(pk.same, `packed catalog decodes to exactly the records of sats.json (${pk
 
 // ---------- 1. citation integrity ----------
 console.log('[1] Citation integrity');
-await page.click('.tabbar button[data-panel="prov"]'); // open Panel 04 so the block is interactable
+await page.click('#topAbout'); // the citation block lives in the About panel
 await page.waitForSelector('#citeOscola', { state: 'visible', timeout: 15000 });
 check(citation.version === cffVersion, 'citation.json version equals CITATION.cff version', `${citation.version} vs ${cffVersion}`);
 const gotFoot = (await page.textContent('#citeOscola')).trim();
@@ -115,7 +122,8 @@ const gotBib = (await page.textContent('#citeOscola')).trim();
 check(gotBib === expBib, 'bibliography form matches template, character-for-character', `\n    expected: ${expBib}\n    got:      ${gotBib}`);
 check(!gotBib.endsWith('.'), 'bibliography form has no trailing full stop');
 for (const [name, s] of [['footnote', gotFoot], ['bibliography', gotBib]]) {
-  check(!/https?:\/\/|<http|\baccessed\b/i.test(s), `${name} form contains no URL and no access date`);
+  check(!/https?:\/\/|<http|\baccessed\b/i.test(s), `${name} form contains no URL and no access date (OSCOLA 5, DOI present)`);
+  check(!/Aberdeen|University/i.test(s), `${name} form names no institution`);
   check(s.includes(`data snapshot ${oscolaDate(loadedSnapshotISO)}`), `${name} snapshot date equals the loaded dataset date`);
 }
 await page.click('#csFoot'); // restore default
@@ -126,10 +134,20 @@ check(new RegExp(`\\bdate\\s*=\\s*\\{${citation.date_released}\\}`).test(bibtex)
 check(/license\s*=\s*\{MIT\}/.test(bibtex), 'BibTeX license is MIT');
 check(bibtex.includes(citation.version_doi), 'BibTeX DOI is the version DOI');
 check(bibtex.includes(loadedSnapshotISO), 'BibTeX note carries the loaded snapshot date');
-const footDoi = (await page.textContent('#footDoiVal')).trim();
-check(footDoi === citation.version_doi, 'footer shows the version DOI', footDoi);
-const footCopy = (await page.textContent('#foot')).trim();
-check(footCopy.includes('© 2026 Hallam Burnapp · Code MIT · Data CC BY 4.0'), 'footer carries the copyright and licence line');
+check(bibtex.includes(`urldate       = {${accessedISO}}`) && bibtex.includes('url           = {https://starsobservatory.org}'), 'BibTeX carries url and urldate');
+check(!/Aberdeen|organization/i.test(bibtex), 'BibTeX names no institution');
+const aboutVer = (await page.textContent('#aboutVersion')).trim();
+check(!!citation.release_tag && aboutVer.startsWith(citation.release_tag), 'About shows the version from the release tag', `${aboutVer} vs ${citation.release_tag}`);
+const footCopy = (await page.textContent('#foot')).replace(/\s+/g, ' ').trim();
+check(footCopy === '© 2026 Hallam Burnapp · Code MIT · Data CC BY 4.0 · About', 'footer is exactly the copyright, licence and About line', footCopy);
+const aboutTxt = await page.textContent('#panel-about');
+check(aboutTxt.includes("The author designed this instrument, defined its legal categories and verified its classifications; software and web design was prepared with agentic coding under the author's direction."), 'About carries the verbatim AI statement');
+const provTxt = await page.textContent('#panel-prov');
+check(provTxt.includes('It is not the launching State (Liability Convention art I(c); Registration Convention art I(a)), not the State of registry (Outer Space Treaty art VIII)'), 'Provenance carries the verbatim attributed-State paragraph');
+check(!/Aberdeen|Ko-fi|agentic/i.test(provTxt), 'Provenance carries no affiliation, support or AI text');
+const allText = await page.evaluate(() => document.body.innerText + ' ' + [...document.querySelectorAll('.panel')].map(p => p.textContent).join(' '));
+const banned = allText.match(/unregistered|in breach|violation|non-compliant|failed to register|responsible State/gi);
+check(!banned, 'no banned wording anywhere in the page text (2.1, 2.4)', banned && [...new Set(banned)].join(', '));
 const warnHidden = await page.$eval('#citeWarn', el => el.hidden || getComputedStyle(el).display === 'none');
 check(citation.snapshot_date === loadedSnapshotISO ? warnHidden : !warnHidden, 'snapshot mismatch warning correctly ' + (citation.snapshot_date === loadedSnapshotISO ? 'hidden' : 'shown'));
 
@@ -386,8 +404,8 @@ await groundTruth(page, { n: QUICK ? 6 : 12, cam: [40, 60, 160], label: 'desktop
   await ctx.close();
 }
 
-// ---------- 4d. research tools: view links, CSV export, State dossier ----------
-console.log('[4d] View links, CSV export, State dossier');
+// ---------- 4d. research tools: view links, CSV export ----------
+console.log('[4d] View links, CSV export');
 {
   await loadApp(`http://127.0.0.1:${PORT}/?color=state&state=PRC&type=PAY`);
   const v = await page.evaluate(() => ({ st: document.querySelector('#fState').value, ty: document.querySelector('#fType').value,
@@ -401,7 +419,9 @@ console.log('[4d] View links, CSV export, State dossier');
   const vis = await page.evaluate(() => __QA.vis());
   const [dl] = await Promise.all([page.waitForEvent('download', { timeout: 15000 }), page.click('#vCsv')]);
   const csv = readFileSync(await dl.path(), 'utf8').trim().split(/\r\n/);
-  check(csv[0].startsWith('norad_cat_id,name,intl_designator,object_type,responsible_state_code'), 'CSV header is present', csv[0]);
+  check(csv[0].startsWith('norad_cat_id,name,intl_designator,object_type,attributed_state_code,attributed_state,'), 'CSV header is present', csv[0]);
+  const lagJ = JSON.parse(readFileSync(join(SITE, 'data', 'lag.json'), 'utf8'));
+  check('watching_no_un_match' in lagJ && !('watching_unregistered' in lagJ), 'lag.json uses the watching_no_un_match key', Object.keys(lagJ).join(','));
   check(csv.length - 1 === vis, `CSV row count equals the objects shown (${csv.length - 1} vs ${vis})`);
   const bad = csv.slice(1).filter(r => !/,PAY,PRC,/.test(r) || !/,no UN record,/.test(r)).length;
   check(bad === 0, 'every CSV row matches the active filters (PAY, PRC, no UN record)', `${bad} mismatching rows`);
@@ -411,20 +431,12 @@ console.log('[4d] View links, CSV export, State dossier');
   const rec = sats.sats.find(r => String(r[0]) === first[0]);
   check(rec && csv[1].includes(rec[2]) && csv[1].includes(rec[3]), 'CSV TLE lines are the canonical sats.json element sets');
 
-  await loadApp(`http://127.0.0.1:${PORT}/?dossier=CIS`);
-  await page.waitForSelector('#panel-dossier.active .dos-h', { timeout: 15000 });
-  const d = await page.evaluate(() => ({ h: document.querySelector('.dos-h').textContent, cite: document.querySelector('#dosCite').textContent,
-    bib: document.querySelector('#dosCiteBib').textContent,
-    open: document.querySelector('#drawer').classList.contains('open'), search: location.search,
-    pay: [...document.querySelectorAll('#dosBody .dos-kv')][0].textContent }));
-  check(d.open && d.h.length > 0, 'dossier link opens the State dossier', d.h);
-  // OSCOLA 5 §3.7.1: pinpoint after the closing bracket, before the DOI, no comma.
-  const expDosFoot = expFoot.replace(/\) DOI: /, `) State dossier: ${d.h} DOI: `);
-  check(d.cite === expDosFoot, 'dossier footnote = canonical footnote with the pinpoint before the DOI (OSCOLA 5 §3.7.1)', `\n    expected: ${expDosFoot}\n    got:      ${d.cite}`);
-  check(d.bib === expBib, 'dossier bibliography = canonical bibliography entry, no pinpoint (OSCOLA 5 §1.7)', d.bib);
-  const cisPay = JSON.parse(readFileSync(join(SITE, 'data', 'stats.json'), 'utf8')).by_owner_payloads.CIS;
-  check(d.pay.includes(cisPay.toLocaleString('en-GB')), `dossier payload count equals stats.json (${cisPay})`);
-  check(/dossier=CIS/.test(d.search), 'address bar keeps the open dossier', d.search);
+  // scope freeze (v1.8.0): the national-legislation layer and State dossier are withdrawn
+  // (checked on disk, not by fetching it: a 404 would itself be a console error)
+  const gone = { panel: await page.evaluate(() => !!document.querySelector('#panel-dossier')),
+    file: existsSync(join(SITE, 'data', 'national_law.json')),
+    referenced: /national_law|dossier/i.test(readFileSync(join(SITE, 'js', 'app.js'), 'utf8') + readFileSync(join(SITE, 'index.html'), 'utf8')) };
+  check(!gone.panel && !gone.file && !gone.referenced, 'State dossier and national_law.json are absent from the release', JSON.stringify(gone));
 }
 
 // ---------- 5. permalinks ----------
@@ -443,6 +455,7 @@ for (let k = 0; k < 3; k++) {
 console.log('[6] Console hygiene');
 const realErrors = pageErrors.filter(e => !/favicon|swiftshader|GPU stall|WebGL.*fallback|Automatic fallback/i.test(e));
 check(realErrors.length === 0, 'no page errors or console errors', realErrors.slice(0, 5).join(' | '));
+check(foreignHosts.size === 0, 'the page makes no third-party requests (fonts and libraries are self-hosted)', [...foreignHosts].join(', '));
 
 await browser.close();
 server.close();

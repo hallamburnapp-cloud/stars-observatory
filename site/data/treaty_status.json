@@ -1,0 +1,816 @@
+{
+ "source": {
+  "symbol": "A/AC.105/C.2/2026/CRP.9/Rev.1",
+  "title": "Status of International Agreements relating to activities in outer space as at 1 January 2026",
+  "as_at": "2026-01-01",
+  "issued": "2026-04-17",
+  "url": "https://www.unoosa.org/unoosa/uploads/res/oosadoc/data/documents/2026/aac_105c_22026crp/aac_105c_22026crp_9rev_1_0_html/AC105_C2_2026_CRP09Rev01E.pdf"
+ },
+ "treaties": {
+  "OST": "Outer Space Treaty (1967)",
+  "LIAB": "Liability Convention (1972)",
+  "REG": "Registration Convention (1975)"
+ },
+ "legend": {
+  "party": "R — ratification, acceptance, approval, accession or succession",
+  "signatory": "S — signature only",
+  "declaration": "D — declaration of acceptance of rights and obligations (intergovernmental organisation)",
+  "neither": "no entry in the table",
+  "no entry": "no entry in the table (intergovernmental organisation)"
+ },
+ "table_vs_total_row": {
+  "REG R": {
+   "table_rows": 78,
+   "document_total_row": 77
+  },
+  "OST S": {
+   "table_rows": 22,
+   "document_total_row": 23
+  }
+ },
+ "notes": {
+  "CIS": "SATCAT code CIS (former USSR) is shown against the Russian Federation, the continuator State of the USSR. This mapping is for treaty-status display only; it is not an attribution of responsibility.",
+  "EUTE": "Satellites coded EUTE in the catalogue are operated by the privatised company Eutelsat S.A.; the EUTELSAT IGO's art VII declaration does not of itself make the IGO the registering or responsible entity for them.",
+  "ROC": "Taiwan is not listed in the UNOOSA status table.",
+  "STCT": "Joint Singapore/Taiwan code; Taiwan is not listed in the UNOOSA status table."
+ },
+ "igo_codes": [
+  "ESA",
+  "EUME",
+  "EUTE"
+ ],
+ "status": {
+  "US": [
+   {
+    "name": "United States of America",
+    "OST": "party",
+    "LIAB": "party",
+    "REG": "party"
+   }
+  ],
+  "CIS": [
+   {
+    "name": "Russian Federation",
+    "OST": "party",
+    "LIAB": "party",
+    "REG": "party"
+   }
+  ],
+  "PRC": [
+   {
+    "name": "China",
+    "OST": "party",
+    "LIAB": "party",
+    "REG": "party"
+   }
+  ],
+  "UK": [
+   {
+    "name": "United Kingdom of Great Britain and Northern Ireland",
+    "OST": "party",
+    "LIAB": "party",
+    "REG": "party"
+   }
+  ],
+  "FR": [
+   {
+    "name": "France",
+    "OST": "party",
+    "LIAB": "party",
+    "REG": "party"
+   }
+  ],
+  "JPN": [
+   {
+    "name": "Japan",
+    "OST": "party",
+    "LIAB": "party",
+    "REG": "party"
+   }
+  ],
+  "IND": [
+   {
+    "name": "India",
+    "OST": "party",
+    "LIAB": "party",
+    "REG": "party"
+   }
+  ],
+  "GER": [
+   {
+    "name": "Germany",
+    "OST": "party",
+    "LIAB": "party",
+    "REG": "party"
+   }
+  ],
+  "IT": [
+   {
+    "name": "Italy",
+    "OST": "party",
+    "LIAB": "party",
+    "REG": "party"
+   }
+  ],
+  "CA": [
+   {
+    "name": "Canada",
+    "OST": "party",
+    "LIAB": "party",
+    "REG": "party"
+   }
+  ],
+  "SKOR": [
+   {
+    "name": "Republic of Korea",
+    "OST": "party",
+    "LIAB": "party",
+    "REG": "party"
+   }
+  ],
+  "SPN": [
+   {
+    "name": "Spain",
+    "OST": "party",
+    "LIAB": "party",
+    "REG": "party"
+   }
+  ],
+  "TURK": [
+   {
+    "name": "Türkiye",
+    "OST": "party",
+    "LIAB": "party",
+    "REG": "party"
+   }
+  ],
+  "AUS": [
+   {
+    "name": "Australia",
+    "OST": "party",
+    "LIAB": "party",
+    "REG": "party"
+   }
+  ],
+  "ARGN": [
+   {
+    "name": "Argentina",
+    "OST": "party",
+    "LIAB": "party",
+    "REG": "party"
+   }
+  ],
+  "FIN": [
+   {
+    "name": "Finland",
+    "OST": "party",
+    "LIAB": "party",
+    "REG": "party"
+   }
+  ],
+  "NOR": [
+   {
+    "name": "Norway",
+    "OST": "party",
+    "LIAB": "party",
+    "REG": "party"
+   }
+  ],
+  "ISRA": [
+   {
+    "name": "Israel",
+    "OST": "party",
+    "LIAB": "party",
+    "REG": "neither"
+   }
+  ],
+  "BRAZ": [
+   {
+    "name": "Brazil",
+    "OST": "party",
+    "LIAB": "party",
+    "REG": "party"
+   }
+  ],
+  "UAE": [
+   {
+    "name": "United Arab Emirates",
+    "OST": "party",
+    "LIAB": "party",
+    "REG": "party"
+   }
+  ],
+  "INDO": [
+   {
+    "name": "Indonesia",
+    "OST": "party",
+    "LIAB": "party",
+    "REG": "party"
+   }
+  ],
+  "SING": [
+   {
+    "name": "Singapore",
+    "OST": "party",
+    "LIAB": "party",
+    "REG": "signatory"
+   }
+  ],
+  "GREC": [
+   {
+    "name": "Greece",
+    "OST": "party",
+    "LIAB": "party",
+    "REG": "party"
+   }
+  ],
+  "SAUD": [
+   {
+    "name": "Saudi Arabia",
+    "OST": "party",
+    "LIAB": "party",
+    "REG": "party"
+   }
+  ],
+  "IRAN": [
+   {
+    "name": "Iran (Islamic Republic of)",
+    "OST": "signatory",
+    "LIAB": "party",
+    "REG": "signatory"
+   }
+  ],
+  "POL": [
+   {
+    "name": "Poland",
+    "OST": "party",
+    "LIAB": "party",
+    "REG": "party"
+   }
+  ],
+  "EGYP": [
+   {
+    "name": "Egypt",
+    "OST": "party",
+    "LIAB": "signatory",
+    "REG": "neither"
+   }
+  ],
+  "SWED": [
+   {
+    "name": "Sweden",
+    "OST": "party",
+    "LIAB": "party",
+    "REG": "party"
+   }
+  ],
+  "THAI": [
+   {
+    "name": "Thailand",
+    "OST": "party",
+    "LIAB": "neither",
+    "REG": "neither"
+   }
+  ],
+  "MALA": [
+   {
+    "name": "Malaysia",
+    "OST": "party",
+    "LIAB": "neither",
+    "REG": "party"
+   }
+  ],
+  "LUXE": [
+   {
+    "name": "Luxembourg",
+    "OST": "party",
+    "LIAB": "party",
+    "REG": "party"
+   }
+  ],
+  "PAKI": [
+   {
+    "name": "Pakistan",
+    "OST": "party",
+    "LIAB": "party",
+    "REG": "party"
+   }
+  ],
+  "MEX": [
+   {
+    "name": "Mexico",
+    "OST": "party",
+    "LIAB": "party",
+    "REG": "party"
+   }
+  ],
+  "NETH": [
+   {
+    "name": "Netherlands (Kingdom of the)",
+    "OST": "party",
+    "LIAB": "party",
+    "REG": "party"
+   }
+  ],
+  "POR": [
+   {
+    "name": "Portugal",
+    "OST": "party",
+    "LIAB": "party",
+    "REG": "party"
+   }
+  ],
+  "BEL": [
+   {
+    "name": "Belgium",
+    "OST": "party",
+    "LIAB": "party",
+    "REG": "party"
+   }
+  ],
+  "DEN": [
+   {
+    "name": "Denmark",
+    "OST": "party",
+    "LIAB": "party",
+    "REG": "party"
+   }
+  ],
+  "ALG": [
+   {
+    "name": "Algeria",
+    "OST": "party",
+    "LIAB": "party",
+    "REG": "party"
+   }
+  ],
+  "SWTZ": [
+   {
+    "name": "Switzerland",
+    "OST": "party",
+    "LIAB": "party",
+    "REG": "party"
+   }
+  ],
+  "CZCH": [
+   {
+    "name": "Czechia",
+    "OST": "party",
+    "LIAB": "party",
+    "REG": "party"
+   }
+  ],
+  "RWA": [
+   {
+    "name": "Rwanda",
+    "OST": "signatory",
+    "LIAB": "signatory",
+    "REG": "neither"
+   }
+  ],
+  "UKR": [
+   {
+    "name": "Ukraine",
+    "OST": "party",
+    "LIAB": "party",
+    "REG": "party"
+   }
+  ],
+  "KAZ": [
+   {
+    "name": "Kazakhstan",
+    "OST": "party",
+    "LIAB": "party",
+    "REG": "party"
+   }
+  ],
+  "BUL": [
+   {
+    "name": "Bulgaria",
+    "OST": "party",
+    "LIAB": "party",
+    "REG": "party"
+   }
+  ],
+  "NIG": [
+   {
+    "name": "Nigeria",
+    "OST": "party",
+    "LIAB": "party",
+    "REG": "party"
+   }
+  ],
+  "CHLE": [
+   {
+    "name": "Chile",
+    "OST": "party",
+    "LIAB": "party",
+    "REG": "party"
+   }
+  ],
+  "VTNM": [
+   {
+    "name": "Viet Nam",
+    "OST": "party",
+    "LIAB": "neither",
+    "REG": "neither"
+   }
+  ],
+  "AZER": [
+   {
+    "name": "Azerbaijan",
+    "OST": "party",
+    "LIAB": "neither",
+    "REG": "neither"
+   }
+  ],
+  "BELA": [
+   {
+    "name": "Belarus",
+    "OST": "party",
+    "LIAB": "party",
+    "REG": "party"
+   }
+  ],
+  "MA": [
+   {
+    "name": "Morocco",
+    "OST": "party",
+    "LIAB": "party",
+    "REG": "party"
+   }
+  ],
+  "HUN": [
+   {
+    "name": "Hungary",
+    "OST": "party",
+    "LIAB": "party",
+    "REG": "party"
+   }
+  ],
+  "RP": [
+   {
+    "name": "Philippines",
+    "OST": "signatory",
+    "LIAB": "signatory",
+    "REG": "party"
+   }
+  ],
+  "SAFR": [
+   {
+    "name": "South Africa",
+    "OST": "party",
+    "LIAB": "party",
+    "REG": "party"
+   }
+  ],
+  "VENZ": [
+   {
+    "name": "Venezuela (Bolivarian Republic of)",
+    "OST": "party",
+    "LIAB": "party",
+    "REG": "party"
+   }
+  ],
+  "ASRA": [
+   {
+    "name": "Austria",
+    "OST": "party",
+    "LIAB": "party",
+    "REG": "party"
+   }
+  ],
+  "ECU": [
+   {
+    "name": "Ecuador",
+    "OST": "party",
+    "LIAB": "party",
+    "REG": "party"
+   }
+  ],
+  "PERU": [
+   {
+    "name": "Peru",
+    "OST": "party",
+    "LIAB": "party",
+    "REG": "party"
+   }
+  ],
+  "ANG": [
+   {
+    "name": "Angola",
+    "OST": "neither",
+    "LIAB": "neither",
+    "REG": "neither"
+   }
+  ],
+  "SVN": [
+   {
+    "name": "Slovenia",
+    "OST": "party",
+    "LIAB": "party",
+    "REG": "party"
+   }
+  ],
+  "LTU": [
+   {
+    "name": "Lithuania",
+    "OST": "party",
+    "LIAB": "party",
+    "REG": "party"
+   }
+  ],
+  "KWT": [
+   {
+    "name": "Kuwait",
+    "OST": "party",
+    "LIAB": "party",
+    "REG": "party"
+   }
+  ],
+  "NKOR": [
+   {
+    "name": "Democratic People’s Republic of Korea",
+    "OST": "party",
+    "LIAB": "party",
+    "REG": "party"
+   }
+  ],
+  "SVK": [
+   {
+    "name": "Slovakia",
+    "OST": "party",
+    "LIAB": "party",
+    "REG": "party"
+   }
+  ],
+  "COL": [
+   {
+    "name": "Colombia",
+    "OST": "party",
+    "LIAB": "party",
+    "REG": "party"
+   }
+  ],
+  "EST": [
+   {
+    "name": "Estonia",
+    "OST": "party",
+    "LIAB": "neither",
+    "REG": "neither"
+   }
+  ],
+  "BOL": [
+   {
+    "name": "Bolivia (Plurinational State of)",
+    "OST": "signatory",
+    "LIAB": "neither",
+    "REG": "neither"
+   }
+  ],
+  "URY": [
+   {
+    "name": "Uruguay",
+    "OST": "party",
+    "LIAB": "party",
+    "REG": "party"
+   }
+  ],
+  "IRAQ": [
+   {
+    "name": "Iraq",
+    "OST": "party",
+    "LIAB": "party",
+    "REG": "neither"
+   }
+  ],
+  "LAOS": [
+   {
+    "name": "Lao People’s Democratic Republic",
+    "OST": "party",
+    "LIAB": "party",
+    "REG": "neither"
+   }
+  ],
+  "BGD": [
+   {
+    "name": "Bangladesh",
+    "OST": "party",
+    "LIAB": "neither",
+    "REG": "neither"
+   }
+  ],
+  "JOR": [
+   {
+    "name": "Jordan",
+    "OST": "signatory",
+    "LIAB": "signatory",
+    "REG": "neither"
+   }
+  ],
+  "ETH": [
+   {
+    "name": "Ethiopia",
+    "OST": "signatory",
+    "LIAB": "neither",
+    "REG": "neither"
+   }
+  ],
+  "HRV": [
+   {
+    "name": "Croatia",
+    "OST": "party",
+    "LIAB": "party",
+    "REG": "neither"
+   }
+  ],
+  "DJI": [
+   {
+    "name": "Djibouti",
+    "OST": "neither",
+    "LIAB": "neither",
+    "REG": "party"
+   }
+  ],
+  "BWA": [
+   {
+    "name": "Botswana",
+    "OST": "signatory",
+    "LIAB": "party",
+    "REG": "neither"
+   }
+  ],
+  "BHR": [
+   {
+    "name": "Bahrain",
+    "OST": "party",
+    "LIAB": "party",
+    "REG": "party"
+   }
+  ],
+  "SLB": [
+   {
+    "name": "Solomon Islands",
+    "OST": "neither",
+    "LIAB": "neither",
+    "REG": "neither"
+   }
+  ],
+  "NZ": [
+   {
+    "name": "New Zealand",
+    "OST": "party",
+    "LIAB": "party",
+    "REG": "party"
+   }
+  ],
+  "MNE": [
+   {
+    "name": "Montenegro",
+    "OST": "signatory",
+    "LIAB": "party",
+    "REG": "party"
+   }
+  ],
+  "ROM": [
+   {
+    "name": "Romania",
+    "OST": "party",
+    "LIAB": "party",
+    "REG": "party"
+   }
+  ],
+  "IRE": [
+   {
+    "name": "Ireland",
+    "OST": "party",
+    "LIAB": "party",
+    "REG": "neither"
+   }
+  ],
+  "LVA": [
+   {
+    "name": "Latvia",
+    "OST": "party",
+    "LIAB": "neither",
+    "REG": "neither"
+   }
+  ],
+  "CHBZ": [
+   {
+    "name": "China",
+    "OST": "party",
+    "LIAB": "party",
+    "REG": "party"
+   },
+   {
+    "name": "Brazil",
+    "OST": "party",
+    "LIAB": "party",
+    "REG": "party"
+   }
+  ],
+  "FGER": [
+   {
+    "name": "France",
+    "OST": "party",
+    "LIAB": "party",
+    "REG": "party"
+   },
+   {
+    "name": "Germany",
+    "OST": "party",
+    "LIAB": "party",
+    "REG": "party"
+   }
+  ],
+  "FRIT": [
+   {
+    "name": "France",
+    "OST": "party",
+    "LIAB": "party",
+    "REG": "party"
+   },
+   {
+    "name": "Italy",
+    "OST": "party",
+    "LIAB": "party",
+    "REG": "party"
+   }
+  ],
+  "USBZ": [
+   {
+    "name": "United States of America",
+    "OST": "party",
+    "LIAB": "party",
+    "REG": "party"
+   },
+   {
+    "name": "Brazil",
+    "OST": "party",
+    "LIAB": "party",
+    "REG": "party"
+   }
+  ],
+  "GRSA": [
+   {
+    "name": "Greece",
+    "OST": "party",
+    "LIAB": "party",
+    "REG": "party"
+   },
+   {
+    "name": "Saudi Arabia",
+    "OST": "party",
+    "LIAB": "party",
+    "REG": "party"
+   }
+  ],
+  "TMMC": [
+   {
+    "name": "Turkmenistan",
+    "OST": "neither",
+    "LIAB": "neither",
+    "REG": "neither"
+   },
+   {
+    "name": "Monaco",
+    "OST": "neither",
+    "LIAB": "neither",
+    "REG": "neither"
+   }
+  ],
+  "STCT": [
+   {
+    "name": "Singapore",
+    "OST": "party",
+    "LIAB": "party",
+    "REG": "signatory"
+   }
+  ],
+  "ESA": [
+   {
+    "name": "European Space Agency",
+    "OST": "no entry",
+    "LIAB": "declaration",
+    "REG": "declaration"
+   }
+  ],
+  "EUME": [
+   {
+    "name": "European Organization for the Exploitation of Meteorological Satellites",
+    "OST": "no entry",
+    "LIAB": "declaration",
+    "REG": "declaration"
+   }
+  ],
+  "EUTE": [
+   {
+    "name": "European Telecommunications Satellite Organization",
+    "OST": "no entry",
+    "LIAB": "declaration",
+    "REG": "declaration"
+   }
+  ]
+ }
+}
