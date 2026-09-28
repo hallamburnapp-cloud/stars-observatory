@@ -366,7 +366,16 @@ footer#foot a:hover, footer#foot .lnk:hover { color: var(--txt); border-bottom-c
   .rail-toggle.active { background: rgba(79,209,224,0.16); }
   #topSupport .ts-lbl { display: none; }
   #topSupport { padding: 6px 8px; margin-right: 0; }
-  #detail { top: auto; bottom: 118px; right: 10px; left: 10px; width: auto; }
+  /* Phone: cap the card to the space above the playback bar and scroll inside it,
+     with the header (and its close button) pinned, so a long card never pushes
+     the × off the top of the screen. */
+  #detail {
+    top: auto; bottom: 118px; right: 10px; left: 10px; width: auto;
+    max-height: calc(100vh - 198px); max-height: calc(100dvh - 198px);
+    overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch;
+  }
+  #detail .dh { position: sticky; top: 0; z-index: 2; background: rgba(12,17,27,0.98); }
+  #detail .close { font-size: 22px; padding: 8px 10px; margin: -8px -6px -8px 0; min-width: 44px; min-height: 44px; }
   #drawer { width: 100%; }
   .drawer-body { padding: 16px; }
   .stat-hero .big { font-size: 34px; }

@@ -8,6 +8,7 @@ All notable changes to STARS Observatory. Each release is archived on Zenodo wit
 - **"Cite this instrument" footer link** opens the About panel at its citation section (also reachable at `#cite`).
 
 ### Fixed
+- **Phone: a long object card no longer pushes its close button off the top of the screen.** The card is capped to the space above the playback bar and scrolls inside, with its header (and the ×, now a 44 px tap target) pinned.
 - **Migration shim removed.** `normalise_lag()` in `pipeline/refresh.py` is gone: the first scheduled run after the v1.8.0 release (27 September 2026) wrote `lag.json` in the v1.8.0 format.
 - The release workflow's wait for Zenodo now follows the concept record's redirect to the latest version, so it detects the new version DOI (the v1.8.0 run had to be redeployed by hand).
 
