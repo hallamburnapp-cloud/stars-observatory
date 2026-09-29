@@ -11,7 +11,7 @@
 STARS Observatory is a demonstrative evidence instrument. Each day it takes the public catalogue of objects in Earth orbit and shows the legal layer that governs them. It propagates the public element sets of about nineteen thousand objects (CelesTrak's active-satellite set plus four historical debris clouds) with SGP4 in the browser, and presents three analytical layers:
 
 - **Per-State supervision burden** — payloads per attributed State (SATCAT owner code, an evidentiary proxy), and how the public catalogue concentrates them.
-- **Registration lag** — payloads with no matching UN record, cross-referenced against GCAT's UN registration field, with the treaty party status of each attributed State (UNOOSA status document), plus a live **Registration Lag Index**: a longitudinal ledger, running daily since 2026-07-11, that records when payloads' UN registration references first appear in GCAT and the interval from launch. This reflects the State's submission, the UN's publication of it and GCAT's compilation of it; it does not measure the time the State took to register. Its matches so far come from a small number of batch submissions, and it is not a general measure of registration lag.
+- **Registration lag** — payloads with no matching UN record, cross-referenced against GCAT's UN registration field, with the treaty party status of each attributed State (UNOOSA status document), shown beside the share for payloads launched more than two years before the snapshot date (rolling, recomputed daily), plus a **registration ledger**: a longitudinal ledger, running daily since 2026-07-11, that records when payloads' UN registration references first appear in GCAT and the interval from launch. This reflects the State's submission, the UN's publication of it and GCAT's compilation of it; it does not measure the time the State took to register. Its matches so far come from a small number of batch submissions, and it is not a general measure of registration lag.
 - **Article IX incident replays** — a case-study library (Aeolus/Starlink-44, Iridium 33/Cosmos 2251, Fengyun-1C, Cosmos 1408, Luch/Olymp) setting out each fact pattern — what was knowable, when, by whom, over what time window — with archival-element-set replays.
 
 A **Provenance** panel sets out the data sources, methods, matching rules and limits.
@@ -30,7 +30,7 @@ This is not an operational space situational awareness system. See the in-app Pr
 A GitHub Actions workflow (`.github/workflows/refresh.yml`) runs daily at 06:00 UTC:
 
 1. Re-fetches CelesTrak GP element sets (OMM, JSON) and SATCAT (CSV), and GCAT `psatcat` (TSV); a download only replaces the previous file if it validates.
-2. Rebuilds the enriched dataset (`pipeline/build_dataset.py`), updating the registration lag ledger (`data/ledger.json` — committed daily as the persistent longitudinal record), and writes `sats.pack.json`, a lossless ~32% smaller transport copy of `sats.json` for the app's first load (`pipeline/pack_sats.py` refuses to write it unless it round-trips exactly). `sats.json` remains the canonical, archived snapshot.
+2. Rebuilds the enriched dataset (`pipeline/build_dataset.py`), updating the registration ledger (`data/ledger.json` — committed daily as the persistent longitudinal record), and writes `sats.pack.json`, a lossless ~32% smaller transport copy of `sats.json` for the app's first load (`pipeline/pack_sats.py` refuses to write it unless it round-trips exactly). `sats.json` remains the canonical, archived snapshot.
 3. Fails the run if the source element sets are stale (median epoch older than 3 days); a failed scheduled run opens a tracking issue.
 4. Runs the QA gate (`tests/run_qa.mjs`) and, only if it passes, deploys the rebuilt site to GitHub Pages.
 
@@ -45,7 +45,7 @@ pipeline/    data pipeline: refresh.py (fetch + orchestrate), build_dataset.py (
              build_histevents.py (static incident-replay data)
 tools/       build_treaty_status.py — rebuilds site/data/treaty_status.json from the UNOOSA status document
 tests/       run_qa.mjs — QA gate that blocks deploys (citation, pickability, real clicks, exports)
-data/        ledger.json — registration lag ledger (persistent state, committed daily)
+data/        ledger.json — registration ledger (persistent state, committed daily)
 ```
 
 ## Releasing

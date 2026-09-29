@@ -26,5 +26,5 @@ keywords:
   - space governance
 doi: 10.5281/zenodo.22662848
 # version must equal the release tag (vX.Y.Z); .github/workflows/release.yml refuses to release otherwise.
-version: 1.8.0
-date-released: 2026-09-26
+version: 1.8.1
+date-released: 2026-09-28

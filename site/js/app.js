@@ -233,6 +233,14 @@ function fillStats() {
     unreg: unregd.toLocaleString('en-GB'),
     unregPct: (regd + unregd) ? Math.round(unregd / (regd + unregd) * 100) : 0
   };
+  // Rolling two-year share (payloads launched more than two years before the snapshot)
+  const r2 = st.registration_2y, bo2 = r2 && r2.by_owner;
+  let regd2 = 0, unregd2 = 0;
+  if (bo2) for (const v of Object.values(bo2)) { regd2 += v[0]; unregd2 += v[1]; }
+  vals.unreg2y = unregd2.toLocaleString('en-GB'); vals.pay2y = (regd2 + unregd2).toLocaleString('en-GB');
+  vals.unreg2yPct = (regd2 + unregd2) ? Math.round(unregd2 / (regd2 + unregd2) * 100) : 0;
+  vals.cutoff2y = (r2 && r2.cutoff) ? oscolaDate(r2.cutoff) : '—';
+  const hero2 = $('#regHero2y'); if (hero2) hero2.hidden = !bo2;
   $$('[data-stat]').forEach(el => {
     const k = el.getAttribute('data-stat');
     if (vals[k] !== undefined) el.textContent = vals[k];
@@ -746,7 +754,11 @@ function updateClock() {
   const d = new Date(state.simTime);
   const p = (n) => String(n).padStart(2, '0');
   const el = $('#simclock');
-  if (el) el.textContent = `${d.getUTCFullYear()}-${p(d.getUTCMonth()+1)}-${p(d.getUTCDate())} ${p(d.getUTCHours())}:${p(d.getUTCMinutes())}:${p(d.getUTCSeconds())}Z`;
+  if (!el) return;
+  // date and time as two spans so phones can stack them (see .clock .cd/.ct)
+  const cd = `${d.getUTCFullYear()}-${p(d.getUTCMonth()+1)}-${p(d.getUTCDate())}`, ct = `${p(d.getUTCHours())}:${p(d.getUTCMinutes())}:${p(d.getUTCSeconds())}Z`;
+  if (!el.firstElementChild) el.innerHTML = '<span class="cd"></span> <span class="ct"></span>';
+  el.firstElementChild.textContent = cd; el.lastElementChild.textContent = ct;
 }
 
 function onResize() {
@@ -1239,16 +1251,17 @@ function buildRegGap() {
   svg += `</svg>`;
   $('#regChart').innerHTML = svg;
 
-  // table: largest numbers of payloads with no matching UN record
+  // table: the ten attributed States with most payloads on orbit (never ranked by no-match share)
+  const bo2 = (state.stats.registration_2y && state.stats.registration_2y.by_owner) || null;
   const rows = Object.entries(state.stats.registration_by_owner)
-    .map(([c, [reg, un]]) => ({ c, reg, un, tot: reg+un }))
-    .filter(o => o.tot >= 10)
-    .sort((a,b) => b.un - a.un).slice(0, 10);
+    .map(([c, [reg, un]]) => { const t2 = bo2 && bo2[c]; return { c, reg, un, tot: reg+un, tot2: t2 ? t2[0]+t2[1] : null, un2: t2 ? t2[1] : null }; })
+    .sort((a,b) => b.tot - a.tot).slice(0, 10);
   const tb = $('#regTable tbody');
   tb.innerHTML = rows.map(o => {
     const name = state.stats.owner_names[o.c] || o.c;
     const pct = o.tot ? Math.round(o.un / o.tot * 100) : 0;
-    return `<tr><td>${name}</td><td class="num">${o.reg.toLocaleString()}</td><td class="num hl">${o.un.toLocaleString()}</td><td class="num">${pct}%</td><td>${treatyCell(o.c, 'REG')}</td></tr>`;
+    const pct2 = o.tot2 ? Math.round(o.un2 / o.tot2 * 100) + '%' : '—';
+    return `<tr><td>${name}</td><td class="num">${o.tot.toLocaleString()}</td><td class="num hl">${o.un.toLocaleString()}</td><td class="num">${pct}%</td><td class="num">${o.tot2 == null ? '—' : o.tot2.toLocaleString()}</td><td class="num">${pct2}</td><td>${treatyCell(o.c, 'REG')}</td></tr>`;
   }).join('');
   const src = $('#regTreatySrc'); if (src) src.innerHTML = treatySourceLine();
 }
@@ -2133,7 +2146,7 @@ function histExit() {
 }
 
 // ============================================================
-// 11b. Registration Lag Index (Phase 2 · Task A)
+// 11b. Registration ledger
 // ============================================================
 // Reads site/data/lag.json — a live longitudinal dataset that begins
 // accumulating the day the instrument goes live. On day one there is nothing
@@ -2146,7 +2159,7 @@ function buildLagIndex() {
   const flipsEl = $('#lagFlips');
   if (!lag) {
     if (statsEl) statsEl.innerHTML = '';
-    if (methodEl) methodEl.textContent = 'Registration Lag Index dataset unavailable.';
+    if (methodEl) methodEl.textContent = 'Registration ledger dataset unavailable.';
     if (flipsEl) flipsEl.innerHTML = '';
     return;
   }
@@ -2185,8 +2198,8 @@ function buildProvenance() {
   if (ledEl) {
     const lag = state.lag;
     ledEl.innerHTML = lag
-      ? `<div class="pc-h">Registration Lag Index</div>Longitudinal ledger begun ${oscolaDate(lag.started)}; ${lag.days_running||0} day(s) of observation, ${(lag.flips_observed||0).toLocaleString('en-GB')} UN registration matches first seen in GCAT so far. Each daily refresh compares the catalogue against the UN registration references recorded in McDowell’s GCAT and records the interval from launch to the refresh on which a reference first appears. This records when a registration first appeared in GCAT, which reflects the State’s submission, the UN’s publication of it and GCAT’s compilation of it; it does not measure the time the State took to register, and it is not a general measure of registration lag.`
-      : `<div class="pc-h">Registration Lag Index</div>Dataset unavailable.`;
+      ? `<div class="pc-h">Registration ledger</div>Longitudinal ledger begun ${oscolaDate(lag.started)}; ${lag.days_running||0} day(s) of observation, ${(lag.flips_observed||0).toLocaleString('en-GB')} UN registration matches first seen in GCAT so far. Each daily refresh compares the catalogue against the UN registration references recorded in McDowell’s GCAT and records the interval from launch to the refresh on which a reference first appears. This records when a registration first appeared in GCAT, which reflects the State’s submission, the UN’s publication of it and GCAT’s compilation of it; it does not measure the time the State took to register, and it is not a general measure of registration lag.`
+      : `<div class="pc-h">Registration ledger</div>Dataset unavailable.`;
   }
   if (casesEl) {
     // OSCOLA 5: websites and news §3.7.1, conference papers §3.7.5, journals §3.3,
@@ -2781,6 +2794,7 @@ boot();
 window.__OBS = state; // debug handle for QA
 // QA-only helpers: expose projection + select so automated tests can verify picking
 window.__QA = {
+  select(i) { selectObject(i, false); },  // QA hook: open an object card without a pointer event
   histJump(p) { if (histMode) { histMode.p = Math.max(0, Math.min(1, p)); } },
   histDebris() {
     if (!histMode || !histMode.debris) return null;
