@@ -204,6 +204,16 @@ by = lambda key: defaultdict(int)
 type_c, owner_c, owner_pay, owner_active = by(1), by(1), by(1), by(1)
 reg_by_owner = defaultdict(lambda: [0,0])   # owner -> [UN record matched, no matching UN record] payloads on orbit
 reg_by_year = defaultdict(lambda: [0,0])
+# Rolling two-year share: payloads launched more than two years before the
+# snapshot date (cf Jakhu, Jasani and McDowell (2018) 143 Acta Astronautica 406, 409:
+# registration, where it occurs, is usually made within one to two years of launch).
+from datetime import date as _date
+_snap = datetime.utcnow().date()
+try:
+    _cut2y = _snap.replace(year=_snap.year - 2)
+except ValueError:
+    _cut2y = _snap.replace(year=_snap.year - 2, day=28)
+reg_by_owner_2y = defaultdict(lambda: [0,0])
 const_c = defaultdict(int)
 active_codes = ("+","P","B","S","X")  # OPS status considered operational-ish; '+' active, 'P' partial
 for r in onorbit:
@@ -218,6 +228,11 @@ for r in onorbit:
         reg_by_owner[ow][0 if regd else 1] += 1
         y = (r["LAUNCH_DATE"] or "")[:4]
         if y: reg_by_year[y][0 if regd else 1] += 1
+        try:
+            if _date.fromisoformat((r["LAUNCH_DATE"] or "")[:10]) < _cut2y:
+                reg_by_owner_2y[ow][0 if regd else 1] += 1
+        except ValueError:
+            pass
         cl = constellation(r["OBJECT_NAME"] or "")
         if cl: const_c[cl] += 1
 stats["by_type"] = dict(type_c)
@@ -227,6 +242,8 @@ stats["by_owner_payloads"] = dict(sorted(owner_pay.items(), key=lambda x:-x[1]))
 stats["by_owner_active"] = dict(sorted(owner_active.items(), key=lambda x:-x[1]))
 stats["registration_by_owner"] = {k: v for k, v in sorted(reg_by_owner.items(), key=lambda x:-(x[1][0]+x[1][1]))}
 stats["registration_by_year"] = dict(sorted(reg_by_year.items()))
+stats["registration_2y"] = {"cutoff": _cut2y.isoformat(),
+    "by_owner": {k: v for k, v in sorted(reg_by_owner_2y.items(), key=lambda x:-(x[1][0]+x[1][1]))}}
 stats["constellations"] = dict(sorted(const_c.items(), key=lambda x:-x[1]))
 json.dump(stats, open(f"{OUT}/stats.json","w"), separators=(",",":"))
 print("stats: total on-orbit", len(onorbit))

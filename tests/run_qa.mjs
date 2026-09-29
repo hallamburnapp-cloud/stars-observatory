@@ -414,6 +414,38 @@ await groundTruth(page, { n: QUICK ? 6 : 12, cam: [40, 60, 160], label: 'desktop
     await phone.evaluate(() => { const r = document.querySelector('#rail'); if (r.classList.contains('open')) document.querySelector('#railToggle').click(); document.querySelector('#dClose')?.click(); }).catch(() => {});
   }
   check(got.length > 0 && got.every(t => t === 'scene'), 'phone (touch): a tap on the globe beside a button is not retargeted to the button', got.join(', '));
+
+  // Phone regression: the object card and the About panel must open with their
+  // close control on screen, at least 44x44 px, still on screen after scrolling
+  // the content, and closing on a tap (a long card once pushed its x off-screen).
+  async function phoneCloseChecks(pg, label) {
+    const vp = pg.viewportSize();
+    const inView = b => !!b && b.x >= -0.5 && b.y >= -0.5 && b.x + b.width <= vp.width + 0.5 && b.y + b.height <= vp.height + 0.5;
+    const big = b => !!b && b.width >= 44 && b.height >= 44;
+    const idx = await pg.evaluate(() => __QA.eligible()[0]);
+    await pg.evaluate(i => __QA.select(i), idx); await pg.waitForTimeout(500);
+    const shown = await pg.evaluate(() => document.querySelector('#detail').classList.contains('show'));
+    const det = await pg.locator('#detail').boundingBox(); const cls = await pg.locator('#dClose').boundingBox();
+    check(shown && inView(det), `${label}object card opens and fits the viewport`, JSON.stringify(det));
+    check(inView(cls) && big(cls), `${label}object card close control is on screen and at least 44x44`, JSON.stringify(cls));
+    await pg.evaluate(() => { document.querySelector('#detail').scrollTop = 1e6; }); await pg.waitForTimeout(250);
+    const cls2 = await pg.locator('#dClose').boundingBox();
+    check(inView(cls2), `${label}object card close control stays on screen after scrolling the card`, JSON.stringify(cls2));
+    if (cls2) await pg.touchscreen.tap(cls2.x + cls2.width / 2, cls2.y + cls2.height / 2); await pg.waitForTimeout(350);
+    check(!(await pg.evaluate(() => document.querySelector('#detail').classList.contains('show'))), `${label}tapping the close control closes the object card`);
+    await pg.evaluate(() => document.querySelector('#topAbout').click()); await pg.waitForTimeout(800);
+    const open = await pg.evaluate(() => document.querySelector('#drawer').classList.contains('open'));
+    const dc = await pg.locator('#drawerClose').boundingBox();
+    check(open && inView(dc) && big(dc), `${label}About opens with its close control on screen and at least 44x44`, JSON.stringify(dc));
+    await pg.evaluate(() => { const b = document.querySelector('#drawer .drawer-body'); if (b) b.scrollTop = 1e6; }); await pg.waitForTimeout(250);
+    const dc2 = await pg.locator('#drawerClose').boundingBox();
+    check(inView(dc2), `${label}About close control stays on screen after scrolling the panel`, JSON.stringify(dc2));
+    if (dc2) await pg.touchscreen.tap(dc2.x + dc2.width / 2, dc2.y + dc2.height / 2); await pg.waitForTimeout(450);
+    check(!(await pg.evaluate(() => document.querySelector('#drawer').classList.contains('open'))), `${label}tapping the close control closes About`);
+  }
+  await phoneCloseChecks(phone, 'phone 390x844: ');
+  await phone.setViewportSize({ width: 360, height: 800 }); await phone.waitForTimeout(600);
+  await phoneCloseChecks(phone, 'phone 360x800: ');
   await ctx.close();
 }
 

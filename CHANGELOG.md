@@ -2,12 +2,20 @@
 
 All notable changes to STARS Observatory. Each release is archived on Zenodo with its own version DOI; the concept DOI [10.5281/zenodo.22662848](https://doi.org/10.5281/zenodo.22662848) always resolves to the latest release. Earlier releases are listed on the [GitHub releases page](https://github.com/hallamburnapp-cloud/stars-observatory/releases).
 
-## Unreleased
+## v1.8.1 — presentation only
+
+### Changed
+- **Registration headline.** Beside the raw no-match share, the panel shows, with equal prominence, the share for payloads launched more than two years before the snapshot date (rolling cutoff, recomputed daily), labelled "Payloads launched more than two years ago" and citing Jakhu, Jasani and McDowell (2018) 143 Acta Astronautica 406, 409 for "usually done within one to two years of launch". `stats.json` gains `registration_2y` (cutoff and per-owner counts); a snapshot published before this field existed hides the figure until the next scheduled run. In the snapshot of 28 September 2026: 33.3% (6,651 of 19,972) overall; 5.6% (645 of 11,526) for payloads launched before 28 September 2024.
+- **Per-State table** now lists the ten attributed States with most payloads on orbit, sorted by payload count, with both shares as columns; States are no longer ranked by no-match share.
+- **Registration ledger.** Renamed from "Registration Lag Index" everywhere, moved to the bottom of the Registration panel, and headed by "Too early to support findings; see Section 4 for scope."
+- METHODOLOGY, README and this changelog updated to match; METHODOLOGY's figures are re-dated to the snapshot of 28 September 2026.
+- **Phone layout.** Close controls (object card, drawer) are 44 px tap targets; the per-State table scrolls horizontally; the headline pair stacks. The QA gate now opens the object card and About at 390×844 and 360×800 and checks that the close control is on screen, at least 44×44 px, and closes the panel.
 
 ### Added
 - **"Cite this instrument" footer link** opens the About panel at its citation section (also reachable at `#cite`).
 
 ### Fixed
+- **Phone: a long object card no longer pushes its close button off the top of the screen.** The card is capped to the space above the playback bar and scrolls inside, with its header (and the ×, now a 44 px tap target) pinned.
 - **Migration shim removed.** `normalise_lag()` in `pipeline/refresh.py` is gone: the first scheduled run after the v1.8.0 release (27 September 2026) wrote `lag.json` in the v1.8.0 format.
 - The release workflow's wait for Zenodo now follows the concept record's redirect to the latest version, so it detects the new version DOI (the v1.8.0 run had to be redeployed by hand).
 
