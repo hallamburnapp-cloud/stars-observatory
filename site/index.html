@@ -115,6 +115,15 @@
     </div>
 
     <button class="rail-toggle" id="railToggle">☰ Controls &amp; Filters</button>
+    <!-- The header's catalogue badge has no room below 1,120 px; this compact copy shows the
+         snapshot date and fetch time there instead, because every citation names that date. -->
+    <div class="snapbadge" id="snapBadge" aria-label="Live catalogue snapshot">
+      <span class="livedot" aria-hidden="true"></span>
+      <div>
+        <div class="label">Live catalogue</div>
+        <div class="val"><span data-stat="date">2026-09-28</span> <span data-stat="fetched">06:03Z</span><span class="sb-daily"> · daily</span></div>
+      </div>
+    </div>
 
     <!-- Left control rail -->
     <aside class="rail" id="rail">

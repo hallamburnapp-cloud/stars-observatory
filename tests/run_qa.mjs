@@ -37,6 +37,22 @@ const PORT = 8931;
 
 let failures = [];
 let passes = 0;
+// ---------- waiting on conditions, never on the clock ----------
+// Each wait returns as soon as the page reaches the state the next check measures, and gives up after
+// `ms` so that the check itself reports the failure. Fixed sleeps made the gate depend on the runner's
+// speed: one measured the About panel before it had opened and blocked the refresh of 12 October 2026.
+const until = (pg, fn, arg = null, ms = 10000) =>
+  pg.waitForFunction(fn, arg, { timeout: ms, polling: 50 }).then(() => true, () => false);
+// Resolves once the browser has drawn `n` more frames, so a change is on screen (capped at 5 s).
+const frames = (pg, n = 2) => pg.evaluate(n => new Promise(r => {
+  const f = k => (k ? requestAnimationFrame(() => f(k - 1)) : r()); f(n); setTimeout(r, 5000); }), n);
+// The drawer (About and the other panels) is open and has finished sliding in.
+const drawerSettled = (pg, ms) => until(pg, () => { const d = document.querySelector('#drawer');
+  return d.classList.contains('open') && d.getAnimations().length === 0; }, null, ms);
+// A scrolled element has reached its bottom (smooth scrolling included).
+const atBottom = (pg, sel) => until(pg, s => { const e = document.querySelector(s);
+  return !e || e.scrollTop + e.clientHeight >= e.scrollHeight - 1; }, sel);
+
 function check(ok, label, detail = '') {
   if (ok) { passes++; console.log(`  ✓ ${label}`); }
   else { failures.push(`${label}${detail ? ' — ' + detail : ''}`); console.error(`  ✗ ${label}${detail ? ' — ' + detail : ''}`); }
@@ -144,7 +160,8 @@ check(footCopy === '© 2026 Hallam Burnapp · Code MIT · Data CC BY 4.0 · Abou
   // the footer citation link opens About with the citation section in view
   await page.evaluate(() => { const d = document.querySelector('#drawer .drawer-body'); if (d) d.scrollTop = 0; });
   await page.click('#footCite');
-  await page.waitForTimeout(700);
+  await drawerSettled(page);
+  await until(page, () => { const c = document.querySelector('#citeSec'); const r = c && c.getBoundingClientRect(); return !!r && r.top >= 0 && r.top < innerHeight; });
   const citeInView = await page.evaluate(() => {
     const s = document.querySelector('#citeSec'), a = document.querySelector('#panel-about');
     if (!s || !a || a.offsetParent === null) return false;
@@ -167,11 +184,12 @@ check(citation.snapshot_date === loadedSnapshotISO ? warnHidden : !warnHidden, '
 // scheduled refresh hours late), never a fixed schedule time: in the stamped static HTML and at runtime.
 const fetchedHM = String(sats.generated).slice(11, 16) + 'Z';
 const staticFetched = [...readFileSync(join(SITE, 'index.html'), 'utf8').matchAll(/data-stat="fetched">([^<]*)</g)].map(m => m[1]);
-check(staticFetched.length === 2 && staticFetched.every(v => v === fetchedHM), 'static HTML gives the snapshot fetch time in the header and Provenance', `${JSON.stringify(staticFetched)} vs ${fetchedHM}`);
+check(staticFetched.length === 3 && staticFetched.every(v => v === fetchedHM), 'static HTML gives the snapshot fetch time in the header, the compact badge and Provenance', `${JSON.stringify(staticFetched)} vs ${fetchedHM}`);
 const badge = await page.$eval('.databadge', el => ({ val: el.querySelector('.val').textContent.trim(), title: el.title }));
 check(badge.val === `${loadedSnapshotISO} ${fetchedHM} · daily` && !/\d\d:\d\d/.test(badge.title), 'header shows the snapshot date and fetch time, and no fixed schedule time', JSON.stringify(badge));
 const provFetched = await page.$eval('#panel-prov [data-stat="fetched"]', el => el.textContent);
 check(provFetched === fetchedHM, 'Provenance gives the snapshot fetch time', provFetched);
+check(await page.$eval('#snapBadge', el => getComputedStyle(el).display === 'none'), 'compact snapshot badge is hidden where the header badge fits (1360 px wide)');
 
 // ---------- 2. time controls ----------
 console.log('[2] Time controls');
@@ -250,10 +268,10 @@ async function realClick(idx) {
   const s = await page.evaluate(i => __QA.aimAt(i, 1.02), idx);
   if (!s || s.z > 1) return { ok: false, why: 'offscreen' };
   await page.mouse.click(s.x, s.y);
-  await page.waitForTimeout(130);
+  await until(page, i => __QA.chooserOpen() || (__QA.selected === i && __QA.detailNorad() !== ''), idx, 5000);
   if (await page.evaluate(() => __QA.chooserOpen())) {
     if (!(await page.evaluate(i => __QA.chooserPick(i), idx))) return { ok: false, why: 'chooser-missing' };
-    await page.waitForTimeout(80);
+    await until(page, i => __QA.selected === i && __QA.detailNorad() !== '', idx, 5000);
   }
   const rows = await page.evaluate(() => __QA.detailNorad());
   const norad = await page.evaluate(i => __QA.norad(i), idx);
@@ -278,7 +296,7 @@ for (const idx of rcPool) {
 check(rcTried >= 4 && rcPass === rcTried, `real mouse clicks select isolated objects (${rcPass}/${rcTried})`, rcFails.join(', '));
 // (b) with the Debris type filter active, dimmed payloads/rocket bodies must STILL be clickable
 await page.selectOption('#fType', 'DEB');
-await page.waitForTimeout(250);
+await until(page, () => /[?&]type=DEB/.test(location.search));
 const dimPool = await page.evaluate(() => {
   const out = [];
   for (const i of __QA.aliveAll()) if (__QA.filteredOut(i)) out.push(i);
@@ -298,7 +316,7 @@ check(dimTried >= 3 && dimPass === dimTried, `dimmed filtered-out objects stay c
 // (c) count consistency: the number beside every filter option / legend swatch
 // must equal the propagated population it selects.
 await page.selectOption('#fType', '');
-await page.waitForTimeout(150);
+await until(page, () => !/[?&]type=/.test(location.search));
 const cc = await page.evaluate(() => {
   const d = __QA.datasetCounts();
   const top = Object.entries(d.byOwner).sort((a, b) => b[1] - a[1]).slice(0, 5);
@@ -316,11 +334,11 @@ check(payNum === cc.byType['PAY'].toLocaleString('en-GB'), 'legend Payload count
 // count (small tolerance: objects that decayed between the snapshot epoch and
 // the run's wall-clock time render as absent).
 await page.selectOption('#fState', cc.top[0][0]);
-await page.waitForTimeout(250);
+await until(page, code => new RegExp(`[?&]state=${code}(&|$)`).test(location.search), cc.top[0][0]);
 const shownVis = await page.evaluate(() => __QA.vis());
 check(Math.abs(shownVis - cc.top[0][1]) / cc.top[0][1] < 0.04, `selecting ${cc.top[0][0]} shows its labelled count (±4% decay tolerance)`, `shown ${shownVis}, labelled ${cc.top[0][1]}`);
 await page.selectOption('#fState', '');
-await page.waitForTimeout(150);
+await until(page, () => !/[?&]state=/.test(location.search));
 
 // ---------- 4c. ground truth: click where the dot is DRAWN ----------
 // Every check above aims with the app's own projection maths, so a bug in
@@ -335,7 +353,7 @@ async function groundTruth(pg, { touch = false, n = 10, cam = null, label = '' }
   await pg.evaluate(() => { __QA.pause(); const c = document.querySelector('#dClose'); if (c) c.click(); });
   await pg.evaluate(c => __QA.setCam(...c), cam || [6, 10, 36]); // default view unless given
   await pg.addStyleTag({ content: 'body.qa-gt *:not(html):not(body):not(#app):not(main):not(#scene){visibility:hidden!important;transition:none!important;animation:none!important}' });
-  await pg.waitForTimeout(300);
+  await frames(pg, 3);
   const lay = await pg.evaluate(() => { const c = document.querySelector('#scene').getBoundingClientRect(), h = document.querySelector('#scene').parentElement.getBoundingClientRect();
     return { dTop: Math.abs(c.top - h.top), dH: Math.abs(c.height - h.height), dW: Math.abs(c.width - h.width) }; });
   check(lay.dTop < 1 && lay.dH < 1 && lay.dW < 1, `${label}canvas exactly fills its host (not clipped under the top bar)`, JSON.stringify(lay));
@@ -367,24 +385,24 @@ async function groundTruth(pg, { touch = false, n = 10, cam = null, label = '' }
     if (!(await pg.evaluate(([x, y]) => document.elementFromPoint(x, y)?.id === 'scene', [s.x, s.y]))) continue; // under a panel
     if (await pg.evaluate(i => __QA.occluded(i), idx)) continue; // behind the Earth
     shots++;
-    await pg.evaluate(() => document.body.classList.add('qa-gt')); await pg.waitForTimeout(120);
+    await pg.evaluate(() => document.body.classList.add('qa-gt')); await frames(pg, 3);
     const a = await shot();
-    await pg.evaluate(i => __QA.flash(i, true), idx); await pg.waitForTimeout(100);
+    await pg.evaluate(i => __QA.flash(i, true), idx); await frames(pg, 3);
     const b = await shot();
     await pg.evaluate(i => __QA.flash(i, false), idx);
-    await pg.evaluate(() => document.body.classList.remove('qa-gt')); await pg.waitForTimeout(80);
+    await pg.evaluate(() => document.body.classList.remove('qa-gt')); await frames(pg, 2);
     const g = await drawnAt(a, b);
     if (!g) continue; // dot hidden behind the Earth or another object
     tried++;
     worstOff = Math.max(worstOff, Math.hypot(g.x - s.x, g.y - s.y));
     const tap = (x, y) => touch ? pg.touchscreen.tap(x, y) : pg.mouse.click(x, y);
-    await tap(g.x, g.y); await pg.waitForTimeout(150);
+    await tap(g.x, g.y); await until(pg, i => __QA.selected === i || __QA.chooserOpen(), idx, 5000);
     let sel = await pg.evaluate(() => __QA.selected);
     if (sel !== idx && await pg.evaluate(() => __QA.chooserOpen())) {
       const row = pg.locator(`#pickChooser .sr[data-i="${idx}"]`);
       if (await row.count()) {
         await row.scrollIntoViewIfNeeded(); const bb = await row.boundingBox();
-        await tap(bb.x + bb.width / 2, bb.y + bb.height / 2); await pg.waitForTimeout(120);
+        await tap(bb.x + bb.width / 2, bb.y + bb.height / 2); await until(pg, i => __QA.selected === i, idx, 5000);
         sel = await pg.evaluate(() => __QA.selected);
       }
     }
@@ -393,7 +411,7 @@ async function groundTruth(pg, { touch = false, n = 10, cam = null, label = '' }
       fails.push(`${await pg.evaluate(i => __QA.norad(i), idx)}→${sel} g=${g.x.toFixed(1)},${g.y.toFixed(1)} s=${s.x.toFixed(1)},${s.y.toFixed(1)} ${JSON.stringify(d)}`); }
     await pg.keyboard.press('Escape').catch(() => {});
     await pg.evaluate(() => { const c = document.querySelector('#dClose'); if (c) c.click(); });
-    await pg.waitForTimeout(60);
+    await until(pg, () => !document.querySelector('#detail').classList.contains('show'), null, 5000);
   }
   check(tried >= Math.ceil(n / 2) && worstOff <= 3, `${label}app projection matches the drawn pixel (worst ${worstOff.toFixed(1)}px over ${tried} dots)`);
   check(tried >= Math.ceil(n / 2) && ok === tried, `${label}real ${touch ? 'taps' : 'clicks'} on drawn dots open that object's card (${ok}/${tried})`, fails.join(', '));
@@ -418,7 +436,7 @@ await groundTruth(page, { n: QUICK ? 6 : 12, cam: [40, 60, 160], label: 'desktop
     const under = await phone.evaluate(([x, y]) => document.elementFromPoint(x, y)?.id, [x, y]);
     if (under !== 'scene') continue;
     await phone.evaluate(() => { window.__tapT = null; document.addEventListener('pointerdown', e => { window.__tapT = e.target.id; }, { once: true, capture: true }); });
-    await phone.touchscreen.tap(x, y); await phone.waitForTimeout(150);
+    await phone.touchscreen.tap(x, y); await until(phone, () => window.__tapT !== null, null, 5000);
     got.push(await phone.evaluate(() => __tapT));
     await phone.evaluate(() => { const r = document.querySelector('#rail'); if (r.classList.contains('open')) document.querySelector('#railToggle').click(); document.querySelector('#dClose')?.click(); }).catch(() => {});
   }
@@ -431,16 +449,26 @@ await groundTruth(page, { n: QUICK ? 6 : 12, cam: [40, 60, 160], label: 'desktop
     const vp = pg.viewportSize();
     const inView = b => !!b && b.x >= -0.5 && b.y >= -0.5 && b.x + b.width <= vp.width + 0.5 && b.y + b.height <= vp.height + 0.5;
     const big = b => !!b && b.width >= 44 && b.height >= 44;
+    // The header badge has no room on a phone; the compact badge shows the snapshot date and fetch time
+    // beside Controls & Filters, inside the screen and clear of that button.
+    const sb = await pg.evaluate(() => { const b = document.querySelector('#snapBadge'), t = document.querySelector('#railToggle');
+      const r = b.getBoundingClientRect(), q = t.getBoundingClientRect();
+      return { shown: getComputedStyle(b).display !== 'none', text: b.querySelector('.val').innerText.trim(),
+        box: [r.left, r.top, r.width, r.height].map(Math.round), clear: r.left >= q.right + 4 || r.top >= q.bottom, inView: r.left >= 0 && r.right <= innerWidth }; });
+    check(sb.shown && sb.text === `${loadedSnapshotISO} ${fetchedHM}` && sb.clear && sb.inView, `${label}snapshot date and fetch time shown beside Controls & Filters`, JSON.stringify(sb));
     const idx = await pg.evaluate(() => __QA.eligible()[0]);
-    await pg.evaluate(i => __QA.select(i), idx); await pg.waitForTimeout(500);
+    await pg.evaluate(i => __QA.select(i), idx);
+    await until(pg, () => document.querySelector('#detail').classList.contains('show'), null, 5000); await frames(pg, 2);
     const shown = await pg.evaluate(() => document.querySelector('#detail').classList.contains('show'));
     const det = await pg.locator('#detail').boundingBox(); const cls = await pg.locator('#dClose').boundingBox();
     check(shown && inView(det), `${label}object card opens and fits the viewport`, JSON.stringify(det));
+    check(await pg.$eval('#snapBadge', el => getComputedStyle(el).display === 'none'), `${label}compact snapshot badge steps aside while the object card is open`);
     check(inView(cls) && big(cls), `${label}object card close control is on screen and at least 44x44`, JSON.stringify(cls));
-    await pg.evaluate(() => { document.querySelector('#detail').scrollTop = 1e6; }); await pg.waitForTimeout(250);
+    await pg.evaluate(() => { document.querySelector('#detail').scrollTop = 1e6; }); await atBottom(pg, '#detail');
     const cls2 = await pg.locator('#dClose').boundingBox();
     check(inView(cls2), `${label}object card close control stays on screen after scrolling the card`, JSON.stringify(cls2));
-    if (cls2) await pg.touchscreen.tap(cls2.x + cls2.width / 2, cls2.y + cls2.height / 2); await pg.waitForTimeout(350);
+    if (cls2) await pg.touchscreen.tap(cls2.x + cls2.width / 2, cls2.y + cls2.height / 2);
+    await until(pg, () => !document.querySelector('#detail').classList.contains('show'), null, 5000);
     check(!(await pg.evaluate(() => document.querySelector('#detail').classList.contains('show'))), `${label}tapping the close control closes the object card`);
     // The About panel slides in (a 0.3 s CSS transition). On a runner that draws the globe in software the
     // slide can start late, so wait until the panel is open and its animation has finished, not a fixed time
@@ -451,14 +479,17 @@ await groundTruth(page, { n: QUICK ? 6 : 12, cam: [40, 60, 160], label: 'desktop
     const open = await pg.evaluate(() => document.querySelector('#drawer').classList.contains('open'));
     const dc = await pg.locator('#drawerClose').boundingBox();
     check(open && inView(dc) && big(dc), `${label}About opens with its close control on screen and at least 44x44`, JSON.stringify(dc));
-    await pg.evaluate(() => { const b = document.querySelector('#drawer .drawer-body'); if (b) b.scrollTop = 1e6; }); await pg.waitForTimeout(250);
+    await pg.evaluate(() => { const b = document.querySelector('#drawer .drawer-body'); if (b) b.scrollTop = 1e6; }); await atBottom(pg, '#drawer .drawer-body');
     const dc2 = await pg.locator('#drawerClose').boundingBox();
     check(inView(dc2), `${label}About close control stays on screen after scrolling the panel`, JSON.stringify(dc2));
-    if (dc2) await pg.touchscreen.tap(dc2.x + dc2.width / 2, dc2.y + dc2.height / 2); await pg.waitForTimeout(450);
+    if (dc2) await pg.touchscreen.tap(dc2.x + dc2.width / 2, dc2.y + dc2.height / 2);
+    await until(pg, () => !document.querySelector('#drawer').classList.contains('open'), null, 5000);
     check(!(await pg.evaluate(() => document.querySelector('#drawer').classList.contains('open'))), `${label}tapping the close control closes About`);
   }
   await phoneCloseChecks(phone, 'phone 390x844: ');
-  await phone.setViewportSize({ width: 360, height: 800 }); await phone.waitForTimeout(600);
+  await phone.setViewportSize({ width: 360, height: 800 });
+  await until(phone, () => { const c = document.querySelector('#scene'); return innerWidth === 360 && !!c && Math.abs(c.getBoundingClientRect().width - c.parentElement.getBoundingClientRect().width) < 1; });
+  await frames(phone, 2);
   await phoneCloseChecks(phone, 'phone 360x800: ');
   await ctx.close();
 }
@@ -472,7 +503,7 @@ console.log('[4d] View links, CSV export');
   check(v.st === 'PRC' && v.ty === 'PAY' && v.color === 'state', 'view link restores colour mode and filters', JSON.stringify(v));
   check(/state=PRC/.test(v.search) && /type=PAY/.test(v.search) && /color=state/.test(v.search), 'address bar keeps the view parameters', v.search);
   await page.selectOption('#fReg', '0');
-  await page.waitForTimeout(150);
+  await until(page, () => /[?&]reg=0(&|$)/.test(location.search));
   const s2 = await page.evaluate(() => location.search);
   check(/reg=0/.test(s2), 'changing a filter updates the address bar', s2);
   const vis = await page.evaluate(() => __QA.vis());

@@ -2,14 +2,22 @@
 
 All notable changes to STARS Observatory. Each release is archived on Zenodo with its own version DOI; the concept DOI [10.5281/zenodo.22662848](https://doi.org/10.5281/zenodo.22662848) always resolves to the latest release. Earlier releases are listed on the [GitHub releases page](https://github.com/hallamburnapp-cloud/stars-observatory/releases).
 
-## Unreleased
+## v1.8.2 — reliability
 
-Operational fixes after the failed scheduled refresh of 12 October 2026 (issue #19). Nothing in the figures or the legal text changes.
+Operational and presentation fixes after the failed daily refresh of 12 October 2026 (issue #19). Nothing in the figures or the legal text changes.
+
+### Changed
+- **Hourly refresh scheduler.** Since 4 October 2026 GitHub has been starting the scheduled 06:00 UTC refresh five to eight hours late. A new workflow, `refresh-scheduler.yml`, checks every hour at 17 minutes past. The first check at or after 06:00 UTC that finds today's data not yet fetched starts `refresh.yml` in fetch mode, so the refresh begins within about an hour of 06:00 UTC even when GitHub is late. A failed download is retried at the next hourly check, up to six fetch runs a day. A run that fails after downloading is not retried automatically. CelesTrak and GCAT are still contacted only by fetch runs.
+- **Alerts close themselves.** A successful fetch run closes the open stale-data issue with a note naming the snapshot now live.
+- **Staleness alarm** (companion repository stars-observatory-data). The hourly archive opens an issue there when the live snapshot is more than 30 hours old, and closes it once a fresher snapshot is live. This catches a day on which no refresh ran at all, which no failure alert can report.
+- **Snapshot date on small screens.** The header's catalogue badge has no room on screens up to 1,120 px wide. A compact badge now shows the snapshot date and fetch time there: beside Controls & Filters on phones, at the top right on tablets. It steps aside for the object card, the drawer, the filters panel, replays and the first-visit hint, and lets taps through to the dots beneath it.
+- **Build tooling off Node 20.** The QA gate runs on Node 24, because Node 20 reached end of life on 30 April 2026. The workflows use the current GitHub Actions releases, which run on Node 24: checkout v7, setup-python v7, setup-node v7, cache v6, upload-pages-artifact v5 and deploy-pages v5.
+- **QA gate waits on conditions.** All 22 fixed waits are replaced by waits for the state the next check measures: a panel open and settled, a card shown or closed, a filter applied, a frame drawn. Each wait has a time limit, after which the check reports the failure. The gate gains five checks for the compact badge, 90 in total.
 
 ### Fixed
 - **QA gate timing.** The phone check measured the About panel's close control a fixed 800 ms after opening the panel. On the build runner, which draws the globe in software, the panel had not yet started to slide in, so the check measured it off-screen and blocked the deploy. The check now waits up to 15 seconds for the panel to finish opening, then measures. It still fails if the control ends up off-screen or smaller than 44 × 44 px.
-- **Re-running a failed scheduled refresh.** A scheduled run commits the registration ledger before the QA gate. A re-run checked out the original commit, so its own ledger commit conflicted with the one already pushed. Scheduled runs now build on the latest main, so a re-run starts from that commit.
-- **Stated refresh time.** The header said "daily 06:00Z", but since 4 October 2026 GitHub has been starting the scheduled refresh five to eight hours late. The header and the Provenance panel now give the time each snapshot was actually fetched, stamped into the static HTML and checked by the QA gate against the dataset's own timestamp. The schedule moves to 06:17 UTC, off the top of the hour, when GitHub's scheduler is busiest.
+- **Re-running a failed refresh.** A fetch run commits the registration ledger before the QA gate. A re-run checked out the original commit, so its own ledger commit conflicted with the one already pushed. Fetch runs now build on the latest main, so a re-run starts from that commit. The ledger commit is now dated by the snapshot, not by the clock.
+- **Stated refresh time.** The header said "daily 06:00Z" although the refresh was starting hours later. The header and the Provenance panel now give the time each snapshot was actually fetched, stamped into the static HTML and checked by the QA gate against the dataset's own timestamp.
 - **Snapshot archive** (companion repository stars-observatory-data). The archive ran once a day on its own timer and saved whatever was live at that moment, so a snapshot published after it ran and replaced before its next run was never archived. That happened to the snapshot of 25 September 2026. The archive now checks the live site every hour, archives each new snapshot the first time it sees it, never replaces an archived file, and lists every file with its SHA-256 checksum. The daily index commit also keeps GitHub from switching off the archive's schedule, which it does in a public repository after 60 days without commits.
 - **About** no longer says that every cited snapshot stays retrievable: the archive starts on 23 September 2026 and has no file for 25 September 2026.
 

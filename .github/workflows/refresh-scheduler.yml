@@ -1,0 +1,81 @@
+name: Daily refresh scheduler
+
+# Starts the day's data refresh. GitHub can start a scheduled run hours late
+# (it started the old 06:00 UTC run five to eight hours late in October 2026),
+# so instead of one daily trigger this checks every hour, at 17 minutes past,
+# off the top of the hour when GitHub's scheduler is busiest. Even when GitHub
+# is late the checks still arrive about an hour apart, so the first check at or
+# after 06:00 UTC, and with it the day's refresh, comes within about an hour of
+# 06:00 UTC.
+#
+# A check starts refresh.yml in fetch mode when all of these hold:
+#   - it is 06:00 UTC or later;
+#   - main has no "Ledger update: <today>" commit (a fetch run commits it right
+#     after a successful download, so its presence means today's data is in);
+#   - no fetch run is queued or under way;
+#   - fewer than six fetch runs have started today.
+# A failed download leaves no ledger commit, so the next hourly check retries.
+# A run that fails after downloading has committed the ledger and is not
+# retried automatically: its alert asks a person to look.
+
+on:
+  schedule:
+    - cron: "17 * * * *"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Only report what the check would do"
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+  actions: write
+
+concurrency:
+  group: refresh-scheduler
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Start today's refresh if it is due
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run }}
+          FETCH_TITLE: Daily data refresh (fetch)
+          MAX_RUNS: 6
+        run: |
+          set -euo pipefail
+          api() { for i in 1 2 3; do gh api "$@" && return 0; sleep $((15 * i)); done; return 1; }
+          TODAY=$(date -u +%F)
+          HOUR=$((10#$(date -u +%H)))
+          if [ "$HOUR" -lt 6 ]; then echo "Before 06:00 UTC: nothing to do."; exit 0; fi
+
+          MESSAGES=$(api "repos/$REPO/commits?sha=main&since=${TODAY}T00:00:00Z&per_page=100" --jq '.[].commit.message')
+          if grep -qx "Ledger update: $TODAY" <<<"$MESSAGES"; then
+            echo "Today's data has been fetched: main has \"Ledger update: $TODAY\"."; exit 0
+          fi
+
+          fetch_runs() { api "repos/$REPO/actions/workflows/refresh.yml/runs?created=%3E%3D${TODAY}&per_page=100" --jq "[.workflow_runs[] | select(.display_title == \"$FETCH_TITLE\")]"; }
+          RUNS=$(fetch_runs)
+          ACTIVE=$(jq '[.[] | select(.status != "completed")] | length' <<<"$RUNS")
+          STARTED=$(jq 'length' <<<"$RUNS")
+          if [ "$ACTIVE" -gt 0 ]; then echo "A fetch run is queued or under way."; exit 0; fi
+          if [ "$STARTED" -ge "$MAX_RUNS" ]; then
+            echo "::warning::$STARTED fetch runs started today and none fetched the data; no more attempts until tomorrow."; exit 0
+          fi
+          if [ "$DRY_RUN" = "true" ]; then
+            echo "Dry run: would start fetch run $((STARTED + 1)) of at most $MAX_RUNS for $TODAY."; exit 0
+          fi
+
+          gh workflow run refresh.yml --repo "$REPO" --ref main -f fetch=true
+          echo "Started fetch run $((STARTED + 1)) for $TODAY."
+          # Wait until the new run is listed, so the next check cannot start a second one.
+          for _ in $(seq 1 18); do
+            sleep 10
+            if [ "$(fetch_runs | jq 'length')" -gt "$STARTED" ]; then echo "The fetch run is queued."; exit 0; fi
+          done
+          echo "::warning::The new fetch run did not appear in the run list within three minutes."
