@@ -30,6 +30,7 @@ def main():
     n = len(sats["sats"])
     vals = {
         "date": sats["generated"][:10],
+        "fetched": sats["generated"][11:16] + "Z",  # time the snapshot was fetched (UTC)
         "totalOnorbit": fmt(total), "propagated": fmt(n), "noGP": fmt(total - n),
         "payTotal": fmt(pay_total), "usPay": fmt(us_pay),
         "usPct": str(round(us_pay / pay_total * 100)) if pay_total else "0",

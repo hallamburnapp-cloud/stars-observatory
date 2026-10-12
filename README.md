@@ -27,7 +27,7 @@ This is not an operational space situational awareness system. See the in-app Pr
 
 ## How it self-updates
 
-A GitHub Actions workflow (`.github/workflows/refresh.yml`) runs daily at 06:00 UTC:
+A GitHub Actions workflow (`.github/workflows/refresh.yml`) runs once a day. It is scheduled for 06:17 UTC, but GitHub can start scheduled runs late, sometimes by several hours, so the header and the Provenance panel give the time each snapshot was actually fetched:
 
 1. Re-fetches CelesTrak GP element sets (OMM, JSON) and SATCAT (CSV), and GCAT `psatcat` (TSV); a download only replaces the previous file if it validates.
 2. Rebuilds the enriched dataset (`pipeline/build_dataset.py`), updating the registration ledger (`data/ledger.json` — committed daily as the persistent longitudinal record), and writes `sats.pack.json`, a lossless ~32% smaller transport copy of `sats.json` for the app's first load (`pipeline/pack_sats.py` refuses to write it unless it round-trips exactly). `sats.json` remains the canonical, archived snapshot.
@@ -105,7 +105,7 @@ The **concept DOI** [10.5281/zenodo.22662848](https://doi.org/10.5281/zenodo.226
 
 A BibTeX entry with the same metadata is available in the live site's About panel.
 
-**How the citation stays resolvable.** The version DOI resolves permanently to the archived software release on Zenodo. The data snapshot date identifies the day's generated dataset behind every figure — and each day's dataset is preserved as `snapshot-YYYY-MM-DD.tar.gz` in the companion [daily data archive](https://github.com/hallamburnapp-cloud/stars-observatory-data/releases/tag/data-archive), so a cited snapshot remains retrievable after the live site refreshes.
+**How the citation stays resolvable.** The version DOI resolves permanently to the archived software release on Zenodo. The data snapshot date identifies the day's generated dataset behind every figure — and each day's dataset is preserved as `snapshot-YYYY-MM-DD.tar.gz` in the companion [daily data archive](https://github.com/hallamburnapp-cloud/stars-observatory-data/releases/tag/data-archive), so a cited snapshot remains retrievable after the live site refreshes. The archive checks the live site every hour, never replaces a file once archived, and lists every file with its SHA-256 checksum. It starts on 23 September 2026 and has one gap, 25 September 2026; its README explains why.
 
 ## License
 
