@@ -2,7 +2,7 @@
 """Refresh and stage the site's data.
 
 Two modes:
-  --mode fetch    (the daily 06:00 UTC schedule only) downloads every CelesTrak
+  --mode fetch    (the daily scheduled run only) downloads every CelesTrak
                   and GCAT source once, rebuilds the enriched dataset and the
                   registration-lag ledger, and stages them into site/data/.
                   Any failed download, non-200 response or invalid file halts

@@ -2,6 +2,17 @@
 
 All notable changes to STARS Observatory. Each release is archived on Zenodo with its own version DOI; the concept DOI [10.5281/zenodo.22662848](https://doi.org/10.5281/zenodo.22662848) always resolves to the latest release. Earlier releases are listed on the [GitHub releases page](https://github.com/hallamburnapp-cloud/stars-observatory/releases).
 
+## Unreleased
+
+Operational fixes after the failed scheduled refresh of 12 October 2026 (issue #19). Nothing in the figures or the legal text changes.
+
+### Fixed
+- **QA gate timing.** The phone check measured the About panel's close control a fixed 800 ms after opening the panel. On the build runner, which draws the globe in software, the panel had not yet started to slide in, so the check measured it off-screen and blocked the deploy. The check now waits up to 15 seconds for the panel to finish opening, then measures. It still fails if the control ends up off-screen or smaller than 44 × 44 px.
+- **Re-running a failed scheduled refresh.** A scheduled run commits the registration ledger before the QA gate. A re-run checked out the original commit, so its own ledger commit conflicted with the one already pushed. Scheduled runs now build on the latest main, so a re-run starts from that commit.
+- **Stated refresh time.** The header said "daily 06:00Z", but since 4 October 2026 GitHub has been starting the scheduled refresh five to eight hours late. The header and the Provenance panel now give the time each snapshot was actually fetched, stamped into the static HTML and checked by the QA gate against the dataset's own timestamp. The schedule moves to 06:17 UTC, off the top of the hour, when GitHub's scheduler is busiest.
+- **Snapshot archive** (companion repository stars-observatory-data). The archive ran once a day on its own timer and saved whatever was live at that moment, so a snapshot published after it ran and replaced before its next run was never archived. That happened to the snapshot of 25 September 2026. The archive now checks the live site every hour, archives each new snapshot the first time it sees it, never replaces an archived file, and lists every file with its SHA-256 checksum. The daily index commit also keeps GitHub from switching off the archive's schedule, which it does in a public repository after 60 days without commits.
+- **About** no longer says that every cited snapshot stays retrievable: the archive starts on 23 September 2026 and has no file for 25 September 2026.
+
 ## v1.8.1 — presentation only
 
 ### Changed

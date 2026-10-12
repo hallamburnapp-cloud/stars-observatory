@@ -163,6 +163,15 @@ const banned = allText.match(/unregistered|in breach|violation|non-compliant|fai
 check(!banned, 'no banned wording anywhere in the page text (2.1, 2.4)', banned && [...new Set(banned)].join(', '));
 const warnHidden = await page.$eval('#citeWarn', el => el.hidden || getComputedStyle(el).display === 'none');
 check(citation.snapshot_date === loadedSnapshotISO ? warnHidden : !warnHidden, 'snapshot mismatch warning correctly ' + (citation.snapshot_date === loadedSnapshotISO ? 'hidden' : 'shown'));
+// The header and Provenance give the time the snapshot was actually fetched (GitHub can start the
+// scheduled refresh hours late), never a fixed schedule time: in the stamped static HTML and at runtime.
+const fetchedHM = String(sats.generated).slice(11, 16) + 'Z';
+const staticFetched = [...readFileSync(join(SITE, 'index.html'), 'utf8').matchAll(/data-stat="fetched">([^<]*)</g)].map(m => m[1]);
+check(staticFetched.length === 2 && staticFetched.every(v => v === fetchedHM), 'static HTML gives the snapshot fetch time in the header and Provenance', `${JSON.stringify(staticFetched)} vs ${fetchedHM}`);
+const badge = await page.$eval('.databadge', el => ({ val: el.querySelector('.val').textContent.trim(), title: el.title }));
+check(badge.val === `${loadedSnapshotISO} ${fetchedHM} · daily` && !/\d\d:\d\d/.test(badge.title), 'header shows the snapshot date and fetch time, and no fixed schedule time', JSON.stringify(badge));
+const provFetched = await page.$eval('#panel-prov [data-stat="fetched"]', el => el.textContent);
+check(provFetched === fetchedHM, 'Provenance gives the snapshot fetch time', provFetched);
 
 // ---------- 2. time controls ----------
 console.log('[2] Time controls');
@@ -433,7 +442,12 @@ await groundTruth(page, { n: QUICK ? 6 : 12, cam: [40, 60, 160], label: 'desktop
     check(inView(cls2), `${label}object card close control stays on screen after scrolling the card`, JSON.stringify(cls2));
     if (cls2) await pg.touchscreen.tap(cls2.x + cls2.width / 2, cls2.y + cls2.height / 2); await pg.waitForTimeout(350);
     check(!(await pg.evaluate(() => document.querySelector('#detail').classList.contains('show'))), `${label}tapping the close control closes the object card`);
-    await pg.evaluate(() => document.querySelector('#topAbout').click()); await pg.waitForTimeout(800);
+    // The About panel slides in (a 0.3 s CSS transition). On a runner that draws the globe in software the
+    // slide can start late, so wait until the panel is open and its animation has finished, not a fixed time
+    // (a fixed 800 ms wait measured the closed panel and blocked the refresh of 12 October 2026).
+    await pg.evaluate(() => document.querySelector('#topAbout').click());
+    await pg.waitForFunction(() => { const d = document.querySelector('#drawer');
+      return d.classList.contains('open') && d.getAnimations().length === 0; }, null, { timeout: 15000 }).catch(() => {});
     const open = await pg.evaluate(() => document.querySelector('#drawer').classList.contains('open'));
     const dc = await pg.locator('#drawerClose').boundingBox();
     check(open && inView(dc) && big(dc), `${label}About opens with its close control on screen and at least 44x44`, JSON.stringify(dc));

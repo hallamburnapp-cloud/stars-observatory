@@ -220,9 +220,11 @@ function fillStats() {
   let regd = 0, unregd = 0;
   for (const v of Object.values(st.registration_by_owner || {})) { regd += v[0]; unregd += v[1]; }
   const totalOnorbit = st.total_onorbit || 0;
-  const date = ((state.data && state.data.generated) || '').substring(0, 10);
+  const gen = (state.data && state.data.generated) || '';
+  const date = gen.substring(0, 10);
   const vals = {
     date: date,
+    fetched: gen.length >= 16 ? gen.substring(11, 16) + 'Z' : '—', // time the snapshot was fetched (UTC)
     totalOnorbit: totalOnorbit.toLocaleString('en-GB'),
     propagated: state.N.toLocaleString('en-GB'),
     noGP: (totalOnorbit - state.N).toLocaleString('en-GB'),
@@ -2418,7 +2420,7 @@ function fillCitations() {
     `${c.version_doi_version ? ` (archives ${c.version_doi_version})` : ''} — cites the exact archived release · ` +
     `Concept DOI <a href="https://doi.org/${c.concept_doi}" target="_blank" rel="noopener">${c.concept_doi}</a> — always resolves to the latest archived version · ` +
     `<a href="https://github.com/hallamburnapp-cloud/stars-observatory" target="_blank" rel="noopener">source &amp; data pipeline</a> · ` +
-    `<a href="https://github.com/hallamburnapp-cloud/stars-observatory-data/releases/tag/data-archive" target="_blank" rel="noopener">daily data archive</a> — every cited snapshot stays retrievable`;
+    `<a href="https://github.com/hallamburnapp-cloud/stars-observatory-data/releases/tag/data-archive" target="_blank" rel="noopener">daily data archive</a> — snapshots stay retrievable after the site refreshes`;
   $$('[data-cite="doi"]').forEach(el => { el.textContent = c.version_doi; });
   $$('[data-cite-href="doi"]').forEach(el => { el.href = 'https://doi.org/' + c.version_doi; });
   const av = $('#aboutVersion'); if (av) av.textContent = aboutVersionText(c);
