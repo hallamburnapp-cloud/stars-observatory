@@ -27,12 +27,14 @@ This is not an operational space situational awareness system. See the in-app Pr
 
 ## How it self-updates
 
-A GitHub Actions workflow (`.github/workflows/refresh.yml`) runs once a day. It is scheduled for 06:17 UTC, but GitHub can start scheduled runs late, sometimes by several hours, so the header and the Provenance panel give the time each snapshot was actually fetched:
+The data is refreshed once a day. GitHub can start a scheduled run hours late, so a small scheduler (`.github/workflows/refresh-scheduler.yml`) checks every hour instead. The first check at or after 06:00 UTC that finds today's data not yet fetched starts the refresh workflow (`.github/workflows/refresh.yml`) in fetch mode, so the refresh normally begins within about an hour of 06:00 UTC. If a download fails, the next hourly check tries again, up to six fetch runs a day; a run that fails after downloading is not retried automatically and opens a tracking issue instead. The header and the Provenance panel give the time each snapshot was actually fetched. A fetch run:
 
 1. Re-fetches CelesTrak GP element sets (OMM, JSON) and SATCAT (CSV), and GCAT `psatcat` (TSV); a download only replaces the previous file if it validates.
 2. Rebuilds the enriched dataset (`pipeline/build_dataset.py`), updating the registration ledger (`data/ledger.json` — committed daily as the persistent longitudinal record), and writes `sats.pack.json`, a lossless ~32% smaller transport copy of `sats.json` for the app's first load (`pipeline/pack_sats.py` refuses to write it unless it round-trips exactly). `sats.json` remains the canonical, archived snapshot.
-3. Fails the run if the source element sets are stale (median epoch older than 3 days); a failed scheduled run opens a tracking issue.
+3. Fails the run if the source element sets are stale (median epoch older than 3 days); a failed fetch run opens a tracking issue, and the next successful one closes it.
 4. Runs the QA gate (`tests/run_qa.mjs`) and, only if it passes, deploys the rebuilt site to GitHub Pages.
+
+Pushes to `main`, the release workflow's redeploy and manual runs without the fetch option never download: they re-stage the snapshot the site already publishes. Independently, the companion archive checks the live site every hour and raises an issue in [stars-observatory-data](https://github.com/hallamburnapp-cloud/stars-observatory-data) if the published snapshot is more than 30 hours old, which also catches a day on which no refresh ran at all.
 
 All page statistics are computed client-side from the generated JSON, so no HTML changes are needed between refreshes.
 

@@ -2,16 +2,18 @@
 """Refresh and stage the site's data.
 
 Two modes:
-  --mode fetch    (the daily scheduled run only) downloads every CelesTrak
-                  and GCAT source once, rebuilds the enriched dataset and the
-                  registration-lag ledger, and stages them into site/data/.
-                  Any failed download, non-200 response or invalid file halts
-                  the run with a logged error: nothing new is staged or
-                  published, and the site keeps its previous snapshot and date.
-  --mode rebuild  (every push and manual run) contacts no data source. It takes
-                  the currently published snapshot from the live site and
-                  re-stages it unchanged, so a code deploy never alters a
-                  snapshot or gives it a date its data does not have.
+  --mode fetch    (the daily fetch run, started by the hourly scheduler)
+                  downloads every CelesTrak and GCAT source once, rebuilds the
+                  enriched dataset and the registration-lag ledger, and stages
+                  them into site/data/. Any failed download, non-200 response
+                  or invalid file halts the run with a logged error: nothing
+                  new is staged or published, and the site keeps its previous
+                  snapshot and date.
+  --mode rebuild  (every push, release redeploy and manual run without fetch)
+                  contacts no data source. It takes the currently published
+                  snapshot from the live site and re-stages it unchanged, so a
+                  code deploy never alters a snapshot or gives it a date its
+                  data does not have.
 """
 import argparse, json, re, subprocess, sys, shutil, urllib.request, urllib.error, os
 from pathlib import Path

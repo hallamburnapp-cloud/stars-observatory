@@ -1,12 +1,18 @@
 name: Daily data refresh & deploy
 
+# A fetch run downloads the day's catalogue; every other run re-stages the
+# snapshot the site already publishes. Fetch runs are started once a day by the
+# hourly scheduler (refresh-scheduler.yml). Their run name marks them, which is
+# how the scheduler recognises a fetch run that is under way or has failed.
+run-name: ${{ inputs.fetch && 'Daily data refresh (fetch)' || '' }}
+
 on:
-  schedule:
-    # 06:17 UTC daily, off the top of the hour, when GitHub's scheduler is busiest.
-    # GitHub can still start a scheduled run late, sometimes by several hours, so
-    # the site states the time each snapshot was actually fetched, not this time.
-    - cron: "17 6 * * *"
-  workflow_dispatch: {} # manual trigger button
+  workflow_dispatch:
+    inputs:
+      fetch:
+        description: "Download today's catalogue. The hourly scheduler does this once a day; tick it only if today's data has not been fetched."
+        type: boolean
+        default: false
   push:
     branches: [main]
 
@@ -22,48 +28,59 @@ concurrency:
 jobs:
   refresh:
     runs-on: ubuntu-latest
+    outputs:
+      generated: ${{ steps.snapshot.outputs.generated }}
     steps:
-      # Scheduled runs build on the latest main, not on the commit that queued
-      # them. A re-run of a failed scheduled run then starts from the ledger
-      # commit that run may already have pushed, instead of conflicting with it
-      # (the re-run of 12 October 2026 failed that way). Push and manual runs
-      # keep the default: the commit that triggered them.
-      - uses: actions/checkout@v4
+      # Fetch runs build on the latest main, not on the commit that queued them,
+      # so a re-run of a failed fetch run starts from the ledger commit that run
+      # may already have pushed, instead of conflicting with it (the re-run of
+      # 12 October 2026 failed that way). Other runs use the commit that
+      # triggered them.
+      - uses: actions/checkout@v7
         with:
-          ref: ${{ github.event_name == 'schedule' && 'main' || '' }}
+          ref: ${{ inputs.fetch && 'main' || '' }}
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
 
-      # CelesTrak and GCAT are contacted only by the daily schedule, once per
-      # day. Any failed download halts the run and nothing is deployed, so the
-      # site keeps its previous snapshot and date (and the alert job below
-      # opens an issue). Pushes and manual runs never download: they re-stage
-      # the snapshot the site already publishes, unchanged.
-      - name: Refresh dataset (schedule) or re-stage the published snapshot (push / manual)
-        run: python pipeline/refresh.py --mode ${{ github.event_name == 'schedule' && 'fetch' || 'rebuild' }}
+      # CelesTrak and GCAT are contacted only by fetch runs: once a day, plus a
+      # retry by the scheduler if a download fails. Any failed download halts the
+      # run and nothing is deployed, so the site keeps its previous snapshot and
+      # date (and the alert job below opens an issue). Pushes and other runs
+      # never download: they re-stage the snapshot the site already publishes.
+      - name: Fetch the day's data (fetch run) or re-stage the published snapshot
+        run: python pipeline/refresh.py --mode ${{ inputs.fetch && 'fetch' || 'rebuild' }}
+
+      - name: Read the snapshot timestamp
+        id: snapshot
+        run: echo "generated=$(python3 -c "import json;print(json.load(open('site/data/sats.json'))['generated'])")" >> "$GITHUB_OUTPUT"
 
       - name: Commit registration lag ledger
-        if: github.event_name == 'schedule'
+        if: inputs.fetch
+        env:
+          GENERATED: ${{ steps.snapshot.outputs.generated }}
         run: |
           git config user.name "stars-observatory-bot"
           git config user.email "actions@github.com"
           # ledger = daily longitudinal record; zenodo_cache = DOI fallback (changes on releases).
           # Generated site/data/*.json stay uncommitted by design — the Pages artifact carries them.
           git add data/ledger.json data/zenodo_cache.json
-          git diff --cached --quiet || git commit -m "Ledger update: $(date -u +%F)"
+          # Dated by the snapshot, not the clock: the scheduler reads this commit
+          # as "today's data has been fetched".
+          git diff --cached --quiet || git commit -m "Ledger update: ${GENERATED:0:10}"
           # autostash: the freshly generated site/data/*.json stay uncommitted by design
           git pull --rebase --autostash origin main
           git push
 
       # ---- QA gate: a failure here blocks the Pages deploy ----
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
-          node-version: "20"
+          node-version: "24"
+          package-manager-cache: false
 
       - name: Cache Playwright browsers
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/.cache/ms-playwright
           key: playwright-chromium-${{ runner.os }}-1.59.0
@@ -82,15 +99,26 @@ jobs:
       # repo so the rolling data-archive release never touches the Zenodo webhook
       # that mints software DOIs here.
       - name: Upload site artifact
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v5
         with:
           path: site
 
-  # A failed scheduled refresh leaves the live site serving the previous
-  # snapshot. Make that visible: open (or update) one tracking issue.
+  deploy:
+    needs: refresh
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5
+
+  # A failed fetch run leaves the live site serving the previous snapshot.
+  # Make that visible: open (or update) one tracking issue.
   alert-on-failure:
     needs: [refresh, deploy]
-    if: failure() && github.event_name == 'schedule'
+    if: failure() && inputs.fetch
     runs-on: ubuntu-latest
     permissions:
       issues: write
@@ -102,18 +130,28 @@ jobs:
       - name: Open or update the stale-data issue
         run: |
           TITLE="Daily refresh failed - live site is serving an old data snapshot"
-          BODY="The scheduled refresh on $(date -u +%F) failed, so starsobservatory.org still shows the last successful snapshot. Run: $RUN_URL"
+          BODY="The daily refresh on $(date -u +%F) failed, so starsobservatory.org still shows the last successful snapshot. If the download failed, the hourly scheduler tries again, up to six fetch runs a day; if a later step failed, re-run the failed jobs once the cause is fixed. Run: $RUN_URL"
           N=$(gh issue list --repo "$REPO" --state open --search "\"$TITLE\" in:title" --json number --jq '.[0].number')
           if [ -n "$N" ]; then gh issue comment "$N" --repo "$REPO" --body "$BODY"
           else gh issue create --repo "$REPO" --title "$TITLE" --body "$BODY"; fi
 
-  deploy:
-    needs: refresh
+  # A successful fetch run ends the problem the stale-data issue reports:
+  # close it, naming the snapshot that is now live.
+  close-stale-issue:
+    needs: [refresh, deploy]
+    if: success() && inputs.fetch
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+    permissions:
+      issues: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REPO: ${{ github.repository }}
+      GENERATED: ${{ needs.refresh.outputs.generated }}
+      RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
     steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+      - name: Close the stale-data issue if one is open
+        run: |
+          TITLE="Daily refresh failed - live site is serving an old data snapshot"
+          N=$(gh issue list --repo "$REPO" --state open --search "\"$TITLE\" in:title" --json number --jq '.[0].number')
+          if [ -z "$N" ]; then echo "No open stale-data issue."; exit 0; fi
+          gh issue close "$N" --repo "$REPO" --reason completed --comment "Resolved: the daily refresh succeeded, and starsobservatory.org now serves the snapshot of ${GENERATED:0:10}, fetched at ${GENERATED:11:5} UTC. Run: $RUN_URL"
