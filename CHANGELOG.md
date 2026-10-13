@@ -2,6 +2,11 @@
 
 All notable changes to STARS Observatory. Each release is archived on Zenodo with its own version DOI; the concept DOI [10.5281/zenodo.22662848](https://doi.org/10.5281/zenodo.22662848) always resolves to the latest release. Earlier releases are listed on the [GitHub releases page](https://github.com/hallamburnapp-cloud/stars-observatory/releases).
 
+## Unreleased
+
+### Changed
+- **The scheduler waits for 06:00.** On 13 October 2026 GitHub ran the new hourly checks only about every six hours, so the first check after 06:00 UTC could come hours late. A check that arrives between 00:30 and 06:00 UTC now waits until 06:00 and starts the day's refresh then; if no check arrives in that window, the first check after 06:00 starts it, as before. A waiting check stays within GitHub's six-hour job limit.
+
 ## v1.8.2 — reliability
 
 Operational and presentation fixes after the failed daily refresh of 12 October 2026 (issue #19). Nothing in the figures or the legal text changes.
