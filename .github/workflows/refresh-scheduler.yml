@@ -18,6 +18,18 @@ name: Daily refresh scheduler
 # A failed download leaves no ledger commit, so the next hourly check retries.
 # A run that fails after downloading has committed the ledger and is not
 # retried automatically: its alert asks a person to look.
+#
+# The check then waits for the run it started (the "follow" job, which has its
+# own six-hour limit) and fails if that run fails. Runs this workflow starts are
+# attributed to github-actions[bot], which gets no failure email; this
+# workflow's own runs are attributed to its owner, so a failed refresh now
+# reaches the owner as a failed run of this workflow, as well as through the
+# issue the refresh run opens.
+#
+# Alert test: run this workflow by hand with "Only report" unticked and
+# "Alert test" ticked. It starts a refresh run that fails at its first step,
+# before anything is downloaded, committed or deployed, which opens an alert-test
+# issue mentioning the owner, and this run fails with it.
 
 on:
   schedule:
@@ -28,10 +40,13 @@ on:
         description: "Only report what the check would do"
         type: boolean
         default: true
+      test_failure:
+        description: "Alert test: start a refresh run that fails on purpose (nothing is downloaded, committed or deployed) and fail with it"
+        type: boolean
+        default: false
 
 permissions:
   contents: read
-  actions: write
 
 concurrency:
   group: refresh-scheduler
@@ -41,19 +56,53 @@ jobs:
   check:
     runs-on: ubuntu-latest
     # A check that waits for 06:00 runs for up to five and a half hours; GitHub
-    # stops any job after six.
+    # stops any job after six. Waiting for the refresh run is the follow job's.
     timeout-minutes: 345
+    permissions:
+      contents: read
+      actions: write
+    outputs:
+      run_id: ${{ steps.start.outputs.run_id }}
     steps:
       - name: Start today's refresh if it is due
+        id: start
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
           DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run }}
+          TEST_FAILURE: ${{ github.event_name == 'workflow_dispatch' && inputs.test_failure }}
           FETCH_TITLE: Daily data refresh (fetch)
+          TEST_TITLE: Alert test (deliberate failure)
           MAX_RUNS: 6
         run: |
           set -euo pipefail
           api() { for i in 1 2 3; do gh api "$@" && return 0; sleep $((15 * i)); done; return 1; }
+          # Starts refresh.yml on main with the given inputs and hands the new run's
+          # id to the follow job. gh prints the run's address; if it does not, the
+          # newest run with the expected name started since then is the one.
+          start() {
+            local title=$1 since out id=""; shift
+            since=$(date -u -d '-2 min' +%FT%TZ)
+            out=$(gh workflow run refresh.yml --repo "$REPO" --ref main "$@" 2>&1)
+            echo "$out"
+            id=$(grep -oE 'actions/runs/[0-9]+' <<<"$out" | head -n 1 | cut -d/ -f3 || true)
+            for _ in $(seq 1 18); do
+              [ -n "$id" ] && break
+              sleep 10
+              id=$(api "repos/$REPO/actions/workflows/refresh.yml/runs?created=%3E%3D${since:0:10}&per_page=100" \
+                --jq "[.workflow_runs[] | select(.display_title == \"$title\" and .created_at >= \"$since\")] | max_by(.created_at) | .id // empty")
+            done
+            if [ -z "$id" ]; then echo "::error::The new refresh run did not appear in the run list within three minutes."; exit 1; fi
+            echo "run_id=$id" >> "$GITHUB_OUTPUT"
+          }
+
+          if [ "$TEST_FAILURE" = "true" ]; then
+            if [ "$DRY_RUN" = "true" ]; then echo "Dry run: would start an alert-test refresh run that fails on purpose."; exit 0; fi
+            start "$TEST_TITLE" -f fetch=true -f test_failure=true
+            echo "Started the alert-test run; the follow job waits for it and fails with it."
+            exit 0
+          fi
+
           # Before 06:00 UTC: wait for 06:00 if it is at most five and a half hours away.
           NOW=$(date -u +%s)
           SIX=$(date -u -d "$(date -u +%F) 06:00" +%s)
@@ -71,8 +120,7 @@ jobs:
             echo "Today's data has been fetched: main has \"Ledger update: $TODAY\"."; exit 0
           fi
 
-          fetch_runs() { api "repos/$REPO/actions/workflows/refresh.yml/runs?created=%3E%3D${TODAY}&per_page=100" --jq "[.workflow_runs[] | select(.display_title == \"$FETCH_TITLE\")]"; }
-          RUNS=$(fetch_runs)
+          RUNS=$(api "repos/$REPO/actions/workflows/refresh.yml/runs?created=%3E%3D${TODAY}&per_page=100" --jq "[.workflow_runs[] | select(.display_title == \"$FETCH_TITLE\")]")
           ACTIVE=$(jq '[.[] | select(.status != "completed")] | length' <<<"$RUNS")
           STARTED=$(jq 'length' <<<"$RUNS")
           if [ "$ACTIVE" -gt 0 ]; then echo "A fetch run is queued or under way."; exit 0; fi
@@ -83,11 +131,52 @@ jobs:
             echo "Dry run: would start fetch run $((STARTED + 1)) of at most $MAX_RUNS for $TODAY."; exit 0
           fi
 
-          gh workflow run refresh.yml --repo "$REPO" --ref main -f fetch=true
-          echo "Started fetch run $((STARTED + 1)) for $TODAY."
-          # Wait until the new run is listed, so the next check cannot start a second one.
-          for _ in $(seq 1 18); do
-            sleep 10
-            if [ "$(fetch_runs | jq 'length')" -gt "$STARTED" ]; then echo "The fetch run is queued."; exit 0; fi
-          done
-          echo "::warning::The new fetch run did not appear in the run list within three minutes."
+          start "$FETCH_TITLE" -f fetch=true
+          echo "Started fetch run $((STARTED + 1)) for $TODAY; the follow job waits for it."
+
+  # Waits for the refresh run the check started and passes on its result: this
+  # run fails if the refresh failed, naming the failed step and its error line.
+  follow:
+    needs: check
+    if: needs.check.outputs.run_id != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@v7
+      - name: Wait for the refresh run and fail if it fails
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 .github/scripts/refresh_alert.py follow "${{ needs.check.outputs.run_id }}"
+
+  # GitHub switches off a public repository's scheduled workflows after 60 days
+  # without repository activity. The daily ledger commits prevent that, but they
+  # stop while downloads keep failing, which is when this schedule must keep
+  # trying. So after 50 days without a commit on main, add an empty one.
+  keepalive:
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Keep this schedule switched on
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          KEEPALIVE_DAYS: 50
+        run: |
+          set -euo pipefail
+          LAST=$(gh api "repos/$REPO/commits/main" --jq '.commit.committer.date')
+          DAYS=$(( ($(date -u +%s) - $(date -u -d "$LAST" +%s)) / 86400 ))
+          if [ "$DAYS" -lt "$KEEPALIVE_DAYS" ]; then
+            echo "Last commit on main: $LAST ($DAYS days ago). GitHub switches the schedule off after 60 days without one; nothing to do."
+            exit 0
+          fi
+          SHA=$(gh api "repos/$REPO/git/ref/heads/main" --jq .object.sha)
+          TREE=$(gh api "repos/$REPO/git/commits/$SHA" --jq .tree.sha)
+          NEW=$(gh api "repos/$REPO/git/commits" -f message="Keepalive: no commit on main for $DAYS days [skip ci]" \
+            -f tree="$TREE" -f "parents[]=$SHA" --jq .sha)
+          gh api -X PATCH "repos/$REPO/git/refs/heads/main" -f sha="$NEW" --silent
+          echo "::warning::No commit on main for $DAYS days: added the empty commit $NEW so that GitHub keeps this schedule switched on."

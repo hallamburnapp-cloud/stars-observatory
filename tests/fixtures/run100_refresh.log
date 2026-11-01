@@ -1,0 +1,44 @@
+2026-10-29T06:01:06.7839660Z ##[group]Run actions/cache@v6
+2026-10-29T06:01:06.7839816Z with:
+2026-10-29T06:01:06.7839939Z   path: ~/.cache/ms-playwright
+2026-10-29T06:01:06.7840104Z   key: playwright-chromium-Linux-1.59.0
+2026-10-29T06:01:06.7840280Z   enableCrossOsArchive: false
+2026-10-29T06:01:06.7840432Z   fail-on-cache-miss: false
+2026-10-29T06:01:06.7840569Z   lookup-only: false
+2026-10-29T06:01:06.7840695Z   save-always: false
+2026-10-29T06:01:06.7840814Z env:
+2026-10-29T06:01:06.7840963Z   pythonLocation: /opt/hostedtoolcache/Python/3.12.15/x64
+2026-10-29T06:01:06.7841210Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.12.15/x64/lib/pkgconfig
+2026-10-29T06:01:06.7841467Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
+2026-10-29T06:01:06.7841684Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
+2026-10-29T06:01:06.7842101Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
+2026-10-29T06:01:06.7842318Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.12.15/x64/lib
+2026-10-29T06:01:06.7842522Z ##[endgroup]
+2026-10-29T06:01:07.0354320Z Cache hit for: playwright-chromium-Linux-1.59.0
+2026-10-29T06:01:08.2661592Z Received 79691776 of 265160026 (30.1%), 76.0 MBs/sec
+2026-10-29T06:01:09.2683923Z Received 243269632 of 265160026 (91.7%), 115.9 MBs/sec
+2026-10-29T06:01:09.4211973Z Received 265160026 of 265160026 (100.0%), 117.3 MBs/sec
+2026-10-29T06:01:09.4212739Z Cache Size: ~253 MB (265160026 B)
+2026-10-29T06:01:09.4302845Z [command]/usr/bin/tar -xf /home/runner/work/_temp/2ec9d0a8-d8a2-43a0-80dd-fded8e13ce3d/cache.tzst -P -C /home/runner/work/stars-observatory/stars-observatory --use-compress-program unzstd
+2026-10-29T06:01:10.1053087Z Cache restored successfully
+2026-10-29T06:01:10.1284641Z Cache restored from key: playwright-chromium-Linux-1.59.0
+2026-10-29T06:01:10.1405854Z ##[group]Run npm install --no-save playwright@1.59.0
+2026-10-29T06:01:10.1406114Z [36;1mnpm install --no-save playwright@1.59.0[0m
+2026-10-29T06:01:10.1406326Z [36;1mnpx playwright install --with-deps chromium[0m
+2026-10-29T06:01:10.1477700Z shell: /usr/bin/bash -e {0}
+2026-10-29T06:01:10.1477876Z env:
+2026-10-29T06:01:10.1478057Z   pythonLocation: /opt/hostedtoolcache/Python/3.12.15/x64
+2026-10-29T06:01:10.1478309Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.12.15/x64/lib/pkgconfig
+2026-10-29T06:01:10.1478557Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
+2026-10-29T06:01:10.1478793Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
+2026-10-29T06:01:10.1479026Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
+2026-10-29T06:01:10.1479255Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.12.15/x64/lib
+2026-10-29T06:01:10.1479610Z ##[endgroup]
+2026-10-29T06:01:12.6756166Z 
+2026-10-29T06:01:12.6756806Z added 2 packages in 2s
+2026-10-29T06:01:13.0688473Z BEWARE: your OS is not officially supported by Playwright; installing dependencies for ubuntu26.04-x64 as a fallback.
+2026-10-29T06:01:13.0689528Z Cannot install dependencies for ubuntu26.04-x64 with Playwright 1.59.0!
+2026-10-29T06:01:13.0814731Z Failed to install browsers
+2026-10-29T06:01:13.0815319Z Error: ERROR: Playwright does not support chromium on ubuntu26.04-x64
+2026-10-29T06:01:13.1001612Z ##[error]Process completed with exit code 1.
+2026-10-29T06:01:13.1090921Z Post job cleanup.

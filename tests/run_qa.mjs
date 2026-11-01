@@ -52,6 +52,11 @@ const drawerSettled = (pg, ms) => until(pg, () => { const d = document.querySele
 // A scrolled element has reached its bottom (smooth scrolling included).
 const atBottom = (pg, sel) => until(pg, s => { const e = document.querySelector(s);
   return !e || e.scrollTop + e.clientHeight >= e.scrollHeight - 1; }, sel);
+// The globe, and nothing laid over it, is under (x, y) and every point within `m` px of it. A dot
+// drawn at the edge of a panel cannot be clicked: the panel takes the click, as it should.
+const onScene = (pg, x, y, m = 3) => pg.evaluate(([x, y, m]) =>
+  [[0, 0], [-m, -m], [0, -m], [m, -m], [-m, 0], [m, 0], [-m, m], [0, m], [m, m]]
+    .every(([dx, dy]) => document.elementFromPoint(x + dx, y + dy)?.id === 'scene'), [x, y, m]);
 
 function check(ok, label, detail = '') {
   if (ok) { passes++; console.log(`  ✓ ${label}`); }
@@ -382,7 +387,7 @@ async function groundTruth(pg, { touch = false, n = 10, cam = null, label = '' }
     await pg.evaluate(() => __QA.settle());
     const s = await pg.evaluate(i => __QA.screenOf(i), idx);
     if (s.z > 1 || s.x < 16 || s.x > vp.width - 16 || s.y < 16 || s.y > vp.height - 16) continue;
-    if (!(await pg.evaluate(([x, y]) => document.elementFromPoint(x, y)?.id === 'scene', [s.x, s.y]))) continue; // under a panel
+    if (!(await onScene(pg, s.x, s.y))) continue; // under a panel or within 3 px of its edge
     if (await pg.evaluate(i => __QA.occluded(i), idx)) continue; // behind the Earth
     shots++;
     await pg.evaluate(() => document.body.classList.add('qa-gt')); await frames(pg, 3);
@@ -393,6 +398,10 @@ async function groundTruth(pg, { touch = false, n = 10, cam = null, label = '' }
     await pg.evaluate(() => document.body.classList.remove('qa-gt')); await frames(pg, 2);
     const g = await drawnAt(a, b);
     if (!g) continue; // dot hidden behind the Earth or another object
+    // The click goes to the drawn pixel g, which can lie up to 3 px from the projected point s, so g
+    // must pass the same test. On 28 October 2026 s lay 0.3 px right of the Controls panel's edge and
+    // g 0.5 px inside it: the panel took the click, the check failed and the day's refresh was blocked.
+    if (!(await onScene(pg, g.x, g.y))) continue;
     tried++;
     worstOff = Math.max(worstOff, Math.hypot(g.x - s.x, g.y - s.y));
     const tap = (x, y) => touch ? pg.touchscreen.tap(x, y) : pg.mouse.click(x, y);
@@ -418,6 +427,16 @@ async function groundTruth(pg, { touch = false, n = 10, cam = null, label = '' }
 }
 await groundTruth(page, { n: QUICK ? 8 : 16, label: 'desktop default view: ' });
 await groundTruth(page, { n: QUICK ? 6 : 12, cam: [40, 60, 160], label: 'desktop zoomed out: ' });
+// Regression check for the edge rule (28 October 2026): the points where that dot was projected
+// (0.3 px outside the Controls panel) and drawn (0.5 px inside it) are both refused; a point clear of
+// the panel is accepted.
+{
+  const r = await page.evaluate(() => document.querySelector('#rail').getBoundingClientRect().toJSON());
+  const y = Math.round(r.top + r.height / 2);
+  const res = { projected: await onScene(page, r.right + 0.3, y), drawn: await onScene(page, r.right - 0.5, y),
+    clear: await onScene(page, r.right + 12, y) };
+  check(!res.projected && !res.drawn && res.clear, 'drawn-dot clicks: points within 3 px of the Controls panel\'s edge are not used, a point clear of it is', JSON.stringify({ edge: r.right, y, ...res }));
+}
 {
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
   const phone = await ctx.newPage();
