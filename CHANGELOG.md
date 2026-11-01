@@ -4,7 +4,18 @@ All notable changes to STARS Observatory. Each release is archived on Zenodo wit
 
 ## Unreleased
 
+### Fixed
+- **Daily refresh, 28 October to 1 November 2026.** Every fetch run in those five days downloaded the data and committed the ledger, then failed before the deploy, so the site kept the snapshot of 27 October 2026. Two faults, neither in the data sources:
+  - **From 29 October: runner image.** GitHub began moving `ubuntu-latest` from Ubuntu 24.04 to 26.04 on 19 October 2026. Playwright 1.59.0, which the QA gate pins, cannot install its browser on 26.04 ("Playwright does not support chromium on ubuntu26.04-x64"), so the refresh job failed at "Install Playwright". The refresh job now runs on `ubuntu-24.04`, the image every successful refresh so far ran on.
+  - **28 October: QA gate.** The check that real clicks on drawn dots open the right card tested whether a dot was clear of the panels at the app's projected point, but clicked the drawn pixel, which can lie up to 3 px away. One dot was projected 0.3 px outside the Controls panel's edge and drawn 0.5 px inside it, so the panel took the click and the check failed. Both points must now be clear of every panel by 3 px, and a new check covers that case (91 checks).
+- **Failures reached nobody.** The scheduler started each refresh run and reported success as soon as the run was queued. The runs it started are attributed to github-actions[bot], which gets no failure email, and the tracking issue mentioned no one.
+
 ### Changed
+- **Failure alerts.** The scheduler now waits for the run it starts and fails if that run fails, naming the failed step and its error line, so the failure reaches the repository owner as a failed run of the scheduler. A failed fetch run opens one issue (or comments on it while it is open) that @-mentions the maintainer, with the failed step, the error line and a link to the run; if the issue cannot be written, that job fails too. The issue closes itself once the site serves a new snapshot. The scheduler has an alert test that fails a refresh run on purpose before anything is downloaded, committed or deployed.
+- **No partial data.** A fetch run now fails, before anything is committed or deployed, if any count of the new snapshot (objects shown, objects on orbit, payloads, payloads matched to a UN registration record) is zero or more than 10% from the snapshot the site serves now.
+- **Test runs.** A fetch run with "Publish the result" unticked downloads and checks everything, but commits no ledger, deploys nothing and reports nothing.
+- **Watchdog** (companion repository stars-observatory-data). The staleness issue now @-mentions the maintainer, and the archive's runs fail while the live snapshot is more than 30 hours old.
+- **Schedules stay on.** GitHub switches off a public repository's scheduled workflows after 60 days without activity. In both repositories the scheduled workflow adds an empty commit if there has been none for 50 days.
 - **The scheduler waits for 06:00.** On 13 October 2026 GitHub ran the new hourly checks only about every six hours, so the first check after 06:00 UTC could come hours late. A check that arrives between 00:30 and 06:00 UTC now waits until 06:00 and starts the day's refresh then; if no check arrives in that window, the first check after 06:00 starts it, as before. A waiting check stays within GitHub's six-hour job limit.
 
 ## v1.8.2 — reliability

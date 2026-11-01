@@ -2,15 +2,29 @@ name: Daily data refresh & deploy
 
 # A fetch run downloads the day's catalogue; every other run re-stages the
 # snapshot the site already publishes. Fetch runs are started once a day by the
-# hourly scheduler (refresh-scheduler.yml). Their run name marks them, which is
-# how the scheduler recognises a fetch run that is under way or has failed.
-run-name: ${{ inputs.fetch && 'Daily data refresh (fetch)' || '' }}
+# hourly scheduler (refresh-scheduler.yml), which waits for each one and fails
+# if it fails. Their run name marks them, which is how the scheduler recognises
+# a fetch run that is under way or has failed. Test runs have their own names,
+# so the scheduler never counts them as the day's fetch.
+run-name: >-
+  ${{ inputs.test_failure && 'Alert test (deliberate failure)'
+  || inputs.fetch && !inputs.deploy && 'Test fetch (nothing published)'
+  || inputs.fetch && 'Daily data refresh (fetch)'
+  || '' }}
 
 on:
   workflow_dispatch:
     inputs:
       fetch:
         description: "Download today's catalogue. The hourly scheduler does this once a day; tick it only if today's data has not been fetched."
+        type: boolean
+        default: false
+      deploy:
+        description: "Publish the result. Untick for a test run: it downloads and checks everything, but commits no ledger, deploys nothing and touches no issue."
+        type: boolean
+        default: true
+      test_failure:
+        description: "Alert test: fail on purpose at the first step, before anything is downloaded, committed or deployed (the scheduler's alert test sets this)."
         type: boolean
         default: false
   push:
@@ -27,37 +41,58 @@ concurrency:
 
 jobs:
   refresh:
-    runs-on: ubuntu-latest
+    # Pinned to Ubuntu 24.04. GitHub moved ubuntu-latest to Ubuntu 26.04 from
+    # 19 October 2026, and Playwright 1.59.0 cannot install its browser there
+    # ("Playwright does not support chromium on ubuntu26.04-x64"), which failed
+    # every refresh from 29 October to 1 November 2026. Move to a newer image
+    # only together with a Playwright release that supports it (1.61.0 or later
+    # for Ubuntu 26.04), in a change whose QA run passes.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
     outputs:
       generated: ${{ steps.snapshot.outputs.generated }}
+      stats_generated: ${{ steps.snapshot.outputs.stats_generated }}
     steps:
-      # Fetch runs build on the latest main, not on the commit that queued them,
-      # so a re-run of a failed fetch run starts from the ledger commit that run
-      # may already have pushed, instead of conflicting with it (the re-run of
-      # 12 October 2026 failed that way). Other runs use the commit that
-      # triggered them.
+      - name: Alert test - fail on purpose before anything is downloaded, committed or deployed
+        if: inputs.test_failure
+        run: |
+          echo "::error::Deliberate failure (alert test): nothing was downloaded, committed or deployed."
+          exit 1
+
+      # Fetch runs that publish build on the latest main, not on the commit that
+      # queued them, so a re-run of a failed fetch run starts from the ledger
+      # commit that run may already have pushed, instead of conflicting with it
+      # (the re-run of 12 October 2026 failed that way). Other runs, test fetch
+      # runs included, use the commit that triggered them.
       - uses: actions/checkout@v7
         with:
-          ref: ${{ inputs.fetch && 'main' || '' }}
+          ref: ${{ inputs.fetch && inputs.deploy && 'main' || '' }}
 
       - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
 
+      - name: Unit tests (snapshot validation, failure alerts)
+        run: python -m unittest discover -s tests -p "test_*.py"
+
       # CelesTrak and GCAT are contacted only by fetch runs: once a day, plus a
-      # retry by the scheduler if a download fails. Any failed download halts the
-      # run and nothing is deployed, so the site keeps its previous snapshot and
-      # date (and the alert job below opens an issue). Pushes and other runs
-      # never download: they re-stage the snapshot the site already publishes.
+      # retry by the scheduler if a download fails. Any failed download, and any
+      # snapshot with an empty count or a count more than 10% from the one the
+      # site serves now, halts the run and nothing is deployed, so the site keeps
+      # its previous snapshot and date (and the alert job below reports it).
+      # Pushes and other runs never download: they re-stage the snapshot the site
+      # already publishes.
       - name: Fetch the day's data (fetch run) or re-stage the published snapshot
         run: python pipeline/refresh.py --mode ${{ inputs.fetch && 'fetch' || 'rebuild' }}
 
       - name: Read the snapshot timestamp
         id: snapshot
-        run: echo "generated=$(python3 -c "import json;print(json.load(open('site/data/sats.json'))['generated'])")" >> "$GITHUB_OUTPUT"
+        run: |
+          echo "generated=$(python3 -c "import json;print(json.load(open('site/data/sats.json'))['generated'])")" >> "$GITHUB_OUTPUT"
+          echo "stats_generated=$(python3 -c "import json;print(json.load(open('site/data/stats.json'))['generated'])")" >> "$GITHUB_OUTPUT"
 
       - name: Commit registration lag ledger
-        if: inputs.fetch
+        if: inputs.fetch && inputs.deploy
         env:
           GENERATED: ${{ steps.snapshot.outputs.generated }}
         run: |
@@ -105,6 +140,8 @@ jobs:
 
   deploy:
     needs: refresh
+    # A test run (deploy unticked) publishes nothing.
+    if: github.event_name != 'workflow_dispatch' || (inputs.deploy && !inputs.test_failure)
     runs-on: ubuntu-latest
     environment:
       name: github-pages
@@ -114,44 +151,42 @@ jobs:
         id: deployment
         uses: actions/deploy-pages@v5
 
-  # A failed fetch run leaves the live site serving the previous snapshot.
-  # Make that visible: open (or update) one tracking issue.
+  # A failed fetch run leaves the live site serving the previous snapshot. Open
+  # one issue (or comment on it while it is open) that @-mentions the maintainer,
+  # with the failed step, its error line and a link to the run. If the issue
+  # cannot be written, this job fails too. Test fetch runs (deploy unticked) do
+  # not report here; the alert test reports in its own issue.
   alert-on-failure:
     needs: [refresh, deploy]
-    if: failure() && inputs.fetch
+    if: failure() && (inputs.test_failure || (inputs.fetch && inputs.deploy))
     runs-on: ubuntu-latest
     permissions:
+      contents: read
+      actions: read
       issues: write
-    env:
-      GH_TOKEN: ${{ github.token }}
-      REPO: ${{ github.repository }}
-      RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
     steps:
-      - name: Open or update the stale-data issue
-        run: |
-          TITLE="Daily refresh failed - live site is serving an old data snapshot"
-          BODY="The daily refresh on $(date -u +%F) failed, so starsobservatory.org still shows the last successful snapshot. If the download failed, the hourly scheduler tries again, up to six fetch runs a day; if a later step failed, re-run the failed jobs once the cause is fixed. Run: $RUN_URL"
-          N=$(gh issue list --repo "$REPO" --state open --search "\"$TITLE\" in:title" --json number --jq '.[0].number')
-          if [ -n "$N" ]; then gh issue comment "$N" --repo "$REPO" --body "$BODY"
-          else gh issue create --repo "$REPO" --title "$TITLE" --body "$BODY"; fi
+      - uses: actions/checkout@v7
+      - name: Open or update the refresh-failure issue, mentioning the maintainer
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TEST: ${{ inputs.test_failure }}
+        run: python3 .github/scripts/refresh_alert.py alert "${{ github.run_id }}"
 
-  # A successful fetch run ends the problem the stale-data issue reports:
-  # close it, naming the snapshot that is now live.
+  # A successful fetch run ends the problem the issue reports: once the site
+  # serves the new snapshot, close the issue with a note naming it.
   close-stale-issue:
     needs: [refresh, deploy]
-    if: success() && inputs.fetch
+    if: success() && inputs.fetch && inputs.deploy && !inputs.test_failure
     runs-on: ubuntu-latest
     permissions:
+      contents: read
       issues: write
-    env:
-      GH_TOKEN: ${{ github.token }}
-      REPO: ${{ github.repository }}
-      GENERATED: ${{ needs.refresh.outputs.generated }}
-      RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
     steps:
-      - name: Close the stale-data issue if one is open
-        run: |
-          TITLE="Daily refresh failed - live site is serving an old data snapshot"
-          N=$(gh issue list --repo "$REPO" --state open --search "\"$TITLE\" in:title" --json number --jq '.[0].number')
-          if [ -z "$N" ]; then echo "No open stale-data issue."; exit 0; fi
-          gh issue close "$N" --repo "$REPO" --reason completed --comment "Resolved: the daily refresh succeeded, and starsobservatory.org now serves the snapshot of ${GENERATED:0:10}, fetched at ${GENERATED:11:5} UTC. Run: $RUN_URL"
+      - uses: actions/checkout@v7
+      - name: Close the refresh-failure issue once the new snapshot is live
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: >-
+          python3 .github/scripts/refresh_alert.py resolve
+          "${{ needs.refresh.outputs.stats_generated }}" "${{ needs.refresh.outputs.generated }}"

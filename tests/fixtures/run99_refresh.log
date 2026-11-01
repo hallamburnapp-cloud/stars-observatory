@@ -1,0 +1,140 @@
+2026-10-28T06:01:55.0449150Z 
+2026-10-28T06:01:55.0449297Z No user sessions are running outdated binaries.
+2026-10-28T06:01:55.0449486Z 
+2026-10-28T06:01:55.0449732Z No VM guests are running outdated hypervisor (qemu) binaries on this host.
+2026-10-28T06:01:55.9702410Z ##[group]Run node tests/run_qa.mjs
+2026-10-28T06:01:55.9702868Z [36;1mnode tests/run_qa.mjs[0m
+2026-10-28T06:01:55.9741539Z shell: /usr/bin/bash -e {0}
+2026-10-28T06:01:55.9741800Z env:
+2026-10-28T06:01:55.9742043Z   pythonLocation: /opt/hostedtoolcache/Python/3.12.15/x64
+2026-10-28T06:01:55.9742413Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.12.15/x64/lib/pkgconfig
+2026-10-28T06:01:55.9742974Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
+2026-10-28T06:01:55.9743309Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
+2026-10-28T06:01:55.9743620Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
+2026-10-28T06:01:55.9743947Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.12.15/x64/lib
+2026-10-28T06:01:55.9744236Z ##[endgroup]
+2026-10-28T06:01:56.5728375Z 
+2026-10-28T06:01:56.5729361Z QA gate — version 1.8.2, snapshot 2026-10-28
+2026-10-28T06:01:56.5729639Z 
+2026-10-28T06:01:59.0774085Z [0] Packed catalog
+2026-10-28T06:01:59.1330478Z   ✓ app loaded the packed catalog (not the sats.json fallback)
+2026-10-28T06:01:59.1336056Z   ✓ packed catalog decodes to exactly the records of sats.json (19500)
+2026-10-28T06:01:59.1336651Z [1] Citation integrity
+2026-10-28T06:01:59.3432302Z   ✓ citation.json version equals CITATION.cff version
+2026-10-28T06:01:59.3474546Z   ✓ default rendered form is the footnote template, character-for-character
+2026-10-28T06:02:00.2823329Z   ✓ bibliography form matches template, character-for-character
+2026-10-28T06:02:00.2831979Z   ✓ bibliography form has no trailing full stop
+2026-10-28T06:02:00.2842827Z   ✓ footnote form contains no URL and no access date (OSCOLA 5, DOI present)
+2026-10-28T06:02:00.2853957Z   ✓ footnote form names no institution
+2026-10-28T06:02:00.2871776Z   ✓ footnote snapshot date equals the loaded dataset date
+2026-10-28T06:02:00.2872944Z   ✓ bibliography form contains no URL and no access date (OSCOLA 5, DOI present)
+2026-10-28T06:02:00.2873929Z   ✓ bibliography form names no institution
+2026-10-28T06:02:00.2874729Z   ✓ bibliography snapshot date equals the loaded dataset date
+2026-10-28T06:02:01.0754489Z   ✓ BibTeX carries the CITATION.cff version
+2026-10-28T06:02:01.0755191Z   ✓ BibTeX date (biblatex) is the CITATION.cff ISO release date
+2026-10-28T06:02:01.0755864Z   ✓ BibTeX license is MIT
+2026-10-28T06:02:01.0756382Z   ✓ BibTeX DOI is the version DOI
+2026-10-28T06:02:01.0756931Z   ✓ BibTeX note carries the loaded snapshot date
+2026-10-28T06:02:01.0757448Z   ✓ BibTeX carries url and urldate
+2026-10-28T06:02:01.0757982Z   ✓ BibTeX names no institution
+2026-10-28T06:02:01.0770580Z   ✓ About shows the version from the release tag
+2026-10-28T06:02:01.0794288Z   ✓ footer is exactly the copyright, licence, About and citation line
+2026-10-28T06:02:01.7494531Z   ✓ footer "Cite this instrument" opens About at the citation section
+2026-10-28T06:02:01.7562931Z   ✓ About carries the verbatim AI statement
+2026-10-28T06:02:01.7569748Z   ✓ Provenance carries the verbatim attributed-State paragraph
+2026-10-28T06:02:01.7576844Z   ✓ Provenance carries no affiliation, support or AI text
+2026-10-28T06:02:01.7629415Z   ✓ no banned wording anywhere in the page text (2.1, 2.4)
+2026-10-28T06:02:01.7691892Z   ✓ snapshot mismatch warning correctly hidden
+2026-10-28T06:02:01.7695247Z   ✓ static HTML gives the snapshot fetch time in the header, the compact badge and Provenance
+2026-10-28T06:02:01.7749596Z   ✓ header shows the snapshot date and fetch time, and no fixed schedule time
+2026-10-28T06:02:01.7797370Z   ✓ Provenance gives the snapshot fetch time
+2026-10-28T06:02:01.7847881Z   ✓ compact snapshot badge is hidden where the header badge fits (1360 px wide)
+2026-10-28T06:02:01.7854757Z [2] Time controls
+2026-10-28T06:02:02.0224204Z   ✓ speed change while paused stays paused
+2026-10-28T06:02:02.0268299Z   ✓ play button reflects paused state after speed change
+2026-10-28T06:02:02.3045551Z   ✓ second speed change still does not start playback
+2026-10-28T06:02:02.3046543Z   ✓ app starts in playing state (baseline)
+2026-10-28T06:02:02.3077774Z [3] Legend exclusion footnote
+2026-10-28T06:02:02.3121699Z   ✓ legend footnote figures equal catalog R/B minus rendered R/B
+2026-10-28T06:02:02.3177217Z [4] Pickability sweep
+2026-10-28T06:02:02.4433889Z   rendered objects: 19500
+2026-10-28T06:02:18.4123668Z   …1500/19500 (direct 936, chooser 564, failed 0)
+2026-10-28T06:02:25.7160554Z   …3000/19500 (direct 2363, chooser 637, failed 0)
+2026-10-28T06:02:33.0075843Z   …4500/19500 (direct 3811, chooser 689, failed 0)
+2026-10-28T06:02:40.2987413Z   …6000/19500 (direct 5260, chooser 740, failed 0)
+2026-10-28T06:02:47.6022414Z   …7500/19500 (direct 6734, chooser 766, failed 0)
+2026-10-28T06:02:55.2407878Z   …9000/19500 (direct 8184, chooser 816, failed 0)
+2026-10-28T06:03:02.3791004Z   …10500/19500 (direct 9642, chooser 858, failed 0)
+2026-10-28T06:03:09.6375115Z   …12000/19500 (direct 11103, chooser 897, failed 0)
+2026-10-28T06:03:16.8021226Z   …13500/19500 (direct 12577, chooser 923, failed 0)
+2026-10-28T06:03:23.7575841Z   …15000/19500 (direct 14052, chooser 948, failed 0)
+2026-10-28T06:03:30.7710640Z   …16500/19500 (direct 15516, chooser 984, failed 0)
+2026-10-28T06:03:38.2402170Z   …18000/19500 (direct 16988, chooser 1012, failed 0)
+2026-10-28T06:03:38.2415344Z   …19500/19500 (direct 18465, chooser 1035, failed 0)
+2026-10-28T06:03:38.2416353Z   ✓ every rendered object is pickable with a matching detail card (19500/19500)
+2026-10-28T06:03:38.2417159Z   (1035 sweep picks resolved via the chooser)
+2026-10-28T06:03:38.3169398Z   ✓ dense-cluster chooser opens, lists the pair, and resolves the pick (40 rows)
+2026-10-28T06:03:38.3193849Z [4b] Real pointer events & filters
+2026-10-28T06:03:40.0189524Z   ✓ real mouse clicks select isolated objects (8/8)
+2026-10-28T06:03:40.6744908Z   ✓ dimmed filtered-out objects stay clickable while a filter is active (6/6)
+2026-10-28T06:03:40.6986434Z   ✓ state filter option US shows its propagated count
+2026-10-28T06:03:40.6987740Z   ✓ state filter option PRC shows its propagated count
+2026-10-28T06:03:40.6988624Z   ✓ state filter option CIS shows its propagated count
+2026-10-28T06:03:40.6989369Z   ✓ state filter option UK shows its propagated count
+2026-10-28T06:03:40.6990240Z   ✓ state filter option TBD shows its propagated count
+2026-10-28T06:03:40.6991213Z   ✓ legend Payload count equals propagated payloads
+2026-10-28T06:03:40.7122027Z   ✓ selecting US shows its labelled count (±4% decay tolerance)
+2026-10-28T06:03:40.7309838Z [4c] Ground truth: real clicks on drawn dots
+2026-10-28T06:03:40.9412913Z   ✓ desktop default view: canvas exactly fills its host (not clipped under the top bar)
+2026-10-28T06:05:56.2881950Z   ✗ desktop default view: real clicks on drawn dots open that object's card (15/16) — 44801→-1 g=273.5,353.5 s=274.3,353.7 {"el":"rail","now":{"x":274.3289961073332,"y":353.702607456278,"z":0.997137135143703},"occ":false,"up":{"moved":0,"dt":0.29999999998835847,"onCanvas":true,"type":"mouse","x":755.368408203125,"y":583.7894897460938,"cands":16},"closed":{"t":115245,"trusted":false,"x":0,"y":0},"t":128094,"sel":-1,"det":""}
+2026-10-28T06:05:56.2884350Z   ✓ desktop default view: app projection matches the drawn pixel (worst 0.9px over 16 dots)
+2026-10-28T06:05:56.3438277Z   ✓ desktop zoomed out: canvas exactly fills its host (not clipped under the top bar)
+2026-10-28T06:06:46.7655101Z   ✓ desktop zoomed out: app projection matches the drawn pixel (worst 1.2px over 12 dots)
+2026-10-28T06:06:46.7661972Z   ✓ desktop zoomed out: real clicks on drawn dots open that object's card (12/12)
+2026-10-28T06:06:50.5560725Z   ✓ phone (touch): canvas exactly fills its host (not clipped under the top bar)
+2026-10-28T06:08:33.9616347Z   ✓ phone (touch): app projection matches the drawn pixel (worst 1.0px over 12 dots)
+2026-10-28T06:08:33.9619565Z   ✓ phone (touch): real taps on drawn dots open that object's card (12/12)
+2026-10-28T06:08:34.0506937Z   ✓ phone (touch): a tap on the globe beside a button is not retargeted to the button
+2026-10-28T06:08:34.0529658Z   ✓ phone 390x844: snapshot date and fetch time shown beside Controls & Filters
+2026-10-28T06:08:34.3747844Z   ✓ phone 390x844: object card opens and fits the viewport
+2026-10-28T06:08:34.3790406Z   ✓ phone 390x844: compact snapshot badge steps aside while the object card is open
+2026-10-28T06:08:34.3791340Z   ✓ phone 390x844: object card close control is on screen and at least 44x44
+2026-10-28T06:08:34.3871402Z   ✓ phone 390x844: object card close control stays on screen after scrolling the card
+2026-10-28T06:08:34.7446710Z   ✓ phone 390x844: tapping the close control closes the object card
+2026-10-28T06:08:35.2088598Z   ✓ phone 390x844: About opens with its close control on screen and at least 44x44
+2026-10-28T06:08:35.2194999Z   ✓ phone 390x844: About close control stays on screen after scrolling the panel
+2026-10-28T06:08:35.6220742Z   ✓ phone 390x844: tapping the close control closes About
+2026-10-28T06:08:36.6452984Z   ✓ phone 360x800: snapshot date and fetch time shown beside Controls & Filters
+2026-10-28T06:08:37.7954216Z   ✓ phone 360x800: object card opens and fits the viewport
+2026-10-28T06:08:37.8016756Z   ✓ phone 360x800: compact snapshot badge steps aside while the object card is open
+2026-10-28T06:08:37.8033954Z   ✓ phone 360x800: object card close control is on screen and at least 44x44
+2026-10-28T06:08:37.8104256Z   ✓ phone 360x800: object card close control stays on screen after scrolling the card
+2026-10-28T06:08:38.2341392Z   ✓ phone 360x800: tapping the close control closes the object card
+2026-10-28T06:08:38.8574313Z   ✓ phone 360x800: About opens with its close control on screen and at least 44x44
+2026-10-28T06:08:38.8638798Z   ✓ phone 360x800: About close control stays on screen after scrolling the panel
+2026-10-28T06:08:39.3156288Z   ✓ phone 360x800: tapping the close control closes About
+2026-10-28T06:08:39.3320953Z [4d] View links, CSV export
+2026-10-28T06:08:43.0600097Z   ✓ view link restores colour mode and filters
+2026-10-28T06:08:43.0624223Z   ✓ address bar keeps the view parameters
+2026-10-28T06:08:43.1004484Z   ✓ changing a filter updates the address bar
+2026-10-28T06:08:43.5654628Z   ✓ CSV header is present
+2026-10-28T06:08:43.5696813Z   ✓ lag.json uses the watching_no_un_match key
+2026-10-28T06:08:43.5699730Z   ✓ CSV row count equals the objects shown (1042 vs 1042)
+2026-10-28T06:08:43.5744275Z   ✓ every CSV row matches the active filters (PAY, PRC, no UN record)
+2026-10-28T06:08:43.5779527Z   ✓ CSV filename carries snapshot date and filters
+2026-10-28T06:08:43.5799256Z   ✓ CSV TLE lines are the canonical sats.json element sets
+2026-10-28T06:08:43.5808928Z   ✓ State dossier and national_law.json are absent from the release
+2026-10-28T06:08:43.5809648Z [5] Permalinks
+2026-10-28T06:08:48.5821500Z   ✓ ?sat=62253 permalink selects the object and shows its card
+2026-10-28T06:08:52.5769025Z   ✓ ?sat=63988 permalink selects the object and shows its card
+2026-10-28T06:08:57.0782021Z   ✓ ?sat=53446 permalink selects the object and shows its card
+2026-10-28T06:08:57.0805131Z [6] Console hygiene
+2026-10-28T06:08:57.0879023Z   ✓ no page errors or console errors
+2026-10-28T06:08:57.0880045Z   ✓ the page makes no third-party requests (fonts and libraries are self-hosted)
+2026-10-28T06:09:00.5481508Z 
+2026-10-28T06:09:00.5481704Z 
+2026-10-28T06:09:00.5482653Z QA GATE FAILED:
+2026-10-28T06:09:00.5486061Z  - desktop default view: real clicks on drawn dots open that object's card (15/16) — 44801→-1 g=273.5,353.5 s=274.3,353.7 {"el":"rail","now":{"x":274.3289961073332,"y":353.702607456278,"z":0.997137135143703},"occ":false,"up":{"moved":0,"dt":0.29999999998835847,"onCanvas":true,"type":"mouse","x":755.368408203125,"y":583.7894897460938,"cands":16},"closed":{"t":115245,"trusted":false,"x":0,"y":0},"t":128094,"sel":-1,"det":""}
+2026-10-28T06:09:00.5488247Z 89 checks passed, 1 failed.
+2026-10-28T06:09:00.5703053Z ##[error]Process completed with exit code 1.
+2026-10-28T06:09:00.5822534Z Post job cleanup.

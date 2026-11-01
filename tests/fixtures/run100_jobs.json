@@ -1,0 +1,119 @@
+{
+ "total_count": 4,
+ "jobs": [
+  {
+   "id": 123290899420,
+   "name": "refresh",
+   "status": "completed",
+   "conclusion": "failure",
+   "steps": [
+    {
+     "name": "Set up job",
+     "status": "completed",
+     "conclusion": "success",
+     "number": 1
+    },
+    {
+     "name": "Run actions/checkout@v7",
+     "status": "completed",
+     "conclusion": "success",
+     "number": 2
+    },
+    {
+     "name": "Run actions/setup-python@v7",
+     "status": "completed",
+     "conclusion": "success",
+     "number": 3
+    },
+    {
+     "name": "Fetch the day's data (fetch run) or re-stage the published snapshot",
+     "status": "completed",
+     "conclusion": "success",
+     "number": 4
+    },
+    {
+     "name": "Read the snapshot timestamp",
+     "status": "completed",
+     "conclusion": "success",
+     "number": 5
+    },
+    {
+     "name": "Commit registration lag ledger",
+     "status": "completed",
+     "conclusion": "success",
+     "number": 6
+    },
+    {
+     "name": "Run actions/setup-node@v7",
+     "status": "completed",
+     "conclusion": "success",
+     "number": 7
+    },
+    {
+     "name": "Cache Playwright browsers",
+     "status": "completed",
+     "conclusion": "success",
+     "number": 8
+    },
+    {
+     "name": "Install Playwright",
+     "status": "completed",
+     "conclusion": "failure",
+     "number": 9
+    },
+    {
+     "name": "QA gate (citation integrity, full pickability sweep, controls)",
+     "status": "completed",
+     "conclusion": "skipped",
+     "number": 10
+    },
+    {
+     "name": "Upload site artifact",
+     "status": "completed",
+     "conclusion": "skipped",
+     "number": 11
+    },
+    {
+     "name": "Post Run actions/checkout@v7",
+     "status": "completed",
+     "conclusion": "success",
+     "number": 12
+    },
+    {
+     "name": "Complete job",
+     "status": "completed",
+     "conclusion": "success",
+     "number": 13
+    }
+   ]
+  },
+  {
+   "id": 123291299408,
+   "name": "alert-on-failure",
+   "status": "completed",
+   "conclusion": "success",
+   "steps": [
+    {
+     "name": "Open or update the stale-data issue",
+     "status": "completed",
+     "conclusion": "success",
+     "number": 2
+    }
+   ]
+  },
+  {
+   "id": 123291301240,
+   "name": "close-stale-issue",
+   "status": "completed",
+   "conclusion": "skipped",
+   "steps": []
+  },
+  {
+   "id": 123291301418,
+   "name": "deploy",
+   "status": "completed",
+   "conclusion": "skipped",
+   "steps": []
+  }
+ ]
+}

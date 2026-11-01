@@ -6,8 +6,10 @@ Two modes:
                   downloads every CelesTrak and GCAT source once, rebuilds the
                   enriched dataset and the registration-lag ledger, and stages
                   them into site/data/. Any failed download, non-200 response
-                  or invalid file halts the run with a logged error: nothing
-                  new is staged or published, and the site keeps its previous
+                  or invalid file halts the run with a logged error, and so
+                  does a built snapshot with an empty count or a count more
+                  than 10% from the snapshot the site serves now: nothing new
+                  is staged or published, and the site keeps its previous
                   snapshot and date.
   --mode rebuild  (every push, release redeploy and manual run without fetch)
                   contacts no data source. It takes the currently published
@@ -48,6 +50,11 @@ def valid(path, kind):
 STALE_DAYS = 3.0
 LIVE = "https://starsobservatory.org/data"
 PUBLISHED = ("sats.json", "stats.json", "lag.json")
+# A fetch run publishes only a snapshot whose counts are within this fraction of
+# the snapshot the site serves now. Real day-to-day change is far smaller (well
+# under 1%), even across a gap of several days; an empty, truncated or partial
+# download falls outside it, so it can never replace good data.
+COUNT_TOLERANCE = 0.10
 
 
 def die(msg):
@@ -79,6 +86,55 @@ def median_epoch_age_days(sats_path):
         ages.append((now - t).total_seconds() / 86400)
     return median(ages)
 
+def snapshot_counts(sats, stats):
+    """The figures a whole catalogue must reproduce, from a snapshot's sats.json and stats.json."""
+    return {
+        "objects shown on the globe": len(sats["sats"]),
+        "objects on orbit": stats["total_onorbit"],
+        "payloads on orbit": stats["by_type"].get("PAY", 0),
+        "payloads matched to a UN registration record": sum(v[0] for v in stats["registration_by_owner"].values()),
+    }
+
+
+def count_problems(new, published, tolerance=COUNT_TOLERANCE):
+    """Each count of the new snapshot that is zero or outside +/- tolerance of the published one."""
+    problems = []
+    for name, value in new.items():
+        old = published[name]
+        lo, hi = old * (1 - tolerance), old * (1 + tolerance)
+        ok = value > 0 and lo <= value <= hi
+        print(f"check {name}: {value} (published snapshot {old}, allowed {lo:.0f} to {hi:.0f}) {'ok' if ok else 'OUT OF RANGE'}")
+        if not ok:
+            problems.append(f"{name} {value} against {old} in the published snapshot")
+    return problems
+
+
+def check_against_published():
+    """Halt unless the newly built snapshot is consistent with the one the site serves now."""
+    live = {}
+    for f in ("sats.json", "stats.json"):
+        tmp = f"{RAW}/.published_{f}"
+        try:
+            download(f"{LIVE}/{f}", tmp)
+            with open(tmp) as fh:
+                live[f] = json.load(fh)
+        except Exception as e:
+            die(f"COULD NOT READ THE PUBLISHED SNAPSHOT {LIVE}/{f} to check the new one against it: {e}")
+        finally:
+            if os.path.exists(tmp): os.remove(tmp)
+    try:
+        with open(f"{OUT}/sats.json") as a, open(f"{OUT}/stats.json") as b:
+            new = snapshot_counts(json.load(a), json.load(b))
+        published = snapshot_counts(live["sats.json"], live["stats.json"])
+    except Exception as e:
+        die(f"SNAPSHOT FAILED VALIDATION: unreadable counts ({e!r})")
+    problems = count_problems(new, published)
+    if problems:
+        die("SNAPSHOT FAILED VALIDATION (more than "
+            f"{COUNT_TOLERANCE:.0%} from the published snapshot, or empty): " + "; ".join(problems))
+    print(f"validated: every count is within {COUNT_TOLERANCE:.0%} of the published snapshot")
+
+
 def fetch_sources():
     """Download every source once; halt on the first failure."""
     os.makedirs(RAW, exist_ok=True)
@@ -101,6 +157,7 @@ def fetch_sources():
     if r.returncode != 0:
         print(r.stdout[-2000:], r.stderr[-2000:]); die("BUILD FAILED")
     print(r.stdout.strip().splitlines()[-6:])
+    check_against_published()
     for f in PUBLISHED:
         shutil.copy(f"{OUT}/{f}", f"{SITE}/{f}")
 
