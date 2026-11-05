@@ -41,13 +41,13 @@ concurrency:
 
 jobs:
   refresh:
-    # Pinned to Ubuntu 24.04. GitHub moved ubuntu-latest to Ubuntu 26.04 from
-    # 19 October 2026, and Playwright 1.59.0 cannot install its browser there
-    # ("Playwright does not support chromium on ubuntu26.04-x64"), which failed
-    # every refresh from 29 October to 1 November 2026. Move to a newer image
-    # only together with a Playwright release that supports it (1.61.0 or later
-    # for Ubuntu 26.04), in a change whose QA run passes.
-    runs-on: ubuntu-24.04
+    # The runner image and the Playwright version are pinned, and change only
+    # together, in a change whose QA runs pass. ubuntu-latest is not used: when
+    # GitHub moved it to Ubuntu 26.04 (from 19 October 2026), the Playwright then
+    # pinned (1.59.0) could not install its browser there ("Playwright does not
+    # support chromium on ubuntu26.04-x64"), which failed every refresh from 29
+    # October to 1 November 2026. Ubuntu 26.04 needs Playwright 1.61.0 or later.
+    runs-on: ubuntu-26.04
     timeout-minutes: 60
     outputs:
       generated: ${{ steps.snapshot.outputs.generated }}
@@ -118,11 +118,11 @@ jobs:
         uses: actions/cache@v6
         with:
           path: ~/.cache/ms-playwright
-          key: playwright-chromium-${{ runner.os }}-1.59.0
+          key: playwright-chromium-ubuntu-26.04-1.64.1
 
       - name: Install Playwright
         run: |
-          npm install --no-save playwright@1.59.0
+          npm install --no-save playwright@1.64.1
           npx playwright install --with-deps chromium
 
       - name: QA gate (citation integrity, full pickability sweep, controls)
