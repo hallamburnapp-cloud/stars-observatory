@@ -17,7 +17,7 @@ Two modes:
                   code deploy never alters a snapshot or gives it a date its
                   data does not have.
 """
-import argparse, json, re, subprocess, sys, shutil, urllib.request, urllib.error, os
+import argparse, http.client, json, re, ssl, subprocess, sys, shutil, time, urllib.request, urllib.error, os
 from pathlib import Path
 
 _ROOT = Path(__file__).resolve().parents[1]
@@ -55,6 +55,13 @@ PUBLISHED = ("sats.json", "stats.json", "lag.json")
 # under 1%), even across a gap of several days; an empty, truncated or partial
 # download falls outside it, so it can never replace good data.
 COUNT_TOLERANCE = 0.10
+# A source whose download fails or is cut off is tried again after these
+# pauses (seconds). CelesTrak and GCAT sometimes answer with a server error or
+# drop a long transfer: the fetch of 21 November 2026 halted on a CelesTrak
+# "HTTP 500" that came back within a second. A refusal (4xx, for example a rate
+# limit) is never retried, and nothing is staged until every source has
+# downloaded and validated.
+DOWNLOAD_WAITS = (60, 300)
 
 
 def die(msg):
@@ -135,22 +142,48 @@ def check_against_published():
     print(f"validated: every count is within {COUNT_TOLERANCE:.0%} of the published snapshot")
 
 
-def fetch_sources():
-    """Download every source once; halt on the first failure."""
-    os.makedirs(RAW, exist_ok=True)
-    for fname, url, kind in FETCHES:
-        tmp = f"{RAW}/.tmp_{fname}"
+def retryable(e):
+    """A server error, a dropped or timed-out connection or a cut-off transfer; never a 4xx refusal."""
+    if isinstance(e, urllib.error.HTTPError):
+        return e.code >= 500
+    return isinstance(e, (urllib.error.URLError, TimeoutError, ConnectionError, http.client.HTTPException, ssl.SSLError))
+
+
+def fetch_one(fname, url, kind, waits=DOWNLOAD_WAITS):
+    """Download one source into RAW. A transient failure, or a file that does not
+    validate (for example a cut-off transfer), is tried again after each pause in
+    `waits`; a refusal, or the last failure, halts the run."""
+    tmp = f"{RAW}/.tmp_{fname}"
+    attempts = len(waits) + 1
+    for attempt in range(1, attempts + 1):
+        of = f" (attempt {attempt} of {attempts})" if attempt > 1 else ""
         try:
             download(url, tmp)
         except Exception as e:
             if os.path.exists(tmp): os.remove(tmp)
-            die(f"DOWNLOAD FAILED {fname} <{url}>: {e}")
-        if not valid(tmp, kind):
-            note = open(tmp, errors="replace").read(160).replace("\n", " ")
+            if not retryable(e) or attempt == attempts:
+                die(f"DOWNLOAD FAILED {fname} <{url}>: {e}{of}")
+            problem = str(e)
+        else:
+            if valid(tmp, kind):
+                shutil.move(tmp, f"{RAW}/{fname}")
+                print(f"downloaded {fname}{of}")
+                return
+            with open(tmp, errors="replace") as fh:
+                note = fh.read(160).replace("\n", " ")
             os.remove(tmp)
-            die(f"INVALID SOURCE {fname} <{url}>: not {kind} catalogue data — {note!r}")
-        shutil.move(tmp, f"{RAW}/{fname}")
-        print(f"downloaded {fname}")
+            if attempt == attempts:
+                die(f"INVALID SOURCE {fname} <{url}>: not {kind} catalogue data — {note!r}{of}")
+            problem = f"not {kind} catalogue data (cut off, or an error page)"
+        print(f"{fname}: {problem}; trying again in {waits[attempt - 1]} s (attempt {attempt + 1} of {attempts})", flush=True)
+        time.sleep(waits[attempt - 1])
+
+
+def fetch_sources():
+    """Download every source; halt if one cannot be downloaded and validated."""
+    os.makedirs(RAW, exist_ok=True)
+    for fname, url, kind in FETCHES:
+        fetch_one(fname, url, kind)
 
     r = subprocess.run([sys.executable, str(_ROOT / "pipeline" / "build_dataset.py")],
                        capture_output=True, text=True)
