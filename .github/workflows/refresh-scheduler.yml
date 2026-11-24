@@ -15,9 +15,10 @@ name: Daily refresh scheduler
 #     after a successful download, so its presence means today's data is in);
 #   - no fetch run is queued or under way;
 #   - fewer than six fetch runs have started today.
-# A failed download leaves no ledger commit, so the next hourly check retries.
-# A run that fails after downloading has committed the ledger and is not
-# retried automatically: its alert asks a person to look.
+# A run that fails before its ledger commit (a failed download, for instance)
+# is retried: the check runs again two hours later (the retry job below). A run
+# that fails after its ledger commit is not retried automatically: its alert
+# asks a person to look.
 #
 # The check then waits for the run it started (the "follow" job, which has its
 # own six-hour limit) and fails if that run fails. Runs this workflow starts are
@@ -150,6 +151,40 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: python3 .github/scripts/refresh_alert.py follow "${{ needs.check.outputs.run_id }}"
+
+  # A failed download is usually short-lived: an outage upstream (21 November
+  # 2026), or a refusal. CelesTrak allows one download of the same data per IP
+  # address per update, about every two hours, and GitHub's machines share
+  # addresses; on 24 November 2026 it refused the 06:00 UTC run with HTTP 403,
+  # and a retry at 08:47 UTC succeeded. GitHub delivers the hourly checks only
+  # every few hours, so after a failed refresh run this job waits two hours,
+  # one CelesTrak update, and starts the check again. The check applies its
+  # usual rules: it does nothing once main has today's ledger commit (so a run
+  # that failed after that commit is not retried), while a fetch run is under
+  # way, or after six fetch runs in a day. While this job waits, the run holds
+  # the scheduler's concurrency group, so no hourly check starts a fetch run
+  # sooner. The alert test is not retried.
+  retry:
+    needs: follow
+    if: ${{ !cancelled() && needs.follow.result == 'failure' && !(github.event_name == 'workflow_dispatch' && inputs.test_failure) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 135
+    permissions:
+      actions: write
+    steps:
+      - name: Start the check again in two hours
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          sleep 7200
+          for i in 1 2 3; do
+            if gh workflow run refresh-scheduler.yml --repo "$REPO" --ref main -f dry_run=false; then
+              echo "Started the check again: it retries today's fetch if it is still due."; exit 0
+            fi
+            sleep $((15 * i))
+          done
+          echo "::error::Could not start the check again; the next hourly check will."; exit 1
 
   # GitHub switches off a public repository's scheduled workflows after 60 days
   # without repository activity. The daily ledger commits prevent that, but they
