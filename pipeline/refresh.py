@@ -135,6 +135,20 @@ def check_against_published():
     print(f"validated: every count is within {COUNT_TOLERANCE:.0%} of the published snapshot")
 
 
+def refusal_reason(e):
+    """The start of an HTTP error's response body, as plain text, which can give
+    the server's reason for refusing. Empty if there is none."""
+    if not isinstance(e, urllib.error.HTTPError) or e.fp is None:
+        return ""
+    try:
+        body = e.read(600).decode("utf-8", "replace")
+    except Exception:
+        return ""
+    body = re.sub(r"(?is)<(script|style)\b.*?(</\1\s*>|$)", " ", body)
+    text = " ".join(re.sub(r"<[^>]*(>|$)", " ", body).split())
+    return f" — {text[:140]!r}" if text else ""
+
+
 def fetch_sources():
     """Download every source once; halt on the first failure."""
     os.makedirs(RAW, exist_ok=True)
@@ -144,7 +158,7 @@ def fetch_sources():
             download(url, tmp)
         except Exception as e:
             if os.path.exists(tmp): os.remove(tmp)
-            die(f"DOWNLOAD FAILED {fname} <{url}>: {e}")
+            die(f"DOWNLOAD FAILED {fname} <{url}>: {e}{refusal_reason(e)}")
         if not valid(tmp, kind):
             note = open(tmp, errors="replace").read(160).replace("\n", " ")
             os.remove(tmp)

@@ -219,10 +219,10 @@ def compose(run, fails, live, test=False):
         lines.append(f"- **Failed step:** {job} › {step or 'not reported'}")
         lines.append(f"- **Error:** `{err.replace('`', chr(39))}`" if err else "- **Error:** no error line found in the log; open the run.")
     if not test:
-        lines += ["", "A failed download leaves no ledger commit, so the hourly scheduler tries again, up to six "
-                      "fetch runs a day. A run that failed after the download has committed the day's ledger and is "
-                      "not retried: fix the cause, then re-run the failed jobs. This issue closes itself once a "
-                      "fresh snapshot is live."]
+        lines += ["", "A run that failed before committing the day's ledger (a failed download, for instance) is "
+                      "retried: the scheduler tries again two hours later, up to six fetch runs a day. A run that "
+                      "failed after the ledger commit is not retried: fix the cause, then re-run the failed jobs. "
+                      "This issue closes itself once a fresh snapshot is live."]
     return "\n".join(lines)
 
 
