@@ -221,8 +221,8 @@ def compose(run, fails, live, test=False):
     if not test:
         lines += ["", "A run that failed before committing the day's ledger (a failed download, for instance) is "
                       "retried: the scheduler tries again two hours later, up to six fetch runs a day. A run that "
-                      "failed after the ledger commit is not retried: fix the cause, then re-run the failed jobs. "
-                      "This issue closes itself once a fresh snapshot is live."]
+                      "failed after the ledger commit (in the QA gate or the deploy) is not retried: fix the cause, "
+                      "then re-run the failed jobs. This issue closes itself once a fresh snapshot is live."]
     return "\n".join(lines)
 
 

@@ -15,9 +15,10 @@ name: Daily refresh scheduler
 #     after a successful download, so its presence means today's data is in);
 #   - no fetch run is queued or under way;
 #   - fewer than six fetch runs have started today.
-# A run that fails before its ledger commit (a failed download, for instance)
-# is retried: the check runs again two hours later (the retry job below). A run
-# that fails after its ledger commit is not retried automatically: its alert
+# A run that fails before its ledger commit (a failed download, or a failure
+# while setting up the QA browser) is retried: the retry job below starts a
+# check that waits two hours and runs again. A run that fails after its ledger
+# commit (in the QA gate or the deploy) is not retried automatically: its alert
 # asks a person to look.
 #
 # The check then waits for the run it started (the "follow" job, which has its
@@ -45,6 +46,10 @@ on:
         description: "Alert test: start a refresh run that fails on purpose (nothing is downloaded, committed or deployed) and fail with it"
         type: boolean
         default: false
+      retry_after:
+        description: "Leave empty. Set by the scheduler when it retries a failed fetch run: wait until this time (UTC, e.g. 2026-11-27T08:01:00Z), then check"
+        type: string
+        default: ""
 
 permissions:
   contents: read
@@ -72,6 +77,7 @@ jobs:
           REPO: ${{ github.repository }}
           DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run }}
           TEST_FAILURE: ${{ github.event_name == 'workflow_dispatch' && inputs.test_failure }}
+          RETRY_AFTER: ${{ github.event_name == 'workflow_dispatch' && inputs.retry_after || '' }}
           FETCH_TITLE: Daily data refresh (fetch)
           TEST_TITLE: Alert test (deliberate failure)
           MAX_RUNS: 6
@@ -102,6 +108,19 @@ jobs:
             start "$TEST_TITLE" -f fetch=true -f test_failure=true
             echo "Started the alert-test run; the follow job waits for it and fails with it."
             exit 0
+          fi
+
+          # A retry started by the retry job below waits until its time, two hours
+          # after the failed fetch run, then makes the usual checks.
+          if [ -n "$RETRY_AFTER" ]; then
+            AT=$(date -u -d "$RETRY_AFTER" +%s)
+            WAIT=$((AT - $(date -u +%s)))
+            if [ "$WAIT" -gt 9000 ]; then echo "::error::The retry time $RETRY_AFTER is more than two and a half hours away."; exit 1; fi
+            if [ "$WAIT" -gt 0 ]; then
+              if [ "$DRY_RUN" = "true" ]; then echo "Dry run: would wait $((WAIT / 60)) minutes for the retry time, $RETRY_AFTER, then check."; exit 0; fi
+              echo "Retry: waiting $((WAIT / 60)) minutes, until $RETRY_AFTER, then checking."
+              sleep "$WAIT"
+            fi
           fi
 
           # Before 06:00 UTC: wait for 06:00 if it is at most five and a half hours away.
@@ -152,39 +171,55 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: python3 .github/scripts/refresh_alert.py follow "${{ needs.check.outputs.run_id }}"
 
-  # A failed download is usually short-lived: an outage upstream (21 November
-  # 2026), or a refusal. CelesTrak allows one download of the same data per IP
-  # address per update, about every two hours, and GitHub's machines share
-  # addresses; on 24 November 2026 it refused the 06:00 UTC run with HTTP 403,
-  # and a retry at 08:47 UTC succeeded. GitHub delivers the hourly checks only
-  # every few hours, so after a failed refresh run this job waits two hours,
-  # one CelesTrak update, and starts the check again. The check applies its
-  # usual rules: it does nothing once main has today's ledger commit (so a run
-  # that failed after that commit is not retried), while a fetch run is under
-  # way, or after six fetch runs in a day. While this job waits, the run holds
-  # the scheduler's concurrency group, so no hourly check starts a fetch run
-  # sooner. The alert test is not retried.
+  # Retries a failed fetch run two hours later. The failures so far were
+  # short-lived: a CelesTrak outage (21 November 2026), CelesTrak refusing a
+  # GitHub machine with HTTP 403 (24 November), a package server refusing
+  # requests while the QA browser was set up (27 November). CelesTrak allows
+  # one download of the same data per IP address per update, about every two
+  # hours, and GitHub's machines share addresses, hence the two hours. GitHub
+  # delivers the hourly checks only every few hours, so this job does not wait
+  # for one: it starts a new check that waits until the retry time and then
+  # makes the usual checks (at most six fetch runs a day). This run ends at
+  # once, so its failure email arrives with the alert issue. The waiting check
+  # holds the scheduler's concurrency group, so no hourly check starts a fetch
+  # run sooner. No retry is started when main already has today's ledger
+  # commit (the run failed in the QA gate or the deploy, which needs a
+  # person), when the retry time would fall after midnight UTC, or for the
+  # alert test.
   retry:
+    name: Retry if due
     needs: follow
     if: ${{ !cancelled() && needs.follow.result == 'failure' && !(github.event_name == 'workflow_dispatch' && inputs.test_failure) }}
     runs-on: ubuntu-latest
-    timeout-minutes: 135
+    timeout-minutes: 10
     permissions:
+      contents: read
       actions: write
     steps:
-      - name: Start the check again in two hours
+      - name: Start a check that retries today's fetch in two hours
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
         run: |
-          sleep 7200
+          set -euo pipefail
+          TODAY=$(date -u +%F)
+          AT=$(date -u -d '+2 hours' +%FT%TZ)
+          MESSAGES=$(gh api "repos/$REPO/commits?sha=main&since=${TODAY}T00:00:00Z&per_page=100" --jq '.[].commit.message')
+          if grep -qx "Ledger update: $TODAY" <<<"$MESSAGES"; then
+            echo "No retry: today's data was downloaded and committed before the run failed (in the QA gate or the deploy), so the cause needs a person. The alert issue says what failed."
+            exit 0
+          fi
+          if [ "${AT:0:10}" != "$TODAY" ]; then
+            echo "No retry: two hours from now is after midnight UTC. The next day's refresh starts at 06:00 UTC as usual."
+            exit 0
+          fi
           for i in 1 2 3; do
-            if gh workflow run refresh-scheduler.yml --repo "$REPO" --ref main -f dry_run=false; then
-              echo "Started the check again: it retries today's fetch if it is still due."; exit 0
+            if gh workflow run refresh-scheduler.yml --repo "$REPO" --ref main -f dry_run=false -f retry_after="$AT"; then
+              echo "Retry scheduled: a new check waits until $AT, then retries today's fetch if it is still due."; exit 0
             fi
             sleep $((15 * i))
           done
-          echo "::error::Could not start the check again; the next hourly check will."; exit 1
+          echo "::error::Could not start the retry; the next hourly check will retry instead."; exit 1
 
   # GitHub switches off a public repository's scheduled workflows after 60 days
   # without repository activity. The daily ledger commits prevent that, but they

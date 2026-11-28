@@ -75,6 +75,33 @@ jobs:
       - name: Unit tests (snapshot validation, failure alerts)
         run: python -m unittest discover -s tests -p "test_*.py"
 
+      # The QA gate's browser is set up before anything is downloaded, so a
+      # failure here stops the run before any request to CelesTrak or GCAT and
+      # before the ledger commit, and the scheduler retries two hours later.
+      # Until 27 November 2026 this came after the ledger commit, where nothing
+      # retries automatically: that day a package server refused requests at
+      # this point and the site kept the previous day's snapshot.
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          package-manager-cache: false
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-chromium-ubuntu-26.04-1.64.1
+
+      # GitHub's machines come with Microsoft's package repository configured.
+      # Nothing here uses it, but on 27 November 2026 it answered 403, which
+      # stopped the browser's system packages from installing. Only Ubuntu's
+      # own archive is needed, so the Microsoft repository is removed first.
+      - name: Install Playwright
+        run: |
+          grep -rls packages.microsoft.com /etc/apt/sources.list.d/ | xargs -r sudo rm -fv
+          npm install --no-save playwright@1.64.1
+          npx playwright install --with-deps chromium
+
       # CelesTrak and GCAT are contacted only by fetch runs: once a day, plus a
       # retry by the scheduler if a download fails. Any failed download, and any
       # snapshot with an empty count or a count more than 10% from the one the
@@ -109,22 +136,6 @@ jobs:
           git push
 
       # ---- QA gate: a failure here blocks the Pages deploy ----
-      - uses: actions/setup-node@v7
-        with:
-          node-version: "24"
-          package-manager-cache: false
-
-      - name: Cache Playwright browsers
-        uses: actions/cache@v6
-        with:
-          path: ~/.cache/ms-playwright
-          key: playwright-chromium-ubuntu-26.04-1.64.1
-
-      - name: Install Playwright
-        run: |
-          npm install --no-save playwright@1.64.1
-          npx playwright install --with-deps chromium
-
       - name: QA gate (citation integrity, full pickability sweep, controls)
         run: node tests/run_qa.mjs
 
